@@ -10,11 +10,9 @@
  *   Drive:  https://drive.google.com/drive/folders/[DRIVE_ROOT_FOLDER_ID]
  */
 
-// TODO: ใส่ Sheet ID ของ Google Sheet ที่จะใช้เป็นฐานข้อมูล (สร้างไฟล์เปล่า ๆ ไว้ก่อน)
-const SHEET_ID = "PUT_YOUR_TEST_SHEET_ID_HERE";
+const SHEET_ID = "1SyENEryBoq8EEbNRDyTZjZOgpopTAG88Uh7HB7-T2Yc";
 
-// TODO: ใส่ Folder ID ของ Google Drive ที่จะใช้เก็บรูป/ลายเซ็น (สร้างโฟลเดอร์เปล่า ๆ ไว้ก่อน)
-const DRIVE_ROOT_FOLDER_ID = "PUT_YOUR_TEST_DRIVE_FOLDER_ID_HERE";
+const DRIVE_ROOT_FOLDER_ID = "1lMxxmJeZFXhgOKV4atsZ6qyvjXJAW4Sh";
 
 // รหัสผ่านหน้าแรกเริ่มต้น — เปลี่ยนได้ทีหลังผ่านแท็บ Config ใน Sheet โดยตรง ไม่ต้องแก้ที่นี่/deploy ใหม่
 const DEFAULT_PASSCODE = "1234";
