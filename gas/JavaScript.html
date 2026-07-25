@@ -1,0 +1,980 @@
+<script>
+// ==== js/utils.js ====
+function formatDate(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  const buddhistYear = d.getFullYear() + 543;
+  return `${d.getDate()} ${months[d.getMonth()]} ${buddhistYear}`;
+}
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ==== js/data/options.js ====
+// รายการตัวเลือกทั้งหมด — ตรงตาม Jotform "Pyne brow consultation" คำต่อคำ
+// ในระบบจริง (Apps Script) รายการนี้จะย้ายไปเก็บใน Sheet "Config" เพื่อแก้ไขได้โดยไม่ต้อง deploy ใหม่
+
+const OPTIONS = {
+  oldMarkLook: ["เทา", "เขียว", "แดง", "มีลายเส้น", "มีคีรอยด์", "มีหลายรอย", "จางมาก", "Other"],
+  browHairLook: ["ปกติ", "เส้นเล็ก", "เส้นหนา"],
+  browHairDensity: ["บาง", "ปานกลาง", "หนา"],
+  skinType: ["ปกติ", "แห้ง", "มัน", "ผสม"],
+  concerns: ["หางคิ้วสั้น", "หางคิ้วตก", "คิ้วไม่เท่ากัน", "ไม่มีหัวคิ้ว", "คิ้วแหว่ง", "คิ้วบางมาก", "คิ้วหนามาก", "มีคีรอยด์", "Other"],
+  desiredFeel: [
+    "เบาบาง มีโครงเบาๆ", "ฟุ้งๆ สไตล์เกาหลี", "เน้นน่าสดรอด", "เน้นธรรมชาติ",
+    "เขียนคิ้วง่ายขึ้น", "เปลี่ยนทรงคิ้ว", "ทับทรงเดิม", "ต่อหางคิ้วให้ยาวขึ้น",
+    "เป๊ะ แน่น", "เฉี่ยวคม", "กลบรอยเก่า", "กลบคีรอยด์", "Other"
+  ],
+  technique: ["Shading brow", "Fluffy brow", "Hairstroke", "Premium line"],
+  muscle: ["ซ้ายสูงกว่า", "ขวาสูงกว่า", "ยกขึ้นสูงทั้งสองฝั่ง", "ไม่ขยับ", "Other"],
+  shapeDesign: ["ตามทรงคิ้วจริง", "ลดโก่งลง", "ทรงตรง", "ทรงโก่ง", "เพิ่มความโค้งมน", "เพิ่มเหลี่ยมมุม", "Other"],
+  browGuard: ["กันตามทรง", "ไม่กันคิ้ว"],
+  colorUsed: ["น้ำตาลธรรมชาติ", "น้ำตาลเข้ม", "น้ำตาลอ่อน", "น้ำตาลแดง", "น้ำตาลหม่นเทา", "เทาอ่อน", "ดำเทา"]
+};
+
+// ==== js/data/consentText.js ====
+// คัดลอกจาก Jotform "Pyne brow consultation" แบบคำต่อคำ — ห้ามแก้ถ้อยคำ ปรับได้เฉพาะไฟล์นี้
+const CONSENT_BLOCKS = [
+  {
+    title: "1. เทคนิคการสักคิ้วของ pyne.studio",
+    body: `เทคนิคของช่างมายเป็นการใช้เครื่องสักคิ้ว "เกลาเข็มเบา ๆ" บนผิวหนังชั้นตื้นที่สุดเท่านั้น
+การสักคิ้วของทางร้าน สามารถโดนน้ำได้ทันที ไม่ทำให้สีเพี้ยน
+สีที่อยู่บนผิวจะค่อย ๆ จางลงและผลัดไปตามวงจรผิวตามธรรมชาติ
+หากไม่กลับมาเติม สีจะค่อย ๆ หายไปจนหมด ไม่ต้องเลเซอร์ลบ และ ไม่ทิ้งร่องรอย`
+  },
+  {
+    title: "2. ความคงทนของสีและการเติมสี",
+    body: `จากน้ำหนักมือที่บางเบา ทำให้สีจะติดทนประมาณ 6–12 เดือนในการทำครั้งแรก
+หากต้องการเพิ่มความติดทน สามารถกลับมาเติมสีภายใน 3 เดือนแรก
+ค่าเติมสี: 1,000–1,500 บาท (ขึ้นอยู่กับเทคนิคที่เลือก)
+การกลับมาเติมสีเป็นโอกาสที่ดีในการ ประเมินผลลัพธ์จริงหลังใช้ชีวิต เช่น อยากให้หางยาวขึ้น อยากให้เข้มขึ้น อยากปรับทรง
+การปรับแก้เล็กน้อยในรอบเติมสี ไม่มีค่าใช้จ่ายเพิ่มเติมนอกจากค่าเติมสี`
+  },
+  {
+    title: "3. ขั้นตอนการลอกและผลลัพธ์ตามธรรมชาติ",
+    body: `ข้าพเจ้าเข้าใจว่าอาการหลังการสักคิ้วเป็นปกติและอาจมีดังนี้:
+1. หลังทำเสร็จทันที: อาจมีแดง/บวมเล็กน้อยในบางคน และจะหายภายใน 1–2 ชั่วโมง
+2. หลังทำเสร็จจะ ดูเหมือนเขียนคิ้วปกติ และเป๊ะขึ้นเพราะมีการวัดทรง
+3. ภายใน 1-2 วันแรก สีอาจ เข้ม–อ่อนสลับกัน เป็นเรื่องปกติ
+4. วันที่ 3–4 จะเริ่มลอก สีจะค่อย ๆ จางลง
+5. ในคนผิวแห้งอาจมีอาการคันหรือขุยได้บ้าง
+6. ระยะเวลาลอกประมาณ 5–7 วัน
+7. เมื่อคิ้วลอกหมดใหม่ๆ สีจะอ่อนลงก่อนประมาณ 70% ซึ่งเป็นเรื่องปกติ
+8. สีจะค่อย ๆ ดันขึ้นเข้มขึ้นเล็กน้อยภายใน 1 เดือน
+9. ผลลัพธ์เมื่อครบ 1 เดือน สีจะจางลง "จากหลังทำเสร็จทันที" ประมาณ 40–50%`
+  },
+  {
+    title: "4. การดูแลหลังทำ (Aftercare)",
+    body: `ข้าพเจ้าเข้าใจว่าสามารถใช้ชีวิตประจำวันได้ปกติ เช่น อาบน้ำ, ล้างหน้า, สระผม เพียงหลีกเลี่ยงการถู/ขยี้บริเวณคิ้วโดยตรง ใน 7 วันแรก
+ข้าพเจ้าเข้าใจและยอมรับว่าผลลัพธ์จะขึ้นอยู่กับพฤติกรรมการใช้ชีวิตและสภาพผิวของข้าพเจ้าเองด้วย`
+  }
+];
+
+const INTENSITY_OPTIONS = [
+  {
+    value: "อ่อนธรรมชาติ",
+    label: "อ่อนธรรมชาติ",
+    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "อ่อนธรรมชาติ" และเข้าใจว่า "หลังลอกสีอาจจะเท่าเดิมหรือจางลงจากวันนี้มากถึง 50%"`
+  },
+  {
+    value: "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม",
+    label: "เข้มระดับกลาง / ตามที่ช่างเห็นเหมาะสม",
+    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม" เพื่อลดความเสี่ยงที่จะคิ้วเข้มเกินไป และเข้าใจว่าหลังทำเสร็จสีจะเข้มกว่าปกติเล็กน้อย "หลังลอกสีอาจจะเท่าเดิมหรือจางลงมากถึง 50%"`
+  },
+  {
+    value: "เข้ม แน่น เป๊ะ",
+    label: "เข้ม แน่น เป๊ะ",
+    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "เข้ม แน่น เป๊ะ" เผื่อสีลอก/กลบรอยเก่า และเข้าใจว่าหลังทำเสร็จทันทีสีจะเข้มมาก "หลังลอกสีอาจจะเท่าเดิมหรือจางลงมากถึง 50%"`
+  }
+];
+
+const AGREEMENT_TEXT =
+  `ข้าพเจ้าได้อ่าน ได้รับคำแนะนำ และเข้าใจข้อมูลเกี่ยวกับเทคนิคการสักคิ้วของทางร้าน pyne.studio ตามรายละเอียดด้านล่างนี้ และยินยอมเข้ารับบริการโดยสมัครใจ`;
+
+// ==== js/state.js ====
+// state.js — เก็บ state ระหว่างหน้าจอ (ฝั่ง client เท่านั้น, ไม่ persist)
+// เทียบเท่ากับตัวแปรที่ส่งผ่านกันระหว่างหน้าใน Apps Script HtmlService
+
+const state = {
+  currentCustomer: null,      // customer object ที่กำลังเปิดดู/เพิ่มประวัติ
+  serviceType: null,          // "สักคิ้ว" | "เติมสี"
+  visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
+  browStepIndex: 0,
+  lastSavedServiceId: null,
+
+  // สำคัญ: ล้างค่าใน object เดิม (ไม่สร้าง object ใหม่) เพราะ bindFieldEvents()
+  // เก็บ reference ของ state.visitDraft ไว้ตอน init หน้าจอ ถ้า reassign ใหม่
+  // event handler เก่าจะยังชี้ไป object เก่า ทำให้ข้อมูลไม่ sync
+  resetVisitDraft() {
+    Object.keys(this.visitDraft).forEach((k) => delete this.visitDraft[k]);
+  },
+
+  reset() {
+    this.currentCustomer = null;
+    this.serviceType = null;
+    this.resetVisitDraft();
+    this.browStepIndex = 0;
+  }
+};
+
+// ==== js/router.js ====
+// router.js — สลับหน้าจอแบบง่าย (ไม่ใช้ URL hash เพื่อให้เหมือนพฤติกรรม Apps Script HtmlService SPA)
+
+const enterHandlers = {};
+let historyStack = ["gate"];
+
+function onEnter(screenId, handler) {
+  enterHandlers[screenId] = handler;
+}
+
+function show(screenId, opts = {}) {
+  document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+  const target = document.getElementById("screen-" + screenId);
+  if (!target) {
+    console.error("Unknown screen:", screenId);
+    return;
+  }
+  target.classList.add("active");
+
+  if (opts.pushHistory !== false) {
+    if (historyStack[historyStack.length - 1] !== screenId) {
+      historyStack.push(screenId);
+    }
+  }
+
+  if (enterHandlers[screenId]) {
+    enterHandlers[screenId](opts.data);
+  }
+  window.scrollTo(0, 0);
+}
+
+function goBack(fallback = "home") {
+  historyStack.pop(); // ทิ้งหน้าปัจจุบัน
+  const prev = historyStack.pop() || fallback;
+  show(prev);
+}
+
+// ผูกปุ่มที่มี data-back="screenId" ให้กลับไปหน้านั้นแบบตรง ๆ (ไม่พึ่ง history stack)
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-back]");
+  if (btn) {
+    show(btn.getAttribute("data-back"));
+  }
+});
+
+// ==== js/signaturePad.js ====
+// signaturePad.js — canvas เซ็นชื่อแบบง่าย รองรับ touch/pen บน iPad Safari
+
+function createSignaturePad(canvas) {
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let hasInk = false;
+  let last = null;
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#0b3d2e";
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  function pos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  }
+
+  function start(e) {
+    e.preventDefault();
+    drawing = true;
+    last = pos(e);
+  }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    last = p;
+    hasInk = true;
+  }
+  function end() { drawing = false; }
+
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", end);
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end);
+
+  return {
+    clear() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasInk = false;
+    },
+    isEmpty() { return !hasInk; },
+    toDataURL() { return canvas.toDataURL("image/png"); }
+  };
+}
+
+// ==== js/fieldHelpers.js ====
+// fieldHelpers.js — ตัวช่วยสร้าง HTML ฟิลด์ฟอร์มแบบใช้ซ้ำได้ (chip / radio / text)
+// ใช้ร่วมกันระหว่าง formBrow.js และ techFields.js
+
+
+function radioField(key, options, draft) {
+  return `
+    <div class="radio-row" data-radio-key="${key}">
+      ${options.map((opt) => `
+        <label>
+          <input type="radio" name="${key}" value="${opt}" ${draft[key] === opt ? "checked" : ""}>
+          <span>${opt}</span>
+        </label>
+      `).join("")}
+    </div>`;
+}
+
+function chipGroup(key, options, draft, multi) {
+  const selected = multi ? (draft[key] || []) : [draft[key]].filter(Boolean);
+  return `
+    <div class="choice-grid" data-chip-key="${key}" data-chip-multi="${multi ? "1" : "0"}">
+      ${options.map((opt) => `
+        <div class="chip ${selected.includes(opt) ? "selected" : ""}" data-chip-value="${escapeHtml(opt)}">${escapeHtml(opt)}</div>
+      `).join("")}
+    </div>`;
+}
+
+function textField(key, placeholder, draft) {
+  return `<input type="text" class="input" data-text-key="${key}" placeholder="${placeholder || ""}" value="${escapeHtml(draft[key] || "")}">`;
+}
+
+function textAreaField(key, placeholder, draft) {
+  return `<textarea class="input textarea" data-text-key="${key}" placeholder="${placeholder || ""}">${escapeHtml(draft[key] || "")}</textarea>`;
+}
+
+// ผูก event delegation ให้ container ที่มี chip/radio/text field จาก helper ข้างบน
+// เรียกครั้งเดียวตอน init แล้ว renderStep() ใหม่ได้เรื่อย ๆ โดยไม่ต้องผูกซ้ำ
+function bindFieldEvents(container, draft, onChange) {
+  container.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    const group = chip.closest("[data-chip-key]");
+    const key = group.dataset.chipKey;
+    const multi = group.dataset.chipMulti === "1";
+    const value = chip.dataset.chipValue;
+    if (multi) {
+      const arr = draft[key] || [];
+      const idx = arr.indexOf(value);
+      if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
+      draft[key] = arr;
+      // สลับ class โดยตรงแทนการ re-render ทั้ง container เพื่อไม่ให้ state ของฟิลด์อื่นในหน้าเดียวกัน
+      // (เช่น signature canvas ใน techFields.js) หายไปตอนคลิก chip
+      chip.classList.toggle("selected");
+    } else {
+      const wasSelected = draft[key] === value;
+      draft[key] = wasSelected ? null : value;
+      group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
+      if (!wasSelected) chip.classList.add("selected");
+    }
+    onChange();
+  });
+
+  container.addEventListener("change", (e) => {
+    const radioGroupEl = e.target.closest("[data-radio-key]");
+    if (radioGroupEl && e.target.name) {
+      draft[e.target.name] = e.target.value;
+      onChange(e.target.name);
+    }
+  });
+
+  container.addEventListener("input", (e) => {
+    if (e.target.dataset.textKey) {
+      draft[e.target.dataset.textKey] = e.target.value;
+    }
+  });
+}
+
+// ==== Server API bridge (แทนที่ js/mockApi.js) ====
+// ห่อ google.script.run ให้เรียกแบบ Promise เหมือน mockApi.js เดิม ชื่อฟังก์ชันตรงกันทุกตัว
+function callServer_(name, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler((err) => reject(err))
+      [name](...args);
+  });
+}
+function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
+function searchCustomers(query) { return callServer_("searchCustomers", query); }
+function createCustomer(data) { return callServer_("createCustomer", data); }
+function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
+function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
+function saveVisit(payload) { return callServer_("saveVisit", payload); }
+function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }
+function exportConsentPdf(serviceId) { return callServer_("exportConsentPdf", serviceId); }
+
+// ==== js/screens/gate.js ====
+function initGate() {
+  const input = document.getElementById("passcodeInput");
+  const errorEl = document.getElementById("gateError");
+  const submitBtn = document.getElementById("gateSubmit");
+
+  async function trySubmit() {
+    errorEl.hidden = true;
+    submitBtn.disabled = true;
+    const res = await checkPasscode(input.value.trim());
+    submitBtn.disabled = false;
+    if (res.success) {
+      input.value = "";
+      show("home");
+    } else {
+      errorEl.hidden = false;
+    }
+  }
+
+  submitBtn.addEventListener("click", trySubmit);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") trySubmit();
+  });
+
+  onEnter("gate", () => {
+    input.value = "";
+    errorEl.hidden = true;
+    input.focus();
+  });
+}
+
+// ==== js/screens/home.js ====
+function initHome() {
+  const input = document.getElementById("searchInput");
+  const btn = document.getElementById("searchBtn");
+  const resultsEl = document.getElementById("searchResults");
+  const newCustomerBtn = document.getElementById("newCustomerBtn");
+  const logoutBtn = document.getElementById("homeLogoutBtn");
+
+  async function runSearch() {
+    const q = input.value.trim();
+    if (!q) {
+      resultsEl.innerHTML = `<div class="empty-hint">พิมพ์ชื่อ เบอร์โทร หรือชื่อ LINE เพื่อค้นหา</div>`;
+      return;
+    }
+    resultsEl.innerHTML = `<div class="empty-hint">กำลังค้นหา...</div>`;
+    const results = await searchCustomers(q);
+    if (results.length === 0) {
+      resultsEl.innerHTML = `<div class="empty-hint">ไม่พบลูกค้าที่ตรงกับ "${escapeHtml(q)}"<br>กด "+ ลูกค้าใหม่" เพื่อเพิ่มได้เลย</div>`;
+      return;
+    }
+    resultsEl.innerHTML = results.map((c) => `
+      <div class="result-item" data-id="${c.customerId}">
+        <div>
+          <div class="result-name">${escapeHtml(c.name)}</div>
+          <div class="result-meta">${escapeHtml(c.phoneDisplay)}${c.line ? " · LINE: " + escapeHtml(c.line) : ""}</div>
+        </div>
+        <div>›</div>
+      </div>
+    `).join("");
+
+    resultsEl.querySelectorAll(".result-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const customer = results.find((c) => c.customerId === el.dataset.id);
+        state.currentCustomer = customer;
+        show("customerProfile");
+      });
+    });
+  }
+
+  btn.addEventListener("click", runSearch);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
+  newCustomerBtn.addEventListener("click", () => show("newCustomer"));
+  logoutBtn.addEventListener("click", () => show("gate"));
+
+  onEnter("home", () => {
+    input.value = "";
+    resultsEl.innerHTML = `<div class="empty-hint">พิมพ์ชื่อ เบอร์โทร หรือชื่อ LINE เพื่อค้นหา</div>`;
+    input.focus();
+  });
+}
+
+// ==== js/screens/newCustomer.js ====
+function initNewCustomer() {
+  const nameEl = document.getElementById("ncName");
+  const phoneEl = document.getElementById("ncPhone");
+  const lineEl = document.getElementById("ncLine");
+  const noteEl = document.getElementById("ncNote");
+  const warningEl = document.getElementById("ncPhoneWarning");
+  const saveBtn = document.getElementById("ncSaveBtn");
+
+  async function trySave() {
+    warningEl.hidden = true;
+    warningEl.innerHTML = "";
+
+    if (!nameEl.value.trim() || !phoneEl.value.trim()) {
+      warningEl.hidden = false;
+      warningEl.textContent = "กรุณากรอกชื่อและเบอร์โทร";
+      return;
+    }
+
+    saveBtn.disabled = true;
+    const res = await createCustomer({
+      name: nameEl.value.trim(),
+      phone: phoneEl.value.trim(),
+      line: lineEl.value.trim(),
+      note: noteEl.value.trim()
+    });
+    saveBtn.disabled = false;
+
+    if (!res.success && res.error === "duplicate") {
+      warningEl.hidden = false;
+      warningEl.innerHTML = `
+        <div class="dup-warning">
+          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(res.existing.name)}</b> (${escapeHtml(res.existing.phoneDisplay)})<br>
+          กรุณาเลือกลูกค้าเดิมแทนการสร้างใหม่
+          <br><button class="btn btn-primary" id="ncGoExisting" style="margin-top:8px">ไปที่ลูกค้าคนนี้</button>
+        </div>`;
+      document.getElementById("ncGoExisting").addEventListener("click", () => {
+        state.currentCustomer = res.existing;
+        show("customerProfile");
+      });
+      return;
+    }
+
+    state.currentCustomer = res.customer;
+    show("customerProfile");
+  }
+
+  saveBtn.addEventListener("click", trySave);
+
+  onEnter("newCustomer", () => {
+    nameEl.value = "";
+    phoneEl.value = "";
+    lineEl.value = "";
+    noteEl.value = "";
+    warningEl.hidden = true;
+  });
+}
+
+// ==== js/screens/customerProfile.js ====
+function initCustomerProfile() {
+  const profileCard = document.getElementById("profileCard");
+  const historyList = document.getElementById("historyList");
+  const addVisitBtn = document.getElementById("addVisitBtn");
+
+  addVisitBtn.addEventListener("click", () => {
+    state.resetVisitDraft();
+    state.serviceType = null;
+    show("serviceType");
+  });
+
+  onEnter("customerProfile", async () => {
+    const c = state.currentCustomer;
+    if (!c) { show("home"); return; }
+
+    profileCard.innerHTML = `
+      <div class="pname">${escapeHtml(c.name)}</div>
+      <div class="pmeta">📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}</div>
+      ${c.note ? `<div class="pmeta">📝 ${escapeHtml(c.note)}</div>` : ""}
+    `;
+
+    historyList.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
+    const history = await getHistoryByCustomer(c.customerId);
+
+    if (history.length === 0) {
+      historyList.innerHTML = `<div class="empty-hint">ยังไม่มีประวัติการเข้ารับบริการ</div>`;
+      return;
+    }
+
+    historyList.innerHTML = history.map((v) => `
+      <div class="history-item">
+        <span class="hdate">${formatDate(v.visitDate)}</span>
+        <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
+        <div class="hdetail">
+          เทคนิค: ${escapeHtml(v.technique || "-")} · สี: ${escapeHtml(v.colorUsed || "-")}<br>
+          ความเข้ม: ${escapeHtml(v.intensity || "-")}
+          ${v.note ? `<br>หมายเหตุ: ${escapeHtml(v.note)}` : ""}
+        </div>
+      </div>
+    `).join("");
+  });
+}
+
+// ==== js/screens/serviceType.js ====
+function initServiceType() {
+  document.getElementById("chooseBrowBtn").addEventListener("click", () => {
+    state.serviceType = "สักคิ้ว";
+    state.resetVisitDraft();
+    state.browStepIndex = 0;
+    show("formBrow");
+  });
+
+  document.getElementById("chooseTouchupBtn").addEventListener("click", () => {
+    state.serviceType = "เติมสี";
+    state.resetVisitDraft();
+    show("formTouchup");
+  });
+
+  onEnter("serviceType", () => {});
+}
+
+// ==== js/screens/formBrow.js ====
+// formBrow.js — ฟอร์มคอนเซ้า "สักคิ้ว" 3 ขั้นตอน ตรงตามกลุ่มฟิลด์ใน Jotform ต้นฉบับ
+// (ขั้นตอนที่ 4 คือ Consent อยู่ในหน้าจอแยก screen-consentSign)
+
+
+
+
+
+const STEPS = [
+  {
+    title: "ประวัติการสักคิ้ว",
+    render(draft) {
+      return `
+        <div class="step-group">
+          <div class="step-group-title">เคยสักคิ้วมาก่อนหรือไม่ *</div>
+          ${radioField("hadBrowBefore", ["เคย", "ไม่เคย"], draft)}
+        </div>
+        ${draft.hadBrowBefore === "เคย" ? `
+        <div class="step-group">
+          <div class="step-group-title">ลักษณะรอยเก่า</div>
+          ${chipGroup("oldMarkLook", OPTIONS.oldMarkLook, draft, true)}
+        </div>` : ""}
+      `;
+    },
+    valid(draft) { return !!draft.hadBrowBefore; }
+  },
+  {
+    title: "ลักษณะคิ้ว / ประวัติผิว",
+    render(draft) {
+      return `
+        <div class="step-group">
+          <div class="step-group-title">ลักษณะขนคิ้ว</div>
+          ${chipGroup("browHairLook", OPTIONS.browHairLook, draft, false)}
+          <div class="step-group-title">ความแน่นของขนคิ้ว</div>
+          ${chipGroup("browHairDensity", OPTIONS.browHairDensity, draft, false)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">ประเภทผิว *</div>
+          ${chipGroup("skinType", OPTIONS.skinType, draft, false)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">แผลเป็น</div>
+          ${radioField("hasScar", ["มี", "ไม่มี"], draft)}
+          <div class="step-group-title">จุดที่ต้องการ</div>
+          ${textField("desiredArea", "ระบุจุดที่ต้องการ (ถ้ามี)", draft)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">ผิวมีความระคายเคืองบริเวณคิ้วภายใน 7 วันหรือไม่</div>
+          ${radioField("irritation7d", ["มี", "ไม่มี"], draft)}
+          <div class="step-group-title">อาการแพ้</div>
+          ${textField("allergy", "ระบุอาการแพ้ (ถ้ามี)", draft)}
+        </div>
+      `;
+    },
+    valid(draft) { return !!draft.skinType; }
+  },
+  {
+    title: "เป้าหมายของลูกค้า",
+    render(draft) {
+      return `
+        <div class="step-group">
+          <div class="step-group-title">ปัญหาที่ลูกค้ากังวล</div>
+          ${chipGroup("concerns", OPTIONS.concerns, draft, true)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">ฟีลคิ้วที่ต้องการ</div>
+          ${chipGroup("desiredFeel", OPTIONS.desiredFeel, draft, true)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">เทคนิคที่เลือก *</div>
+          ${chipGroup("technique", OPTIONS.technique, draft, false)}
+        </div>
+        <div class="step-group">
+          <div class="step-group-title">สิ่งที่ "ไม่อยากได้เด็ดขาด"</div>
+          ${textField("dontWant", "ระบุ (ถ้ามี)", draft)}
+        </div>
+      `;
+    },
+    valid(draft) { return !!draft.technique; }
+  }
+];
+
+function initFormBrow() {
+  const container = document.getElementById("browStepContainer");
+  const stepTitle = document.getElementById("browStepTitle");
+  const stepIndicator = document.getElementById("browStepIndicator");
+  const nextBtn = document.getElementById("browNextBtn");
+  const backBtn = document.getElementById("browBackBtn");
+
+  function renderStep() {
+    const step = STEPS[state.browStepIndex];
+    stepTitle.textContent = step.title;
+    stepIndicator.textContent = `${state.browStepIndex + 1}/${STEPS.length}`;
+    container.innerHTML = step.render(state.visitDraft);
+    nextBtn.textContent = state.browStepIndex === STEPS.length - 1 ? "ถัดไป: เงื่อนไข + เซ็นยินยอม" : "ถัดไป";
+  }
+
+  bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
+    // chip เปลี่ยน selected class เองแล้วใน bindFieldEvents — ที่นี่ต้อง re-render แค่ตอน
+    // "hadBrowBefore" เปลี่ยน เพื่อโชว์/ซ่อนช่อง "ลักษณะรอยเก่า" แบบมีเงื่อนไข
+    if (changedRadioName === "hadBrowBefore") {
+      renderStep();
+    }
+  });
+
+  nextBtn.addEventListener("click", () => {
+    const step = STEPS[state.browStepIndex];
+    if (step.valid && !step.valid(state.visitDraft)) {
+      alert("กรุณากรอกข้อมูลที่มี * ให้ครบก่อนไปต่อ");
+      return;
+    }
+    if (state.browStepIndex < STEPS.length - 1) {
+      state.browStepIndex += 1;
+      renderStep();
+    } else {
+      show("consentSign");
+    }
+  });
+
+  backBtn.addEventListener("click", () => {
+    if (state.browStepIndex > 0) {
+      state.browStepIndex -= 1;
+      renderStep();
+    } else {
+      show("serviceType");
+    }
+  });
+
+  onEnter("formBrow", () => {
+    state.browStepIndex = 0;
+    renderStep();
+  });
+}
+
+// ==== js/screens/formTouchup.js ====
+// formTouchup.js — ร่างเบื้องต้น (DRAFT) รอฟิลด์ฉบับสมบูรณ์จากร้าน ดู implementation-plan-phase1.md
+
+
+
+
+
+function initFormTouchup() {
+  const prevBox = document.getElementById("touchupPrevVisit");
+  const adjustEl = document.getElementById("tuAdjust");
+  const intensityEl = document.getElementById("tuIntensity");
+  const priceEl = document.getElementById("tuPrice");
+  const nextBtn = document.getElementById("tuNextBtn");
+
+  nextBtn.addEventListener("click", () => {
+    state.visitDraft.adjustFromLast = adjustEl.value.trim();
+    state.visitDraft.intensity = intensityEl.value;
+    state.visitDraft.touchupPrice = priceEl.value;
+    show("consentSign");
+  });
+
+  onEnter("formTouchup", async () => {
+    adjustEl.value = "";
+    priceEl.value = "";
+    const c = state.currentCustomer;
+    if (!c) { show("home"); return; }
+    prevBox.textContent = "กำลังโหลดประวัติล่าสุด...";
+    const history = await getHistoryByCustomer(c.customerId);
+    if (history.length === 0) {
+      prevBox.innerHTML = `<b>ไม่มีประวัติเก่า</b> — ลูกค้าคนนี้ยังไม่เคยมีประวัติในระบบ`;
+      return;
+    }
+    const last = history[0];
+    prevBox.innerHTML = `
+      <b>ครั้งล่าสุด:</b> ${formatDate(last.visitDate)} (${escapeHtml(last.serviceType)})<br>
+      เทคนิค: ${escapeHtml(last.technique || "-")} · สี: ${escapeHtml(last.colorUsed || "-")}<br>
+      ความเข้ม: ${escapeHtml(last.intensity || "-")}
+      ${last.note ? `<br>หมายเหตุ: ${escapeHtml(last.note)}` : ""}
+    `;
+  });
+}
+
+// ==== js/screens/consentSign.js ====
+function initConsentSign() {
+  const body = document.getElementById("consentBody");
+  const nextBtn = document.getElementById("consentNextBtn");
+  const backBtn = document.getElementById("consentBackBtn");
+  let pad = null;
+
+  function updateNextState() {
+    const agreed = body.querySelector("#agreeCheckbox")?.checked;
+    const hasIntensity = !!state.visitDraft.intensity;
+    const hasSignature = pad && !pad.isEmpty();
+    nextBtn.disabled = !(agreed && hasIntensity && hasSignature);
+  }
+
+  function render() {
+    body.innerHTML = `
+      ${CONSENT_BLOCKS.map((block) => `
+        <div class="consent-block">
+          <div class="src">${escapeHtml(block.title)}</div>
+          ${escapeHtml(block.body).replace(/\n/g, "<br>")}
+        </div>
+      `).join("")}
+
+      <div class="step-group-title">ลูกค้าเลือกระดับความเข้มที่ต้องการ *</div>
+      <div id="intensityOptions">
+        ${INTENSITY_OPTIONS.map((opt) => `
+          <div class="intensity-option ${state.visitDraft.intensity === opt.value ? "selected" : ""}" data-intensity="${escapeHtml(opt.value)}">
+            <b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}
+          </div>
+        `).join("")}
+      </div>
+
+      <label class="agree-row">
+        <input type="checkbox" id="agreeCheckbox">
+        <span>${escapeHtml(AGREEMENT_TEXT)}</span>
+      </label>
+
+      <div class="step-group-title">ลายเซ็นลูกค้า *</div>
+      <div class="sig-wrap">
+        <canvas id="sigCanvas"></canvas>
+      </div>
+      <div class="sig-actions"><button id="sigClearBtn" type="button">ล้างลายเซ็น</button></div>
+    `;
+
+    pad = createSignaturePad(document.getElementById("sigCanvas"));
+
+    body.querySelectorAll("[data-intensity]").forEach((el) => {
+      el.addEventListener("click", () => {
+        state.visitDraft.intensity = el.dataset.intensity;
+        body.querySelectorAll("[data-intensity]").forEach((x) => x.classList.remove("selected"));
+        el.classList.add("selected");
+        updateNextState();
+      });
+    });
+
+    document.getElementById("agreeCheckbox").addEventListener("change", updateNextState);
+    document.getElementById("sigCanvas").addEventListener("pointerup", updateNextState);
+    document.getElementById("sigCanvas").addEventListener("touchend", updateNextState);
+    document.getElementById("sigCanvas").addEventListener("mouseup", updateNextState);
+    document.getElementById("sigClearBtn").addEventListener("click", () => { pad.clear(); updateNextState(); });
+
+    updateNextState();
+  }
+
+  nextBtn.addEventListener("click", async () => {
+    if (!pad || pad.isEmpty()) return;
+    nextBtn.disabled = true;
+    const uploaded = await uploadImage(pad.toDataURL(), {
+      customerId: state.currentCustomer.customerId,
+      customerName: state.currentCustomer.name,
+      serviceType: state.serviceType,
+      filename: "signature_customer.png"
+    });
+    state.visitDraft.signatureCustomerUrl = uploaded.url;
+    state.visitDraft.agreedAt = Date.now();
+    show("techFields");
+  });
+
+  backBtn.addEventListener("click", () => {
+    show(state.serviceType === "เติมสี" ? "formTouchup" : "formBrow");
+  });
+
+  onEnter("consentSign", render);
+}
+
+// ==== js/screens/techFields.js ====
+function initTechFields() {
+  const body = document.getElementById("techBody");
+  const saveBtn = document.getElementById("techSaveBtn");
+  let techPad = null;
+
+  function photoSlot(key, label) {
+    const url = state.visitDraft[key + "PhotoDataUrl"];
+    return `
+      <div class="photo-slot" data-photo-key="${key}">
+        ${url ? `<img src="${url}">` : `
+          <label>
+            <span style="font-size:22px">📷</span>
+            <span>${label}</span>
+            <input type="file" accept="image/*" capture="environment" data-photo-input="${key}">
+          </label>`}
+      </div>`;
+  }
+
+  function render() {
+    const isTouchup = state.serviceType === "เติมสี";
+    body.innerHTML = `
+      <div class="step-group">
+        <div class="step-group-title">รูป Before / After *</div>
+        <div class="photo-row">
+          ${photoSlot("before", "Before")}
+          ${photoSlot("after", "After")}
+        </div>
+      </div>
+
+      ${!isTouchup ? `
+      <div class="step-group">
+        <div class="step-group-title">กล้ามเนื้อคิ้ว</div>
+        ${chipGroup("muscle", OPTIONS.muscle, state.visitDraft, true)}
+        <div class="step-group-title">ทรงที่ออกแบบ</div>
+        ${chipGroup("shapeDesign", OPTIONS.shapeDesign, state.visitDraft, true)}
+        <div class="step-group-title">การกันคิ้ว</div>
+        ${radioField("browGuard", OPTIONS.browGuard, state.visitDraft)}
+      </div>` : ""}
+
+      <div class="step-group">
+        <div class="step-group-title">สีที่ใช้</div>
+        ${chipGroup("colorUsed", OPTIONS.colorUsed, state.visitDraft, false)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">ผลการวิเคราะห์จากช่าง</div>
+        ${textAreaField("analysis", "บันทึกผลการวิเคราะห์ / หมายเหตุ", state.visitDraft)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">ลายเซ็นช่างผู้ให้บริการ *</div>
+        <div class="sig-wrap"><canvas id="techSigCanvas"></canvas></div>
+        <div class="sig-actions"><button id="techSigClearBtn" type="button">ล้างลายเซ็น</button></div>
+        <p class="muted small" style="text-align:center">(ชนิสตา ศุภสุข)</p>
+      </div>
+    `;
+
+    techPad = createSignaturePad(document.getElementById("techSigCanvas"));
+    document.getElementById("techSigClearBtn").addEventListener("click", () => techPad.clear());
+
+    body.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+      inputEl.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await readFileAsDataUrl(file);
+        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
+        render();
+      });
+    });
+  }
+
+  bindFieldEvents(body, state.visitDraft, () => {});
+
+  saveBtn.addEventListener("click", async () => {
+    if (!state.visitDraft.beforePhotoDataUrl || !state.visitDraft.afterPhotoDataUrl) {
+      alert("กรุณาถ่ายรูป Before และ After ให้ครบก่อนบันทึก");
+      return;
+    }
+    if (!techPad || techPad.isEmpty()) {
+      alert("กรุณาให้ช่างเซ็นชื่อก่อนบันทึก");
+      return;
+    }
+    saveBtn.disabled = true;
+
+    const photoMeta = {
+      customerId: state.currentCustomer.customerId,
+      customerName: state.currentCustomer.name,
+      serviceType: state.serviceType
+    };
+    const [beforeUp, afterUp, techSigUp] = await Promise.all([
+      uploadImage(state.visitDraft.beforePhotoDataUrl, { ...photoMeta, filename: "before.jpg" }),
+      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" }),
+      uploadImage(techPad.toDataURL(), { ...photoMeta, filename: "signature_tech.png" })
+    ]);
+
+    const payload = {
+      customerId: state.currentCustomer.customerId,
+      serviceType: state.serviceType,
+      technique: state.visitDraft.technique || null,
+      colorUsed: state.visitDraft.colorUsed || null,
+      intensity: state.visitDraft.intensity || null,
+      muscle: state.visitDraft.muscle || null,
+      shapeDesign: state.visitDraft.shapeDesign || null,
+      browGuard: state.visitDraft.browGuard || null,
+      analysis: state.visitDraft.analysis || null,
+      note: state.visitDraft.adjustFromLast || state.visitDraft.dontWant || null,
+      beforePhotoUrl: beforeUp.url,
+      afterPhotoUrl: afterUp.url,
+      signatureCustomerUrl: state.visitDraft.signatureCustomerUrl || null,
+      signatureTechUrl: techSigUp.url,
+      rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+    };
+
+    const res = await saveVisit(payload);
+    saveBtn.disabled = false;
+    state.lastSavedServiceId = res.serviceId;
+    show("confirmation");
+  });
+
+  onEnter("techFields", render);
+}
+
+// ==== js/screens/confirmation.js ====
+function initConfirmation() {
+  const summaryEl = document.getElementById("confirmSummary");
+  const exportBtn = document.getElementById("exportPdfBtn");
+  const backHomeBtn = document.getElementById("backHomeBtn");
+
+  exportBtn.addEventListener("click", async () => {
+    exportBtn.disabled = true;
+    exportBtn.textContent = "กำลังสร้าง PDF...";
+    const res = await exportConsentPdf(state.lastSavedServiceId);
+    exportBtn.disabled = false;
+    exportBtn.textContent = "Export ใบคอนเซ้นต์ (PDF) — mock";
+    alert(res.note);
+  });
+
+  backHomeBtn.addEventListener("click", () => {
+    state.reset();
+    show("home");
+  });
+
+  onEnter("confirmation", () => {
+    const c = state.currentCustomer;
+    summaryEl.textContent = `บันทึกประวัติ ${state.serviceType} ของ ${c ? c.name : ""} เรียบร้อยแล้ว (รหัส ${state.lastSavedServiceId})`;
+  });
+}
+
+// ==== js/main.js ====
+initGate();
+initHome();
+initNewCustomer();
+initCustomerProfile();
+initServiceType();
+initFormBrow();
+initFormTouchup();
+initConsentSign();
+initTechFields();
+initConfirmation();
+
+// เปิดหน้าใดหน้าหนึ่งตรง ๆ ได้ระหว่าง dev/testing เช่น
+// index.html?debugScreen=customerProfile&debugCustomer=C0001&debugServiceType=สักคิ้ว
+// ห่อด้วย async IIFE แทน top-level await เพราะไฟล์นี้จะถูกรวมเป็น <script> ธรรมดา
+// (ไม่ใช่ type=module) ตอนแปลงเป็น Apps Script — top-level await ใช้ไม่ได้ในสคริปต์ปกติ
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const debugScreen = params.get("debugScreen");
+  const debugCustomerId = params.get("debugCustomer");
+  const debugServiceType = params.get("debugServiceType");
+
+  if (debugCustomerId) {
+    state.currentCustomer = await getCustomer(debugCustomerId);
+  }
+  if (debugServiceType) {
+    state.serviceType = debugServiceType;
+  }
+  show(debugScreen || "gate", { pushHistory: false });
+})();
+</script>

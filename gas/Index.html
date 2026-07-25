@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Pyne Studio CRM</title>
+<?!= include('Stylesheet'); ?>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== 1. PASSCODE GATE ===================== -->
+  <section class="screen" id="screen-gate">
+    <div class="gate-wrap">
+      <h1 class="brand">pyne <span>studio</span></h1>
+      <p class="muted">กรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+      <input type="password" inputmode="numeric" id="passcodeInput" class="input input-lg" placeholder="รหัสผ่าน" autocomplete="off">
+      <p class="error-text" id="gateError" hidden>รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง</p>
+      <button class="btn btn-primary btn-block" id="gateSubmit">เข้าสู่ระบบ</button>
+    </div>
+  </section>
+
+  <!-- ===================== 2. HOME / SEARCH ===================== -->
+  <section class="screen" id="screen-home">
+    <header class="topbar">
+      <div class="topbar-title">ค้นหาลูกค้า</div>
+      <button class="icon-btn" id="homeLogoutBtn" title="ออกจากระบบ">ออก</button>
+    </header>
+    <div class="page-pad">
+      <div class="search-row">
+        <input type="text" id="searchInput" class="input" placeholder="ค้นหาด้วยชื่อ / เบอร์โทร / ชื่อ LINE">
+        <button class="btn btn-primary" id="searchBtn">ค้นหา</button>
+      </div>
+      <button class="btn btn-outline btn-block" id="newCustomerBtn" style="margin-top:12px">+ ลูกค้าใหม่</button>
+
+      <div id="searchResults" class="result-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. NEW CUSTOMER ===================== -->
+  <section class="screen" id="screen-newCustomer">
+    <header class="topbar">
+      <button class="icon-btn" data-back="home">‹ กลับ</button>
+      <div class="topbar-title">ลูกค้าใหม่</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="page-pad">
+      <label class="field-label">ชื่อ/ชื่อเล่น *</label>
+      <input type="text" id="ncName" class="input" placeholder="เช่น มายด์">
+
+      <label class="field-label">เบอร์โทร *</label>
+      <input type="tel" id="ncPhone" class="input" placeholder="08x-xxx-xxxx">
+      <p class="error-text" id="ncPhoneWarning" hidden></p>
+
+      <label class="field-label">ชื่อ LINE</label>
+      <input type="text" id="ncLine" class="input" placeholder="ไม่บังคับ">
+
+      <label class="field-label">หมายเหตุ</label>
+      <textarea id="ncNote" class="input textarea" placeholder="ไม่บังคับ"></textarea>
+
+      <button class="btn btn-primary btn-block" id="ncSaveBtn" style="margin-top:18px">บันทึกลูกค้าใหม่</button>
+    </div>
+  </section>
+
+  <!-- ===================== 4. CUSTOMER PROFILE ===================== -->
+  <section class="screen" id="screen-customerProfile">
+    <header class="topbar">
+      <button class="icon-btn" data-back="home">‹ กลับ</button>
+      <div class="topbar-title">ประวัติลูกค้า</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="page-pad">
+      <div class="profile-card" id="profileCard"></div>
+      <button class="btn btn-primary btn-block" id="addVisitBtn" style="margin-top:14px">+ เพิ่มประวัติใหม่</button>
+      <h3 class="section-title">ประวัติการเข้ารับบริการ</h3>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== 5. SERVICE TYPE ===================== -->
+  <section class="screen" id="screen-serviceType">
+    <header class="topbar">
+      <button class="icon-btn" data-back="customerProfile">‹ กลับ</button>
+      <div class="topbar-title">เลือกประเภทบริการ</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="page-pad center-col">
+      <button class="btn btn-primary btn-block btn-tall" id="chooseBrowBtn">สักคิ้ว<span class="btn-sub">คอนเซ้าครั้งแรก / เต็มรูปแบบ</span></button>
+      <button class="btn btn-secondary btn-block btn-tall" id="chooseTouchupBtn">เติมสี<span class="btn-sub">สำหรับลูกค้าเก่าที่กลับมา</span></button>
+    </div>
+  </section>
+
+  <!-- ===================== 6. FORM สักคิ้ว (multi-step) ===================== -->
+  <section class="screen" id="screen-formBrow">
+    <header class="topbar">
+      <button class="icon-btn" id="browBackBtn">‹ กลับ</button>
+      <div class="topbar-title" id="browStepTitle">ฟอร์มสักคิ้ว</div>
+      <div class="step-indicator" id="browStepIndicator">1/3</div>
+    </header>
+    <div class="page-pad" id="browStepContainer"></div>
+    <footer class="footer-actions">
+      <button class="btn btn-primary btn-block" id="browNextBtn">ถัดไป</button>
+    </footer>
+  </section>
+
+  <!-- ===================== 7. FORM เติมสี (draft) ===================== -->
+  <section class="screen" id="screen-formTouchup">
+    <header class="topbar">
+      <button class="icon-btn" data-back="serviceType">‹ กลับ</button>
+      <div class="topbar-title">ฟอร์มเติมสี</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="page-pad">
+      <p class="draft-badge">ร่าง — รอยืนยันฟิลด์ฉบับสมบูรณ์จากร้าน</p>
+      <div id="touchupPrevVisit" class="box-quiet"></div>
+
+      <label class="field-label">สิ่งที่อยากปรับจากครั้งก่อน</label>
+      <textarea id="tuAdjust" class="input textarea" placeholder="เช่น อยากให้เข้มขึ้น / หางยาวขึ้น"></textarea>
+
+      <label class="field-label">ระดับความเข้มที่เลือก</label>
+      <select id="tuIntensity" class="input">
+        <option value="อ่อนธรรมชาติ">อ่อนธรรมชาติ</option>
+        <option value="เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม">เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม</option>
+        <option value="เข้ม แน่น เป๊ะ">เข้ม แน่น เป๊ะ</option>
+      </select>
+
+      <label class="field-label">ค่าเติมสี (บาท)</label>
+      <input type="number" id="tuPrice" class="input" placeholder="1000-1500">
+
+      <button class="btn btn-primary btn-block" id="tuNextBtn" style="margin-top:18px">ถัดไป: เซ็นยินยอม</button>
+    </div>
+  </section>
+
+  <!-- ===================== 8. CONSENT + SIGNATURE (customer) ===================== -->
+  <section class="screen" id="screen-consentSign">
+    <header class="topbar">
+      <button class="icon-btn" id="consentBackBtn">‹ กลับ</button>
+      <div class="topbar-title">เงื่อนไข + เซ็นยินยอม</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="page-pad" id="consentBody"></div>
+    <footer class="footer-actions">
+      <button class="btn btn-primary btn-block" id="consentNextBtn" disabled>ยืนยันเซ็นชื่อ</button>
+    </footer>
+  </section>
+
+  <!-- ===================== 9. TECH FIELDS + PHOTOS ===================== -->
+  <section class="screen" id="screen-techFields">
+    <header class="topbar">
+      <div class="topbar-title">ขั้นตอนช่าง</div>
+    </header>
+    <div class="page-pad" id="techBody"></div>
+    <footer class="footer-actions">
+      <button class="btn btn-primary btn-block" id="techSaveBtn">บันทึกประวัติ</button>
+    </footer>
+  </section>
+
+  <!-- ===================== 10. CONFIRMATION ===================== -->
+  <section class="screen" id="screen-confirmation">
+    <div class="confirm-wrap">
+      <div class="confirm-check">✓</div>
+      <h2>บันทึกสำเร็จ</h2>
+      <p class="muted" id="confirmSummary"></p>
+      <button class="btn btn-outline btn-block" id="exportPdfBtn">Export ใบคอนเซ้นต์ (PDF)</button>
+      <button class="btn btn-primary btn-block" id="backHomeBtn" style="margin-top:10px">กลับหน้าแรก</button>
+    </div>
+  </section>
+
+</div>
+
+<?!= include('JavaScript'); ?>
+</body>
+</html>
