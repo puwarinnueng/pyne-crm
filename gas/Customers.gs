@@ -84,7 +84,17 @@ function createCustomer(data) {
       Line: data.line || "",
       CreatedAt: createdAt
     };
-    sheet.appendRow(objectToRow_(record, CUSTOMERS_HEADERS));
+
+    // ห้ามใช้ sheet.appendRow(...) ตรงๆ สำหรับคอลัมน์เบอร์โทร — พบว่า appendRow มองข้าม
+    // number format "@" (plain text) ที่ตั้งไว้ล่วงหน้าที่คอลัมน์ แล้ว auto-detect ค่าที่หน้าตาเป็นตัวเลข
+    // (เช่น "0850373790") เป็นตัวเลขจริง ตัดเลข 0 นำหน้าทิ้ง (เหลือ 850373790) ต้อง setNumberFormat("@")
+    // ที่ cell นั้นตรงๆ ตอนเขียนค่า เพื่อบังคับให้เป็น text แน่นอนไม่ว่า format คอลัมน์ล่วงหน้าจะติดหรือไม่
+    const newRow = sheet.getLastRow() + 1;
+    sheet.getRange(newRow, 1, 1, CUSTOMERS_HEADERS.length).setValues([objectToRow_(record, CUSTOMERS_HEADERS)]);
+    const phoneNormCol = CUSTOMERS_HEADERS.indexOf("PhoneNormalized") + 1;
+    const phoneDispCol = CUSTOMERS_HEADERS.indexOf("PhoneDisplay") + 1;
+    sheet.getRange(newRow, phoneNormCol).setNumberFormat("@").setValue(record.PhoneNormalized);
+    sheet.getRange(newRow, phoneDispCol).setNumberFormat("@").setValue(record.PhoneDisplay);
 
     return {
       success: true,

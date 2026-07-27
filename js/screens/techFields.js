@@ -3,7 +3,7 @@ import { state } from "../state.js";
 import { saveVisit, uploadImage, createCustomer } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
-import { readFileAsDataUrl } from "../utils.js";
+import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
 
 export function initTechFields() {
@@ -19,7 +19,7 @@ export function initTechFields() {
           <label>
             <span style="font-size:22px">📷</span>
             <span>${label}</span>
-            <input type="file" accept="image/*" capture="environment" data-photo-input="${key}">
+            <input type="file" accept="image/*" data-photo-input="${key}">
           </label>`}
       </div>`;
   }
@@ -111,11 +111,16 @@ export function initTechFields() {
     const photoMeta = {
       customerId: state.currentCustomer.customerId,
       customerName: state.currentCustomer.name,
-      serviceType: state.serviceType
+      serviceType: state.serviceType,
+      visitKey: ensureVisitSessionKey(state.visitDraft)
     };
-    const [beforeUp, afterUp] = await Promise.all([
+    // upload ลายเซ็นลูกค้าพร้อมกันตรงนี้เลย (ไม่ใช่ตอน page 1) เพราะตอนนี้มี customerId จริงแล้ว
+    // ใช้ photoMeta ชุดเดียวกับรูปก่อน-หลัง รับประกันว่าตกอยู่ folder เดียวกันแน่นอน
+    const hasSignature = Boolean(state.visitDraft.signatureCustomerDataUrl);
+    const [beforeUp, afterUp, sigUp] = await Promise.all([
       uploadImage(state.visitDraft.beforePhotoDataUrl, { ...photoMeta, filename: "before.jpg" }),
-      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" })
+      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" }),
+      ...(hasSignature ? [uploadImage(state.visitDraft.signatureCustomerDataUrl, { ...photoMeta, filename: "signature_customer.png" })] : [])
     ]);
 
     const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime
@@ -136,7 +141,7 @@ export function initTechFields() {
       note: state.visitDraft.adjustFromLast || state.visitDraft.dontWant || null,
       beforePhotoUrl: beforeUp.url,
       afterPhotoUrl: afterUp.url,
-      signatureCustomerUrl: state.visitDraft.signatureCustomerUrl || null,
+      signatureCustomerUrl: hasSignature ? sigUp.url : null,
       signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
       rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
     };

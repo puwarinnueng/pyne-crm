@@ -14,6 +14,17 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// unique key ต่อ visit หนึ่งครั้ง ใช้กันชื่อ Drive folder ชนกันเมื่อลูกค้าคนเดียวกันมีหลาย visit วันเดียวกัน
+// สร้างครั้งแรกที่เรียกแล้ว cache ไว้ใน draft — เรียกซ้ำได้ค่าเดิมตลอดวงจรชีวิตของ visit นั้น
+function ensureVisitSessionKey(draft) {
+  if (!draft.visitSessionKey) {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    draft.visitSessionKey = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  }
+  return draft.visitSessionKey;
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -874,26 +885,21 @@ function initFormBrow() {
     const techniqueEl = !draft.technique ? flagError('[data-chip-key="technique"]') : null;
     const intensityEl = !draft.intensity ? flagError("#intensityOptions") : null;
     const agreeEl = !draft.agree ? flagError('[data-radio-key="agree"]') : null;
-    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
+    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerDataUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
     // แคนวาสจะว่างเปล่าเพราะสร้างใหม่ทุกครั้ง — ไม่บังคับให้เซ็นซ้ำถ้ามีลายเซ็นเดิมอยู่แล้ว
-    const alreadySigned = Boolean(draft.signatureCustomerUrl);
+    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
     const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
     if (!noErrors) return;
 
-    nextBtn.disabled = true;
+    // เก็บแค่ dataURL ดิบไว้ก่อน ยังไม่ upload ตรงนี้ — เพราะตอนนี้ (ลูกค้าใหม่) ยังไม่มี customerId จริง
+    // (สร้างจริงตอนกด "บันทึกประวัติ" ที่ page 2) ถ้า upload ตอนนี้จะได้ customerId เป็น "unknown"
+    // ทำให้ลายเซ็นตกไปอยู่คนละ customer folder กับรูปก่อน-หลัง จึง upload พร้อมกันที่ page 2 แทน
     if (!pad.isEmpty()) {
-      const uploaded = await uploadImage(pad.toDataURL(), {
-        customerId: state.currentCustomer ? state.currentCustomer.customerId : null,
-        customerName: state.currentCustomer ? state.currentCustomer.name : draft.newCustomerName,
-        serviceType: state.serviceType,
-        filename: "signature_customer.png"
-      });
-      draft.signatureCustomerUrl = uploaded.url;
+      draft.signatureCustomerDataUrl = pad.toDataURL();
     }
     draft.agreedAt = Date.now();
-    nextBtn.disabled = false;
     show("techFields");
   });
 
@@ -958,7 +964,7 @@ function initTechFields() {
           <label>
             <span style="font-size:22px">📷</span>
             <span>${label}</span>
-            <input type="file" accept="image/*" capture="environment" data-photo-input="${key}">
+            <input type="file" accept="image/*" data-photo-input="${key}">
           </label>`}
       </div>`;
   }
@@ -1050,11 +1056,16 @@ function initTechFields() {
     const photoMeta = {
       customerId: state.currentCustomer.customerId,
       customerName: state.currentCustomer.name,
-      serviceType: state.serviceType
+      serviceType: state.serviceType,
+      visitKey: ensureVisitSessionKey(state.visitDraft)
     };
-    const [beforeUp, afterUp] = await Promise.all([
+    // upload ลายเซ็นลูกค้าพร้อมกันตรงนี้เลย (ไม่ใช่ตอน page 1) เพราะตอนนี้มี customerId จริงแล้ว
+    // ใช้ photoMeta ชุดเดียวกับรูปก่อน-หลัง รับประกันว่าตกอยู่ folder เดียวกันแน่นอน
+    const hasSignature = Boolean(state.visitDraft.signatureCustomerDataUrl);
+    const [beforeUp, afterUp, sigUp] = await Promise.all([
       uploadImage(state.visitDraft.beforePhotoDataUrl, { ...photoMeta, filename: "before.jpg" }),
-      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" })
+      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" }),
+      ...(hasSignature ? [uploadImage(state.visitDraft.signatureCustomerDataUrl, { ...photoMeta, filename: "signature_customer.png" })] : [])
     ]);
 
     const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime
@@ -1075,7 +1086,7 @@ function initTechFields() {
       note: state.visitDraft.adjustFromLast || state.visitDraft.dontWant || null,
       beforePhotoUrl: beforeUp.url,
       afterPhotoUrl: afterUp.url,
-      signatureCustomerUrl: state.visitDraft.signatureCustomerUrl || null,
+      signatureCustomerUrl: hasSignature ? sigUp.url : null,
       signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
       rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
     };

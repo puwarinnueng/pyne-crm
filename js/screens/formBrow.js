@@ -12,7 +12,7 @@ import { OPTIONS } from "../data/options.js";
 import { CONSENT_BLOCKS, INTENSITY_OPTIONS, AGREEMENT_TEXT } from "../data/consentText.js";
 import { radioField, chipGroup, textField, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { uploadImage, findCustomerByPhone } from "../mockApi.js";
+import { findCustomerByPhone } from "../mockApi.js";
 import { escapeHtml } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -244,26 +244,21 @@ export function initFormBrow() {
     const techniqueEl = !draft.technique ? flagError('[data-chip-key="technique"]') : null;
     const intensityEl = !draft.intensity ? flagError("#intensityOptions") : null;
     const agreeEl = !draft.agree ? flagError('[data-radio-key="agree"]') : null;
-    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
+    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerDataUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
     // แคนวาสจะว่างเปล่าเพราะสร้างใหม่ทุกครั้ง — ไม่บังคับให้เซ็นซ้ำถ้ามีลายเซ็นเดิมอยู่แล้ว
-    const alreadySigned = Boolean(draft.signatureCustomerUrl);
+    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
     const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
     if (!noErrors) return;
 
-    nextBtn.disabled = true;
+    // เก็บแค่ dataURL ดิบไว้ก่อน ยังไม่ upload ตรงนี้ — เพราะตอนนี้ (ลูกค้าใหม่) ยังไม่มี customerId จริง
+    // (สร้างจริงตอนกด "บันทึกประวัติ" ที่ page 2) ถ้า upload ตอนนี้จะได้ customerId เป็น "unknown"
+    // ทำให้ลายเซ็นตกไปอยู่คนละ customer folder กับรูปก่อน-หลัง จึง upload พร้อมกันที่ page 2 แทน
     if (!pad.isEmpty()) {
-      const uploaded = await uploadImage(pad.toDataURL(), {
-        customerId: state.currentCustomer ? state.currentCustomer.customerId : null,
-        customerName: state.currentCustomer ? state.currentCustomer.name : draft.newCustomerName,
-        serviceType: state.serviceType,
-        filename: "signature_customer.png"
-      });
-      draft.signatureCustomerUrl = uploaded.url;
+      draft.signatureCustomerDataUrl = pad.toDataURL();
     }
     draft.agreedAt = Date.now();
-    nextBtn.disabled = false;
     show("techFields");
   });
 

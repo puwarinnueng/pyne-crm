@@ -38,7 +38,9 @@ function uploadImage(dataUrl, meta) {
   const customerFolderName = sanitizeFolderName_(
     (meta.customerId || "unknown") + "_" + (meta.customerName || "")
   );
-  const visitFolderName = sanitizeFolderName_(todayDateString_() + "_" + (meta.serviceType || ""));
+  // meta.visitKey (ส่งมาจาก client, unique ต่อ visit) กันชื่อ folder ชนกันเมื่อลูกค้าคนเดียวกัน
+  // มีหลาย visit วันเดียวกัน + ประเภทบริการเดียวกัน — ถ้าไม่มีส่งมา fallback เป็นวันที่เฉยๆ เหมือนเดิม
+  const visitFolderName = sanitizeFolderName_((meta.visitKey || todayDateString_()) + "_" + (meta.serviceType || ""));
 
   const customerFolder = getOrCreateSubfolder_(root, customerFolderName);
   const visitFolder = getOrCreateSubfolder_(customerFolder, visitFolderName);
