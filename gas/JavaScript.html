@@ -251,21 +251,32 @@ function radioField(key, options, draft) {
   return `
     <div class="radio-row" data-radio-key="${key}">
       ${options.map((opt) => `
-        <label>
-          <input type="radio" name="${key}" value="${opt}" ${draft[key] === opt ? "checked" : ""}>
-          <span>${opt}</span>
+        <label class="native-choice">
+          <input type="radio" name="${key}" value="${escapeHtml(opt)}" ${draft[key] === opt ? "checked" : ""}>
+          <span>${escapeHtml(opt)}</span>
         </label>
       `).join("")}
     </div>`;
 }
 
+// option ที่ชื่อ "Other" จะมีช่องกรอกข้อความต่อท้ายทันที (โชว์เฉพาะตอนติ๊กเลือก) — ค่าที่พิมพ์เก็บแยกไว้ที่ draft[`${key}Other`]
 function chipGroup(key, options, draft, multi) {
   const selected = multi ? (draft[key] || []) : [draft[key]].filter(Boolean);
+  const otherKey = `${key}Other`;
+  const inputType = multi ? "checkbox" : "radio";
   return `
     <div class="choice-grid" data-chip-key="${key}" data-chip-multi="${multi ? "1" : "0"}">
-      ${options.map((opt) => `
-        <div class="chip ${selected.includes(opt) ? "selected" : ""}" data-chip-value="${escapeHtml(opt)}">${escapeHtml(opt)}</div>
-      `).join("")}
+      ${options.map((opt) => {
+        const isOther = opt === "Other";
+        const checked = selected.includes(opt);
+        return `
+          <label class="native-choice">
+            <input type="${inputType}" ${multi ? "" : `name="${key}"`} data-chip-value="${escapeHtml(opt)}" ${checked ? "checked" : ""}>
+            <span>${isOther ? "อื่นๆ" : escapeHtml(opt)}</span>
+          </label>
+          ${isOther ? `<input type="text" class="input other-input" data-other-key="${otherKey}" placeholder="ระบุ..." value="${escapeHtml(draft[otherKey] || "")}" ${checked ? "" : "hidden"}>` : ""}
+        `;
+      }).join("")}
     </div>`;
 }
 
@@ -281,31 +292,28 @@ function textAreaField(key, placeholder, draft) {
 // ผูก event delegation ให้ container ที่มี chip/radio/text field จาก helper ข้างบน
 // เรียกครั้งเดียวตอน init แล้ว renderStep() ใหม่ได้เรื่อย ๆ โดยไม่ต้องผูกซ้ำ
 function bindFieldEvents(container, draft, onChange) {
-  container.addEventListener("click", (e) => {
-    const chip = e.target.closest(".chip");
-    if (!chip) return;
-    const group = chip.closest("[data-chip-key]");
-    const key = group.dataset.chipKey;
-    const multi = group.dataset.chipMulti === "1";
-    const value = chip.dataset.chipValue;
-    if (multi) {
-      const arr = draft[key] || [];
-      const idx = arr.indexOf(value);
-      if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
-      draft[key] = arr;
-      // สลับ class โดยตรงแทนการ re-render ทั้ง container เพื่อไม่ให้ state ของฟิลด์อื่นในหน้าเดียวกัน
-      // (เช่น signature canvas ใน techFields.js) หายไปตอนคลิก chip
-      chip.classList.toggle("selected");
-    } else {
-      const wasSelected = draft[key] === value;
-      draft[key] = wasSelected ? null : value;
-      group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
-      if (!wasSelected) chip.classList.add("selected");
-    }
-    onChange();
-  });
-
   container.addEventListener("change", (e) => {
+    const chipGroupEl = e.target.closest("[data-chip-key]");
+    if (chipGroupEl && e.target.dataset.chipValue !== undefined) {
+      const key = chipGroupEl.dataset.chipKey;
+      const multi = chipGroupEl.dataset.chipMulti === "1";
+      const value = e.target.dataset.chipValue;
+      if (multi) {
+        const arr = draft[key] || (draft[key] = []);
+        const idx = arr.indexOf(value);
+        if (e.target.checked && idx < 0) arr.push(value);
+        if (!e.target.checked && idx >= 0) arr.splice(idx, 1);
+      } else {
+        draft[key] = e.target.checked ? value : null;
+      }
+      const otherInput = chipGroupEl.querySelector("[data-other-key]");
+      if (otherInput) {
+        otherInput.hidden = multi ? !draft[key].includes("Other") : draft[key] !== "Other";
+      }
+      onChange();
+      return;
+    }
+
     const radioGroupEl = e.target.closest("[data-radio-key]");
     if (radioGroupEl && e.target.name) {
       draft[e.target.name] = e.target.value;
@@ -316,6 +324,9 @@ function bindFieldEvents(container, draft, onChange) {
   container.addEventListener("input", (e) => {
     if (e.target.dataset.textKey) {
       draft[e.target.dataset.textKey] = e.target.value;
+    }
+    if (e.target.dataset.otherKey) {
+      draft[e.target.dataset.otherKey] = e.target.value;
     }
   });
 }
@@ -333,6 +344,7 @@ function callServer_(name, ...args) {
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
+function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
@@ -754,11 +766,12 @@ function initFormBrow() {
       `).join("")}
 
       <div class="step-group-title">ลูกค้าเลือกระดับความเข้มที่ต้องการ <span class="required-star">*</span></div>
-      <div id="intensityOptions">
+      <div id="intensityOptions" data-radio-key="intensity">
         ${INTENSITY_OPTIONS.map((opt) => `
-          <div class="intensity-option ${draft.intensity === opt.value ? "selected" : ""}" data-intensity="${escapeHtml(opt.value)}">
-            <b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}
-          </div>
+          <label class="intensity-option">
+            <input type="radio" name="intensity" value="${escapeHtml(opt.value)}" ${draft.intensity === opt.value ? "checked" : ""}>
+            <span><b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}</span>
+          </label>
         `).join("")}
       </div>
 
@@ -775,14 +788,6 @@ function initFormBrow() {
     `;
 
     pad = createSignaturePad(document.getElementById("sigCanvas"));
-
-    container.querySelectorAll("[data-intensity]").forEach((el) => {
-      el.addEventListener("click", () => {
-        draft.intensity = el.dataset.intensity;
-        container.querySelectorAll("[data-intensity]").forEach((x) => x.classList.remove("selected"));
-        el.classList.add("selected");
-      });
-    });
 
     document.getElementById("sigClearBtn").addEventListener("click", () => pad.clear());
   }
@@ -833,25 +838,26 @@ function initFormBrow() {
     }
 
     nextBtn.disabled = true;
-    const res = await createCustomer({ name, phone, line: (draft.newCustomerLine || "").trim() });
+    const existing = await findCustomerByPhone(phone);
     nextBtn.disabled = false;
 
-    if (!res.success && res.error === "duplicate") {
+    if (existing) {
       const warningEl = document.getElementById("newCustomerWarning");
       warningEl.innerHTML = `
         <div class="dup-warning">
-          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(res.existing.name)}</b> (${escapeHtml(res.existing.phoneDisplay)})<br>
+          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
           กรุณาใช้ลูกค้าเดิมแทนการสร้างใหม่
           <br><button class="btn btn-primary" id="dupUseExistingBtn" type="button" style="margin-top:8px">ใช้ลูกค้าคนนี้ แล้วกรอกต่อ</button>
         </div>`;
       document.getElementById("dupUseExistingBtn").addEventListener("click", () => {
-        state.currentCustomer = res.existing;
+        state.currentCustomer = existing;
         renderCustomerInfoBlock();
       });
       return false;
     }
 
-    state.currentCustomer = res.customer;
+    // ไม่ซ้ำ — ยังไม่สร้างลูกค้าจริงตรงนี้ ชื่อ/เบอร์/LINE ค้างอยู่ใน state.visitDraft แล้ว
+    // รอสร้างจริงพร้อมกับ saveVisit() ตอนกด "บันทึกประวัติ" ที่ page 2 (กัน orphan customer ถ้า flow ไม่จบ)
     return true;
   }
 
@@ -868,19 +874,24 @@ function initFormBrow() {
     const techniqueEl = !draft.technique ? flagError('[data-chip-key="technique"]') : null;
     const intensityEl = !draft.intensity ? flagError("#intensityOptions") : null;
     const agreeEl = !draft.agree ? flagError('[data-radio-key="agree"]') : null;
-    const sigEl = (!pad || pad.isEmpty()) ? flagError(".sig-wrap") : null;
+    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
+    // แคนวาสจะว่างเปล่าเพราะสร้างใหม่ทุกครั้ง — ไม่บังคับให้เซ็นซ้ำถ้ามีลายเซ็นเดิมอยู่แล้ว
+    const alreadySigned = Boolean(draft.signatureCustomerUrl);
+    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
     const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
     if (!noErrors) return;
 
     nextBtn.disabled = true;
-    const uploaded = await uploadImage(pad.toDataURL(), {
-      customerId: state.currentCustomer.customerId,
-      customerName: state.currentCustomer.name,
-      serviceType: state.serviceType,
-      filename: "signature_customer.png"
-    });
-    draft.signatureCustomerUrl = uploaded.url;
+    if (!pad.isEmpty()) {
+      const uploaded = await uploadImage(pad.toDataURL(), {
+        customerId: state.currentCustomer ? state.currentCustomer.customerId : null,
+        customerName: state.currentCustomer ? state.currentCustomer.name : draft.newCustomerName,
+        serviceType: state.serviceType,
+        filename: "signature_customer.png"
+      });
+      draft.signatureCustomerUrl = uploaded.url;
+    }
     draft.agreedAt = Date.now();
     nextBtn.disabled = false;
     show("techFields");
@@ -937,6 +948,7 @@ function initFormTouchup() {
 function initTechFields() {
   const body = document.getElementById("techBody");
   const saveBtn = document.getElementById("techSaveBtn");
+  const backBtn = document.getElementById("techBackBtn");
 
   function photoSlot(key, label) {
     const url = state.visitDraft[key + "PhotoDataUrl"];
@@ -1004,6 +1016,8 @@ function initTechFields() {
 
   bindFieldEvents(body, state.visitDraft, () => {});
 
+  backBtn.addEventListener("click", () => show("formBrow"));
+
   saveBtn.addEventListener("click", async () => {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
     const beforeEl = !state.visitDraft.beforePhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="before"]') : null;
@@ -1015,6 +1029,23 @@ function initTechFields() {
       return;
     }
     saveBtn.disabled = true;
+
+    // ลูกค้าใหม่ (สักคิ้วครั้งแรก) ยังไม่ถูกสร้างจริงจนถึงตอนนี้ — สร้างพร้อมกับบันทึกประวัติ
+    // เป็น atomic unit เดียวกัน กัน orphan customer ถ้า flow ไม่จบก่อนหน้านี้
+    if (!state.currentCustomer) {
+      const draft = state.visitDraft;
+      const res = await createCustomer({
+        name: (draft.newCustomerName || "").trim(),
+        phone: (draft.newCustomerPhone || "").trim(),
+        line: (draft.newCustomerLine || "").trim()
+      });
+      if (!res.success) {
+        alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
+        saveBtn.disabled = false;
+        return;
+      }
+      state.currentCustomer = res.customer;
+    }
 
     const photoMeta = {
       customerId: state.currentCustomer.customerId,

@@ -55,6 +55,13 @@ function getCustomer(customerId) {
   return row ? rowToCustomer_(row) : null;
 }
 
+function findCustomerByPhone(phone) {
+  const normalized = normalizePhone(phone);
+  const rows = sheetToObjects_(getCustomersSheet_());
+  const existing = rows.find((r) => r.PhoneNormalized === normalized);
+  return existing ? rowToCustomer_(existing) : null;
+}
+
 function createCustomer(data) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);

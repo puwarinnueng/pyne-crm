@@ -46,5 +46,7 @@ function uploadImage(dataUrl, meta) {
   const file = visitFolder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  return { success: true, url: file.getUrl() };
+  // file.getUrl() คืนหน้า viewer HTML (…/file/d/ID/view) ใช้เป็น <img src> ตรงๆ ไม่ได้
+  // ต้องใช้ endpoint thumbnail ที่ Google รองรับให้ embed เป็นรูปได้จริง
+  return { success: true, url: "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000" };
 }

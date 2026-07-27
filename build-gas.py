@@ -50,6 +50,7 @@ function callServer_(name, ...args) {
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
+function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
