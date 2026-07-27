@@ -53,7 +53,7 @@ function saveVisit(payload) {
     const record = {
       ServiceID: serviceId,
       CustomerID: payload.customerId,
-      VisitDate: now,
+      VisitDate: payload.visitDate || now,
       ServiceType: payload.serviceType,
       Technique: payload.technique || "",
       ColorUsed: payload.colorUsed || "",

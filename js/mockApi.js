@@ -41,6 +41,12 @@ export async function searchCustomers(query) {
   });
 }
 
+export async function listRecentCustomers(limit) {
+  await wait();
+  const { customers } = db.get();
+  return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
+}
+
 export async function createCustomer(data) {
   await wait();
   const database = db.get();
@@ -56,7 +62,6 @@ export async function createCustomer(data) {
     phoneNormalized: normalized,
     phoneDisplay: data.phone,
     line: data.line || "",
-    note: data.note || "",
     createdAt: Date.now()
   };
   database.customers.push(customer);

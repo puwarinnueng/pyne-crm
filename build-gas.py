@@ -19,6 +19,7 @@ JS_ORDER = [
     "js/utils.js",
     "js/data/options.js",
     "js/data/consentText.js",
+    "js/data/techSignature.js",
     "js/state.js",
     "js/router.js",
     "js/signaturePad.js",
@@ -26,12 +27,11 @@ JS_ORDER = [
     "__BRIDGE__",
     "js/screens/gate.js",
     "js/screens/home.js",
-    "js/screens/newCustomer.js",
     "js/screens/customerProfile.js",
+    "js/screens/visitDetail.js",
     "js/screens/serviceType.js",
     "js/screens/formBrow.js",
     "js/screens/formTouchup.js",
-    "js/screens/consentSign.js",
     "js/screens/techFields.js",
     "js/screens/confirmation.js",
     "js/main.js",
@@ -49,6 +49,7 @@ function callServer_(name, ...args) {
 }
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
+function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }

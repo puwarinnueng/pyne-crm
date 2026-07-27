@@ -16,7 +16,7 @@ export function initFormTouchup() {
     state.visitDraft.adjustFromLast = adjustEl.value.trim();
     state.visitDraft.intensity = intensityEl.value;
     state.visitDraft.touchupPrice = priceEl.value;
-    show("consentSign");
+    show("techFields");
   });
 
   onEnter("formTouchup", async () => {

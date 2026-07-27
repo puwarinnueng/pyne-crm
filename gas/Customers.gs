@@ -21,7 +21,6 @@ function rowToCustomer_(row) {
     phoneNormalized: row.PhoneNormalized,
     phoneDisplay: row.PhoneDisplay,
     line: row.Line,
-    note: row.Note,
     createdAt: row.CreatedAt
   };
 }
@@ -39,6 +38,14 @@ function searchCustomers(query) {
       const phoneHit = qPhone.length >= 3 && String(row.PhoneNormalized || "").indexOf(qPhone) >= 0;
       return nameHit || lineHit || phoneHit;
     })
+    .map(rowToCustomer_);
+}
+
+function listRecentCustomers(limit) {
+  const rows = sheetToObjects_(getCustomersSheet_());
+  return rows
+    .sort((a, b) => (b.CreatedAt || 0) - (a.CreatedAt || 0))
+    .slice(0, limit || 10)
     .map(rowToCustomer_);
 }
 
@@ -68,7 +75,6 @@ function createCustomer(data) {
       PhoneNormalized: normalized,
       PhoneDisplay: data.phone,
       Line: data.line || "",
-      Note: data.note || "",
       CreatedAt: createdAt
     };
     sheet.appendRow(objectToRow_(record, CUSTOMERS_HEADERS));
@@ -81,7 +87,6 @@ function createCustomer(data) {
         phoneNormalized: normalized,
         phoneDisplay: data.phone,
         line: data.line || "",
-        note: data.note || "",
         createdAt
       }
     };

@@ -5,7 +5,7 @@
  */
 
 const CUSTOMERS_HEADERS = [
-  "CustomerID", "Name", "PhoneNormalized", "PhoneDisplay", "Line", "Note", "CreatedAt"
+  "CustomerID", "Name", "PhoneNormalized", "PhoneDisplay", "Line", "CreatedAt"
 ];
 
 const SERVICE_HISTORY_HEADERS = [

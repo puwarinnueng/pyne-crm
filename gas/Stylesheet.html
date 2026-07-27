@@ -1,14 +1,16 @@
 <style>
 :root {
-  --green-900: #0b3d2e;
-  --green-700: #14532d;
-  --green-50: #eef4f0;
+  --green-900: #6b4a30;
+  --green-700: #8a6142;
+  --green-50: #f3ede1;
   --amber-600: #b45309;
-  --red-600: #dc2626;
+  --red-600: #b3261e;
   --gray-500: #6b7280;
   --gray-200: #e5e7eb;
-  --border: #d5e0d9;
+  --border: #d9cfb8;
   --radius: 12px;
+  --cream: #eeece0;
+  --ink: #2c3345;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -16,12 +18,27 @@
 html, body {
   margin: 0; padding: 0; height: 100%;
   font-family: "Sarabun", "Thonburi", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f7f9f8;
-  color: #1a1a1a;
+  background: var(--cream);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
 
-#app { max-width: 720px; margin: 0 auto; min-height: 100%; background: #fff; position: relative; }
+#app { max-width: 720px; margin: 0 auto; min-height: 100%; background: var(--cream); position: relative; }
+
+/* จอกว้าง (แท็บเล็ต/เดสก์ท็อป): ขยายเป็นการ์ดกึ่งกลางแทนแถบแคบชิดซ้าย */
+@media (min-width: 860px) {
+  html, body { background: var(--green-50); }
+  #app {
+    max-width: 860px; margin: 24px auto; min-height: calc(100% - 48px);
+    border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(43,30,15,.12);
+    border: 1px solid var(--border);
+  }
+  .screen { min-height: calc(100vh - 48px); }
+  .topbar, .footer-actions { border-radius: 0; }
+  .topbar { top: 0; }
+  .page-pad { max-width: 640px; margin: 0 auto; width: 100%; }
+  .page-pad.center-col { max-width: 480px; }
+}
 
 .screen { display: none; min-height: 100vh; flex-direction: column; }
 .screen.active { display: flex; }
@@ -81,18 +98,42 @@ select.input { -webkit-appearance: none; appearance: none; }
 
 .error-text { color: var(--red-600); font-size: 12.5px; margin: -8px 0 10px; }
 
+/* Topbar แบบมีค้นหา + เพิ่มลูกค้าอยู่ในแถบเดียวกัน (หน้า Home) */
+/* มือถือ: เรียงเป็นคอลัมน์ (ชื่อร้าน / ช่องค้นหา / ปุ่มเพิ่มลูกค้า) กันข้อความถูกบีบจนตัดคำ */
+.topbar-home { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+.topbar-home .topbar-title { white-space: nowrap; }
+.topbar-search { display: flex; gap: 8px; width: 100%; }
+.input-topbar { margin: 0; flex: 1; min-width: 0; }
+.btn-topbar { background: #fff; color: var(--green-900); flex: 0 0 auto; padding: 10px 16px; font-size: 14px; white-space: nowrap; }
+.btn-topbar-outline {
+  background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.7);
+  padding: 10px 16px; font-size: 14px; width: 100%; white-space: nowrap;
+}
+
+/* จอกว้างขึ้น: เรียงแถวเดียวกันได้พอดี ไม่ต้องขึ้นบรรทัดใหม่ */
+@media (min-width: 640px) {
+  .topbar-home { flex-direction: row; align-items: center; }
+  .topbar-search { flex: 1 1 auto; }
+  .btn-topbar-outline { width: auto; }
+}
+
 /* Search / results */
-.search-row { display: flex; gap: 8px; }
-.search-row .input { margin: 0; flex: 1; }
-.result-list { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.result-list {
+  margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 10px;
+}
 .result-item {
   border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;
   display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+  background: #fff;
 }
 .result-item:active { background: var(--green-50); }
 .result-name { font-weight: 600; }
 .result-meta { font-size: 12px; color: #667; margin-top: 2px; }
-.empty-hint { text-align: center; color: #999; padding: 30px 10px; font-size: 13.5px; }
+.empty-hint { text-align: center; color: #999; padding: 30px 10px; font-size: 13.5px; grid-column: 1 / -1; }
+
+@media (min-width: 640px) {
+  .result-list { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* Profile */
 .profile-card {
@@ -103,7 +144,8 @@ select.input { -webkit-appearance: none; appearance: none; }
 .profile-card .pmeta { font-size: 13px; color: #556; margin-top: 4px; }
 .section-title { font-size: 14px; color: var(--green-700); margin: 20px 0 8px; }
 .history-list { display: flex; flex-direction: column; gap: 10px; }
-.history-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.history-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.history-item:active { background: var(--green-50); }
 .history-item .htype {
   display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
   background: var(--green-900); padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
@@ -118,6 +160,13 @@ select.input { -webkit-appearance: none; appearance: none; }
   padding: 12px 14px; margin: 10px 0; font-size: 13px;
 }
 .dup-warning button { margin-top: 8px; }
+
+/* หัวข้อใหญ่คั่นแต่ละส่วนของฟอร์ม (ตรงตามหัวข้อใน Jotform ต้นฉบับ) */
+.form-section-title {
+  font-size: 19px; font-weight: 700; color: var(--ink); margin: 30px 0 14px;
+  padding-bottom: 10px; border-bottom: 1.5px solid var(--border);
+}
+.form-section-title:first-of-type { margin-top: 4px; }
 
 /* Multi-step form */
 .step-group { margin-bottom: 20px; }
@@ -156,6 +205,13 @@ select.input { -webkit-appearance: none; appearance: none; }
 .sig-actions { display: flex; justify-content: flex-end; padding: 6px 10px; background: #fafafa; }
 .sig-actions button { background: none; border: none; color: var(--green-700); font-size: 12.5px; }
 
+/* Static technician signature (fixed image, not a live pad) */
+.tech-sig-wrap {
+  border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 10px 0;
+  background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px;
+}
+.tech-sig-wrap img { max-width: 220px; width: 100%; height: auto; display: block; }
+
 /* Photo capture */
 .photo-row { display: flex; gap: 12px; margin: 10px 0; }
 .photo-slot {
@@ -183,6 +239,14 @@ select.input { -webkit-appearance: none; appearance: none; }
 }
 
 .box-quiet { background: var(--green-50); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; margin-bottom: 14px; }
+
+/* หน้ารายละเอียดประวัติ (อ่านอย่างเดียว) */
+.detail-row { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 12px; color: var(--green-700); font-weight: 600; }
+.detail-value { font-size: 14px; color: var(--ink); margin-top: 2px; white-space: pre-wrap; }
+.photo-slot-sig { aspect-ratio: auto; height: 90px; background: #fff; }
+.photo-slot-sig img { object-fit: contain; }
 .draft-badge {
   display: inline-block; background: var(--amber-600); color: #fff; font-size: 11px;
   padding: 3px 10px; border-radius: 999px; margin-bottom: 12px;

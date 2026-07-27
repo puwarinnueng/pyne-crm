@@ -3,63 +3,9 @@
 
 const STORAGE_KEY = "pyneCrmMockDB_v1";
 
+// ไม่มีข้อมูลตัวอย่าง (mock) แล้ว — เริ่มจากฐานข้อมูลเปล่าให้ทดสอบเองทั้งหมด
 function seedData() {
-  const now = Date.now();
-  const customers = [
-    {
-      customerId: "C0001",
-      name: "สมหญิง",
-      phoneNormalized: "0812345678",
-      phoneDisplay: "081-234-5678",
-      line: "somying_line",
-      note: "",
-      createdAt: now - 1000 * 60 * 60 * 24 * 200
-    },
-    {
-      customerId: "C0002",
-      name: "วรรณา",
-      phoneNormalized: "0898765432",
-      phoneDisplay: "089-876-5432",
-      line: "wanna_bkk",
-      note: "แพ้ยาชาบางชนิด",
-      createdAt: now - 1000 * 60 * 60 * 24 * 60
-    }
-  ];
-
-  const serviceHistory = [
-    {
-      serviceId: "S0001",
-      customerId: "C0001",
-      visitDate: now - 1000 * 60 * 60 * 24 * 200,
-      serviceType: "สักคิ้ว",
-      technique: "Hairstroke",
-      colorUsed: "น้ำตาลเข้ม",
-      intensity: "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม",
-      note: "ผิวแห้งง่าย ระวังอาการคัน",
-      beforePhotoUrl: "",
-      afterPhotoUrl: "",
-      signatureCustomerUrl: "",
-      signatureTechUrl: "",
-      createdAt: now - 1000 * 60 * 60 * 24 * 200
-    },
-    {
-      serviceId: "S0002",
-      customerId: "C0001",
-      visitDate: now - 1000 * 60 * 60 * 24 * 20,
-      serviceType: "เติมสี",
-      technique: "Hairstroke",
-      colorUsed: "น้ำตาลเข้ม",
-      intensity: "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม",
-      note: "",
-      beforePhotoUrl: "",
-      afterPhotoUrl: "",
-      signatureCustomerUrl: "",
-      signatureTechUrl: "",
-      createdAt: now - 1000 * 60 * 60 * 24 * 20
-    }
-  ];
-
-  return { customers, serviceHistory, seq: { customer: 3, service: 3 } };
+  return { customers: [], serviceHistory: [], seq: { customer: 1, service: 1 } };
 }
 
 function load() {

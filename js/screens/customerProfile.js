@@ -21,7 +21,6 @@ export function initCustomerProfile() {
     profileCard.innerHTML = `
       <div class="pname">${escapeHtml(c.name)}</div>
       <div class="pmeta">📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}</div>
-      ${c.note ? `<div class="pmeta">📝 ${escapeHtml(c.note)}</div>` : ""}
     `;
 
     historyList.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
@@ -33,7 +32,7 @@ export function initCustomerProfile() {
     }
 
     historyList.innerHTML = history.map((v) => `
-      <div class="history-item">
+      <div class="history-item" data-id="${v.serviceId}">
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         <div class="hdetail">
@@ -43,5 +42,12 @@ export function initCustomerProfile() {
         </div>
       </div>
     `).join("");
+
+    historyList.querySelectorAll(".history-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const visit = history.find((h) => h.serviceId === el.dataset.id);
+        show("visitDetail", { data: visit });
+      });
+    });
   });
 }

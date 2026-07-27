@@ -1,15 +1,14 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { saveVisit, uploadImage } from "../mockApi.js";
-import { createSignaturePad } from "../signaturePad.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl } from "../utils.js";
+import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
   const saveBtn = document.getElementById("techSaveBtn");
-  let techPad = null;
 
   function photoSlot(key, label) {
     const url = state.visitDraft[key + "PhotoDataUrl"];
@@ -56,15 +55,13 @@ export function initTechFields() {
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">ลายเซ็นช่างผู้ให้บริการ *</div>
-        <div class="sig-wrap"><canvas id="techSigCanvas"></canvas></div>
-        <div class="sig-actions"><button id="techSigClearBtn" type="button">ล้างลายเซ็น</button></div>
+        <div class="step-group-title">ลายเซ็นช่างผู้ให้บริการ</div>
+        <div class="tech-sig-wrap">
+          <img src="${TECH_SIGNATURE_DATA_URL}" alt="ลายเซ็นช่าง">
+        </div>
         <p class="muted small" style="text-align:center">(ชนิสตา ศุภสุข)</p>
       </div>
     `;
-
-    techPad = createSignaturePad(document.getElementById("techSigCanvas"));
-    document.getElementById("techSigClearBtn").addEventListener("click", () => techPad.clear());
 
     body.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
       inputEl.addEventListener("change", async (e) => {
@@ -84,10 +81,6 @@ export function initTechFields() {
       alert("กรุณาถ่ายรูป Before และ After ให้ครบก่อนบันทึก");
       return;
     }
-    if (!techPad || techPad.isEmpty()) {
-      alert("กรุณาให้ช่างเซ็นชื่อก่อนบันทึก");
-      return;
-    }
     saveBtn.disabled = true;
 
     const photoMeta = {
@@ -95,15 +88,19 @@ export function initTechFields() {
       customerName: state.currentCustomer.name,
       serviceType: state.serviceType
     };
-    const [beforeUp, afterUp, techSigUp] = await Promise.all([
+    const [beforeUp, afterUp] = await Promise.all([
       uploadImage(state.visitDraft.beforePhotoDataUrl, { ...photoMeta, filename: "before.jpg" }),
-      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" }),
-      uploadImage(techPad.toDataURL(), { ...photoMeta, filename: "signature_tech.png" })
+      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" })
     ]);
+
+    const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime
+      ? new Date(`${state.visitDraft.serviceDate}T${state.visitDraft.serviceTime}`).getTime()
+      : Date.now();
 
     const payload = {
       customerId: state.currentCustomer.customerId,
       serviceType: state.serviceType,
+      visitDate: serviceDateTime,
       technique: state.visitDraft.technique || null,
       colorUsed: state.visitDraft.colorUsed || null,
       intensity: state.visitDraft.intensity || null,
@@ -115,7 +112,7 @@ export function initTechFields() {
       beforePhotoUrl: beforeUp.url,
       afterPhotoUrl: afterUp.url,
       signatureCustomerUrl: state.visitDraft.signatureCustomerUrl || null,
-      signatureTechUrl: techSigUp.url,
+      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
       rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
     };
 

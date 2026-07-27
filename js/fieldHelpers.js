@@ -25,12 +25,13 @@ export function chipGroup(key, options, draft, multi) {
     </div>`;
 }
 
+// placeholder ปิดไว้ตามคำสั่งผู้ใช้ — พารามิเตอร์ยังรับไว้เผื่อเปิดใช้อีกครั้งในอนาคต
 export function textField(key, placeholder, draft) {
-  return `<input type="text" class="input" data-text-key="${key}" placeholder="${placeholder || ""}" value="${escapeHtml(draft[key] || "")}">`;
+  return `<input type="text" class="input" data-text-key="${key}" value="${escapeHtml(draft[key] || "")}"><!-- placeholder="${escapeHtml(placeholder || "")}" -->`;
 }
 
 export function textAreaField(key, placeholder, draft) {
-  return `<textarea class="input textarea" data-text-key="${key}" placeholder="${placeholder || ""}">${escapeHtml(draft[key] || "")}</textarea>`;
+  return `<textarea class="input textarea" data-text-key="${key}">${escapeHtml(draft[key] || "")}</textarea><!-- placeholder="${escapeHtml(placeholder || "")}" -->`;
 }
 
 // ผูก event delegation ให้ container ที่มี chip/radio/text field จาก helper ข้างบน

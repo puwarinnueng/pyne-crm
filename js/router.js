@@ -1,7 +1,7 @@
 // router.js — สลับหน้าจอแบบง่าย (ไม่ใช้ URL hash เพื่อให้เหมือนพฤติกรรม Apps Script HtmlService SPA)
 
 const enterHandlers = {};
-let historyStack = ["gate"];
+let historyStack = ["home"];
 
 export function onEnter(screenId, handler) {
   enterHandlers[screenId] = handler;

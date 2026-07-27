@@ -1,25 +1,23 @@
 import { show } from "./router.js";
 import { state } from "./state.js";
 import { getCustomer } from "./mockApi.js";
-import { initGate } from "./screens/gate.js";
+// import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
 import { initHome } from "./screens/home.js";
-import { initNewCustomer } from "./screens/newCustomer.js";
 import { initCustomerProfile } from "./screens/customerProfile.js";
+import { initVisitDetail } from "./screens/visitDetail.js";
 import { initServiceType } from "./screens/serviceType.js";
 import { initFormBrow } from "./screens/formBrow.js";
 import { initFormTouchup } from "./screens/formTouchup.js";
-import { initConsentSign } from "./screens/consentSign.js";
 import { initTechFields } from "./screens/techFields.js";
 import { initConfirmation } from "./screens/confirmation.js";
 
-initGate();
+// initGate();
 initHome();
-initNewCustomer();
 initCustomerProfile();
+initVisitDetail();
 initServiceType();
 initFormBrow();
 initFormTouchup();
-initConsentSign();
 initTechFields();
 initConfirmation();
 
@@ -39,5 +37,5 @@ initConfirmation();
   if (debugServiceType) {
     state.serviceType = debugServiceType;
   }
-  show(debugScreen || "gate", { pushHistory: false });
+  show(debugScreen || "home", { pushHistory: false });
 })();
