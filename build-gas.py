@@ -55,6 +55,7 @@ function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
 function saveVisit(payload) { return callServer_("saveVisit", payload); }
+function ensureVisitFolder(meta) { return callServer_("ensureVisitFolder", meta); }
 function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }
 function exportConsentPdf(serviceId) { return callServer_("exportConsentPdf", serviceId); }
 '''

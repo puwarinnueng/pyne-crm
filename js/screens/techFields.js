@@ -1,6 +1,6 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { saveVisit, uploadImage, createCustomer } from "../mockApi.js";
+import { saveVisit, uploadImage, createCustomer, ensureVisitFolder } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
@@ -91,36 +91,49 @@ export function initTechFields() {
     }
     saveBtn.disabled = true;
 
-    // ลูกค้าใหม่ (สักคิ้วครั้งแรก) ยังไม่ถูกสร้างจริงจนถึงตอนนี้ — สร้างพร้อมกับบันทึกประวัติ
-    // เป็น atomic unit เดียวกัน กัน orphan customer ถ้า flow ไม่จบก่อนหน้านี้
-    if (!state.currentCustomer) {
-      const draft = state.visitDraft;
-      const res = await createCustomer({
-        name: (draft.newCustomerName || "").trim(),
-        phone: (draft.newCustomerPhone || "").trim(),
-        line: (draft.newCustomerLine || "").trim()
-      });
-      if (!res.success) {
-        alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
-        saveBtn.disabled = false;
-        return;
-      }
-      state.currentCustomer = res.customer;
-    }
+    const draft = state.visitDraft;
+    const isNewCustomer = !state.currentCustomer;
 
-    const photoMeta = {
-      customerId: state.currentCustomer.customerId,
-      customerName: state.currentCustomer.name,
+    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทร (รู้ค่าได้ทันทีตั้งแต่ page 1) แทน customerId (ที่ต้องรอ
+    // สร้างลูกค้าเสร็จก่อนถึงจะรู้) เพื่อให้ "สร้างลูกค้า" กับ "หา/สร้าง visit folder" รันพร้อมกันได้เลย
+    const folderMeta = {
+      customerPhone: isNewCustomer ? (draft.newCustomerPhone || "").trim() : state.currentCustomer.phoneNormalized,
+      customerName: isNewCustomer ? (draft.newCustomerName || "").trim() : state.currentCustomer.name,
       serviceType: state.serviceType,
-      visitKey: ensureVisitSessionKey(state.visitDraft)
+      visitKey: ensureVisitSessionKey(draft)
     };
-    // upload ลายเซ็นลูกค้าพร้อมกันตรงนี้เลย (ไม่ใช่ตอน page 1) เพราะตอนนี้มี customerId จริงแล้ว
-    // ใช้ photoMeta ชุดเดียวกับรูปก่อน-หลัง รับประกันว่าตกอยู่ folder เดียวกันแน่นอน
-    const hasSignature = Boolean(state.visitDraft.signatureCustomerDataUrl);
+
+    const customerPromise = isNewCustomer
+      ? createCustomer({
+          name: (draft.newCustomerName || "").trim(),
+          phone: (draft.newCustomerPhone || "").trim(),
+          line: (draft.newCustomerLine || "").trim()
+        })
+      : Promise.resolve({ success: true, customer: state.currentCustomer });
+
+    const hasSignature = Boolean(draft.signatureCustomerDataUrl);
+
+    // สร้างลูกค้า + หา/สร้าง visit folder พร้อมกันเลย (ไม่พึ่งกัน) — พอได้ folderId แน่นอนแล้วค่อย
+    // upload รูป/ลายเซ็นทั้งหมดแบบขนานเต็มที่ ไม่มี race เพราะไม่มีไฟล์ไหนต้องมาหา/สร้างโฟลเดอร์ซ้ำอีก
+    const [customerRes, folderRes] = await Promise.all([
+      customerPromise,
+      ensureVisitFolder(folderMeta)
+    ]);
+
+    if (!customerRes.success) {
+      alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
+      saveBtn.disabled = false;
+      return;
+    }
+    state.currentCustomer = customerRes.customer;
+
+    const uploadMeta = { folderId: folderRes.folderId };
     const [beforeUp, afterUp, sigUp] = await Promise.all([
-      uploadImage(state.visitDraft.beforePhotoDataUrl, { ...photoMeta, filename: "before.jpg" }),
-      uploadImage(state.visitDraft.afterPhotoDataUrl, { ...photoMeta, filename: "after.jpg" }),
-      ...(hasSignature ? [uploadImage(state.visitDraft.signatureCustomerDataUrl, { ...photoMeta, filename: "signature_customer.png" })] : [])
+      uploadImage(draft.beforePhotoDataUrl, { ...uploadMeta, filename: "before.jpg" }),
+      uploadImage(draft.afterPhotoDataUrl, { ...uploadMeta, filename: "after.jpg" }),
+      hasSignature
+        ? uploadImage(draft.signatureCustomerDataUrl, { ...uploadMeta, filename: "signature_customer.png" })
+        : Promise.resolve(null)
     ]);
 
     const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime

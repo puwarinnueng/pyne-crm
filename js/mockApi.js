@@ -107,9 +107,15 @@ export async function saveVisit(payload) {
   return { success: true, serviceId };
 }
 
+export async function ensureVisitFolder(meta) {
+  // mock: ของจริง (gas/DriveStorage.gs) จะหา/สร้าง visit folder ใน Google Drive แล้วคืน folderId จริง
+  await wait(150);
+  return { success: true, folderId: "mock-folder" };
+}
+
 export async function uploadImage(dataUrl, meta) {
-  // mock: ของจริง (gas/DriveStorage.gs) จะใช้ meta.customerId/customerName/serviceType/filename
-  // จัดโฟลเดอร์ใน Google Drive แล้วคืน fileUrl จริง — ที่นี่แค่ส่ง dataUrl กลับเพื่อ preview
+  // mock: ของจริง (gas/DriveStorage.gs) จะใช้ meta.folderId เขียนไฟล์ลง Google Drive แล้วคืน fileUrl จริง
+  // ที่นี่แค่ส่ง dataUrl กลับเพื่อ preview
   await wait(150);
   return { success: true, url: dataUrl };
 }
