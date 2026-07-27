@@ -7,21 +7,32 @@ export function radioField(key, options, draft) {
   return `
     <div class="radio-row" data-radio-key="${key}">
       ${options.map((opt) => `
-        <label>
-          <input type="radio" name="${key}" value="${opt}" ${draft[key] === opt ? "checked" : ""}>
-          <span>${opt}</span>
+        <label class="native-choice">
+          <input type="radio" name="${key}" value="${escapeHtml(opt)}" ${draft[key] === opt ? "checked" : ""}>
+          <span>${escapeHtml(opt)}</span>
         </label>
       `).join("")}
     </div>`;
 }
 
+// option ที่ชื่อ "Other" จะมีช่องกรอกข้อความต่อท้ายทันที (โชว์เฉพาะตอนติ๊กเลือก) — ค่าที่พิมพ์เก็บแยกไว้ที่ draft[`${key}Other`]
 export function chipGroup(key, options, draft, multi) {
   const selected = multi ? (draft[key] || []) : [draft[key]].filter(Boolean);
+  const otherKey = `${key}Other`;
+  const inputType = multi ? "checkbox" : "radio";
   return `
     <div class="choice-grid" data-chip-key="${key}" data-chip-multi="${multi ? "1" : "0"}">
-      ${options.map((opt) => `
-        <div class="chip ${selected.includes(opt) ? "selected" : ""}" data-chip-value="${escapeHtml(opt)}">${escapeHtml(opt)}</div>
-      `).join("")}
+      ${options.map((opt) => {
+        const isOther = opt === "Other";
+        const checked = selected.includes(opt);
+        return `
+          <label class="native-choice">
+            <input type="${inputType}" ${multi ? "" : `name="${key}"`} data-chip-value="${escapeHtml(opt)}" ${checked ? "checked" : ""}>
+            <span>${isOther ? "อื่นๆ" : escapeHtml(opt)}</span>
+          </label>
+          ${isOther ? `<input type="text" class="input other-input" data-other-key="${otherKey}" placeholder="ระบุ..." value="${escapeHtml(draft[otherKey] || "")}" ${checked ? "" : "hidden"}>` : ""}
+        `;
+      }).join("")}
     </div>`;
 }
 
@@ -37,31 +48,28 @@ export function textAreaField(key, placeholder, draft) {
 // ผูก event delegation ให้ container ที่มี chip/radio/text field จาก helper ข้างบน
 // เรียกครั้งเดียวตอน init แล้ว renderStep() ใหม่ได้เรื่อย ๆ โดยไม่ต้องผูกซ้ำ
 export function bindFieldEvents(container, draft, onChange) {
-  container.addEventListener("click", (e) => {
-    const chip = e.target.closest(".chip");
-    if (!chip) return;
-    const group = chip.closest("[data-chip-key]");
-    const key = group.dataset.chipKey;
-    const multi = group.dataset.chipMulti === "1";
-    const value = chip.dataset.chipValue;
-    if (multi) {
-      const arr = draft[key] || [];
-      const idx = arr.indexOf(value);
-      if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
-      draft[key] = arr;
-      // สลับ class โดยตรงแทนการ re-render ทั้ง container เพื่อไม่ให้ state ของฟิลด์อื่นในหน้าเดียวกัน
-      // (เช่น signature canvas ใน techFields.js) หายไปตอนคลิก chip
-      chip.classList.toggle("selected");
-    } else {
-      const wasSelected = draft[key] === value;
-      draft[key] = wasSelected ? null : value;
-      group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
-      if (!wasSelected) chip.classList.add("selected");
-    }
-    onChange();
-  });
-
   container.addEventListener("change", (e) => {
+    const chipGroupEl = e.target.closest("[data-chip-key]");
+    if (chipGroupEl && e.target.dataset.chipValue !== undefined) {
+      const key = chipGroupEl.dataset.chipKey;
+      const multi = chipGroupEl.dataset.chipMulti === "1";
+      const value = e.target.dataset.chipValue;
+      if (multi) {
+        const arr = draft[key] || (draft[key] = []);
+        const idx = arr.indexOf(value);
+        if (e.target.checked && idx < 0) arr.push(value);
+        if (!e.target.checked && idx >= 0) arr.splice(idx, 1);
+      } else {
+        draft[key] = e.target.checked ? value : null;
+      }
+      const otherInput = chipGroupEl.querySelector("[data-other-key]");
+      if (otherInput) {
+        otherInput.hidden = multi ? !draft[key].includes("Other") : draft[key] !== "Other";
+      }
+      onChange();
+      return;
+    }
+
     const radioGroupEl = e.target.closest("[data-radio-key]");
     if (radioGroupEl && e.target.name) {
       draft[e.target.name] = e.target.value;
@@ -72,6 +80,9 @@ export function bindFieldEvents(container, draft, onChange) {
   container.addEventListener("input", (e) => {
     if (e.target.dataset.textKey) {
       draft[e.target.dataset.textKey] = e.target.value;
+    }
+    if (e.target.dataset.otherKey) {
+      draft[e.target.dataset.otherKey] = e.target.value;
     }
   });
 }

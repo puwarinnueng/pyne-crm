@@ -12,7 +12,7 @@ import { OPTIONS } from "../data/options.js";
 import { CONSENT_BLOCKS, INTENSITY_OPTIONS, AGREEMENT_TEXT } from "../data/consentText.js";
 import { radioField, chipGroup, textField, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { uploadImage, createCustomer } from "../mockApi.js";
+import { uploadImage, findCustomerByPhone } from "../mockApi.js";
 import { escapeHtml } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -38,10 +38,10 @@ export function initFormBrow() {
       return `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>`;
     }
     return `
-      <div class="step-group-title">ชื่อเล่น *</div>
+      <div class="step-group-title">ชื่อเล่น <span class="required-star">*</span></div>
       <!-- placeholder="เช่น มายด์" -->
       <input type="text" class="input" data-text-key="newCustomerName" value="${escapeHtml(draft.newCustomerName || "")}">
-      <div class="step-group-title">เบอร์โทร *</div>
+      <div class="step-group-title">เบอร์โทร <span class="required-star">*</span></div>
       <!-- placeholder="08x-xxx-xxxx" -->
       <input type="tel" class="input" data-text-key="newCustomerPhone" value="${escapeHtml(draft.newCustomerPhone || "")}">
       <div class="step-group-title">ชื่อ LINE</div>
@@ -66,7 +66,7 @@ export function initFormBrow() {
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">วัน-เวลาเข้ารับบริการ *</div>
+        <div class="step-group-title">วัน-เวลาเข้ารับบริการ <span class="required-star">*</span></div>
         <div style="display:flex; gap:8px;">
           <input type="date" class="input" style="margin:0" data-text-key="serviceDate" value="${escapeHtml(draft.serviceDate)}">
           <input type="time" class="input" style="margin:0" data-text-key="serviceTime" value="${escapeHtml(draft.serviceTime)}">
@@ -75,7 +75,7 @@ export function initFormBrow() {
 
       <div class="form-section-title">ประวัติการสักคิ้ว</div>
       <div class="step-group">
-        <div class="step-group-title">เคยสักคิ้วมาก่อนหรือไม่ *</div>
+        <div class="step-group-title">เคยสักคิ้วมาก่อนหรือไม่ <span class="required-star">*</span></div>
         ${radioField("hadBrowBefore", ["เคย", "ไม่เคย"], draft)}
       </div>
       <div class="step-group" id="oldMarkBlock" ${draft.hadBrowBefore === "เคย" ? "" : "hidden"}>
@@ -93,7 +93,7 @@ export function initFormBrow() {
 
       <div class="form-section-title">ประวัติผิว</div>
       <div class="step-group">
-        <div class="step-group-title">ประเภทผิว *</div>
+        <div class="step-group-title">ประเภทผิว <span class="required-star">*</span></div>
         ${chipGroup("skinType", OPTIONS.skinType, draft, false)}
       </div>
       <div class="step-group">
@@ -119,7 +119,7 @@ export function initFormBrow() {
         ${chipGroup("desiredFeel", OPTIONS.desiredFeel, draft, true)}
       </div>
       <div class="step-group">
-        <div class="step-group-title">เทคนิคที่เลือก *</div>
+        <div class="step-group-title">เทคนิคที่เลือก <span class="required-star">*</span></div>
         ${chipGroup("technique", OPTIONS.technique, draft, false)}
       </div>
       <div class="step-group">
@@ -135,12 +135,13 @@ export function initFormBrow() {
         </div>
       `).join("")}
 
-      <div class="step-group-title">ลูกค้าเลือกระดับความเข้มที่ต้องการ *</div>
-      <div id="intensityOptions">
+      <div class="step-group-title">ลูกค้าเลือกระดับความเข้มที่ต้องการ <span class="required-star">*</span></div>
+      <div id="intensityOptions" data-radio-key="intensity">
         ${INTENSITY_OPTIONS.map((opt) => `
-          <div class="intensity-option ${draft.intensity === opt.value ? "selected" : ""}" data-intensity="${escapeHtml(opt.value)}">
-            <b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}
-          </div>
+          <label class="intensity-option">
+            <input type="radio" name="intensity" value="${escapeHtml(opt.value)}" ${draft.intensity === opt.value ? "checked" : ""}>
+            <span><b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}</span>
+          </label>
         `).join("")}
       </div>
 
@@ -151,20 +152,12 @@ export function initFormBrow() {
         </label>
       </div>
 
-      <div class="step-group-title">ลายเซ็นลูกค้า *</div>
+      <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
       <div class="sig-wrap"><canvas id="sigCanvas"></canvas></div>
       <div class="sig-actions"><button id="sigClearBtn" type="button">ล้างลายเซ็น</button></div>
     `;
 
     pad = createSignaturePad(document.getElementById("sigCanvas"));
-
-    container.querySelectorAll("[data-intensity]").forEach((el) => {
-      el.addEventListener("click", () => {
-        draft.intensity = el.dataset.intensity;
-        container.querySelectorAll("[data-intensity]").forEach((x) => x.classList.remove("selected"));
-        el.classList.add("selected");
-      });
-    });
 
     document.getElementById("sigClearBtn").addEventListener("click", () => pad.clear());
   }
@@ -178,36 +171,63 @@ export function initFormBrow() {
     }
   });
 
+  // เอากรอบแดงออกทันทีที่ผู้ใช้แก้ฟิลด์นั้น (คลิก chip/radio, พิมพ์, หรือเริ่มเซ็นลายเซ็น)
+  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+    container.addEventListener(evt, (e) => {
+      const errEl = e.target.closest(".field-error");
+      if (errEl) errEl.classList.remove("field-error");
+    });
+  });
+
+  function clearFieldErrors() {
+    container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+  }
+
+  function flagError(selector) {
+    const el = container.querySelector(selector);
+    if (el) el.classList.add("field-error");
+    return el;
+  }
+
+  function scrollToFirstError(...els) {
+    const first = els.find(Boolean);
+    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+    return !first;
+  }
+
   async function ensureCustomer() {
     if (state.currentCustomer) return true;
     const draft = state.visitDraft;
     const name = (draft.newCustomerName || "").trim();
     const phone = (draft.newCustomerPhone || "").trim();
     if (!name || !phone) {
-      alert("กรุณากรอกชื่อและเบอร์โทรลูกค้าก่อน");
+      const nameEl = !name ? flagError('[data-text-key="newCustomerName"]') : null;
+      const phoneEl = !phone ? flagError('[data-text-key="newCustomerPhone"]') : null;
+      scrollToFirstError(nameEl, phoneEl);
       return false;
     }
 
     nextBtn.disabled = true;
-    const res = await createCustomer({ name, phone, line: (draft.newCustomerLine || "").trim() });
+    const existing = await findCustomerByPhone(phone);
     nextBtn.disabled = false;
 
-    if (!res.success && res.error === "duplicate") {
+    if (existing) {
       const warningEl = document.getElementById("newCustomerWarning");
       warningEl.innerHTML = `
         <div class="dup-warning">
-          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(res.existing.name)}</b> (${escapeHtml(res.existing.phoneDisplay)})<br>
+          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
           กรุณาใช้ลูกค้าเดิมแทนการสร้างใหม่
           <br><button class="btn btn-primary" id="dupUseExistingBtn" type="button" style="margin-top:8px">ใช้ลูกค้าคนนี้ แล้วกรอกต่อ</button>
         </div>`;
       document.getElementById("dupUseExistingBtn").addEventListener("click", () => {
-        state.currentCustomer = res.existing;
+        state.currentCustomer = existing;
         renderCustomerInfoBlock();
       });
       return false;
     }
 
-    state.currentCustomer = res.customer;
+    // ไม่ซ้ำ — ยังไม่สร้างลูกค้าจริงตรงนี้ ชื่อ/เบอร์/LINE ค้างอยู่ใน state.visitDraft แล้ว
+    // รอสร้างจริงพร้อมกับ saveVisit() ตอนกด "บันทึกประวัติ" ที่ page 2 (กัน orphan customer ถ้า flow ไม่จบ)
     return true;
   }
 
@@ -215,28 +235,33 @@ export function initFormBrow() {
     const ok = await ensureCustomer();
     if (!ok) return;
 
+    clearFieldErrors();
     const draft = state.visitDraft;
-    const missing = [];
-    if (!draft.serviceDate || !draft.serviceTime) missing.push("วัน-เวลาเข้ารับบริการ");
-    if (!draft.hadBrowBefore) missing.push("เคยสักคิ้วมาก่อนหรือไม่");
-    if (!draft.skinType) missing.push("ประเภทผิว");
-    if (!draft.technique) missing.push("เทคนิคที่เลือก");
-    if (!draft.intensity) missing.push("ระดับความเข้มที่ต้องการ");
-    if (!draft.agree) missing.push("ยินยอมเข้ารับบริการ");
-    if (!pad || pad.isEmpty()) missing.push("ลายเซ็นลูกค้า");
-    if (missing.length) {
-      alert("กรุณากรอกให้ครบก่อนไปต่อ:\n- " + missing.join("\n- "));
-      return;
-    }
+    const dateEl = !draft.serviceDate ? flagError('[data-text-key="serviceDate"]') : null;
+    const timeEl = !draft.serviceTime ? flagError('[data-text-key="serviceTime"]') : null;
+    const hadBrowEl = !draft.hadBrowBefore ? flagError('[data-radio-key="hadBrowBefore"]') : null;
+    const skinTypeEl = !draft.skinType ? flagError('[data-chip-key="skinType"]') : null;
+    const techniqueEl = !draft.technique ? flagError('[data-chip-key="technique"]') : null;
+    const intensityEl = !draft.intensity ? flagError("#intensityOptions") : null;
+    const agreeEl = !draft.agree ? flagError('[data-radio-key="agree"]') : null;
+    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
+    // แคนวาสจะว่างเปล่าเพราะสร้างใหม่ทุกครั้ง — ไม่บังคับให้เซ็นซ้ำถ้ามีลายเซ็นเดิมอยู่แล้ว
+    const alreadySigned = Boolean(draft.signatureCustomerUrl);
+    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
+
+    const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
+    if (!noErrors) return;
 
     nextBtn.disabled = true;
-    const uploaded = await uploadImage(pad.toDataURL(), {
-      customerId: state.currentCustomer.customerId,
-      customerName: state.currentCustomer.name,
-      serviceType: state.serviceType,
-      filename: "signature_customer.png"
-    });
-    draft.signatureCustomerUrl = uploaded.url;
+    if (!pad.isEmpty()) {
+      const uploaded = await uploadImage(pad.toDataURL(), {
+        customerId: state.currentCustomer ? state.currentCustomer.customerId : null,
+        customerName: state.currentCustomer ? state.currentCustomer.name : draft.newCustomerName,
+        serviceType: state.serviceType,
+        filename: "signature_customer.png"
+      });
+      draft.signatureCustomerUrl = uploaded.url;
+    }
     draft.agreedAt = Date.now();
     nextBtn.disabled = false;
     show("techFields");

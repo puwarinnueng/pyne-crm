@@ -47,6 +47,13 @@ export async function listRecentCustomers(limit) {
   return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
 }
 
+export async function findCustomerByPhone(phone) {
+  await wait();
+  const normalized = normalizePhone(phone);
+  const { customers } = db.get();
+  return customers.find((c) => c.phoneNormalized === normalized) || null;
+}
+
 export async function createCustomer(data) {
   await wait();
   const database = db.get();

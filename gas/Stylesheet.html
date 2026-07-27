@@ -98,6 +98,11 @@ select.input { -webkit-appearance: none; appearance: none; }
 
 .error-text { color: var(--red-600); font-size: 12.5px; margin: -8px 0 10px; }
 
+/* กรอบแดงบนฟิลด์ที่ยังไม่ได้กรอก (ใช้แทน alert ตอนกดถัดไป/บันทึกแล้วข้อมูลไม่ครบ) */
+.field-error { border: 1.5px solid var(--red-600) !important; border-radius: 10px; }
+.field-error.radio-row, .field-error.choice-grid { padding: 8px; background: #fdf1f0; }
+input.field-error, textarea.field-error { background: #fdf1f0; }
+
 /* Topbar แบบมีค้นหา + เพิ่มลูกค้าอยู่ในแถบเดียวกัน (หน้า Home) */
 /* มือถือ: เรียงเป็นคอลัมน์ (ชื่อร้าน / ช่องค้นหา / ปุ่มเพิ่มลูกค้า) กันข้อความถูกบีบจนตัดคำ */
 .topbar-home { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
@@ -171,6 +176,7 @@ select.input { -webkit-appearance: none; appearance: none; }
 /* Multi-step form */
 .step-group { margin-bottom: 20px; }
 .step-group-title { font-size: 14px; font-weight: 700; color: var(--green-900); margin-bottom: 10px; }
+.required-star { color: var(--red-600); }
 .choice-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
   border: 1.5px solid var(--border); border-radius: 999px; padding: 8px 14px;

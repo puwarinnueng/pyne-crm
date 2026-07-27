@@ -1,6 +1,6 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { saveVisit, uploadImage } from "../mockApi.js";
+import { saveVisit, uploadImage, createCustomer } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl } from "../utils.js";
@@ -9,6 +9,7 @@ import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
 export function initTechFields() {
   const body = document.getElementById("techBody");
   const saveBtn = document.getElementById("techSaveBtn");
+  const backBtn = document.getElementById("techBackBtn");
 
   function photoSlot(key, label) {
     const url = state.visitDraft[key + "PhotoDataUrl"];
@@ -27,7 +28,7 @@ export function initTechFields() {
     const isTouchup = state.serviceType === "เติมสี";
     body.innerHTML = `
       <div class="step-group">
-        <div class="step-group-title">รูป Before / After *</div>
+        <div class="step-group-title">รูป Before / After <span class="required-star">*</span></div>
         <div class="photo-row">
           ${photoSlot("before", "Before")}
           ${photoSlot("after", "After")}
@@ -76,12 +77,36 @@ export function initTechFields() {
 
   bindFieldEvents(body, state.visitDraft, () => {});
 
+  backBtn.addEventListener("click", () => show("formBrow"));
+
   saveBtn.addEventListener("click", async () => {
-    if (!state.visitDraft.beforePhotoDataUrl || !state.visitDraft.afterPhotoDataUrl) {
-      alert("กรุณาถ่ายรูป Before และ After ให้ครบก่อนบันทึก");
+    body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+    const beforeEl = !state.visitDraft.beforePhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="before"]') : null;
+    const afterEl = !state.visitDraft.afterPhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="after"]') : null;
+    if (beforeEl) beforeEl.classList.add("field-error");
+    if (afterEl) afterEl.classList.add("field-error");
+    if (beforeEl || afterEl) {
+      (beforeEl || afterEl).scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     saveBtn.disabled = true;
+
+    // ลูกค้าใหม่ (สักคิ้วครั้งแรก) ยังไม่ถูกสร้างจริงจนถึงตอนนี้ — สร้างพร้อมกับบันทึกประวัติ
+    // เป็น atomic unit เดียวกัน กัน orphan customer ถ้า flow ไม่จบก่อนหน้านี้
+    if (!state.currentCustomer) {
+      const draft = state.visitDraft;
+      const res = await createCustomer({
+        name: (draft.newCustomerName || "").trim(),
+        phone: (draft.newCustomerPhone || "").trim(),
+        line: (draft.newCustomerLine || "").trim()
+      });
+      if (!res.success) {
+        alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
+        saveBtn.disabled = false;
+        return;
+      }
+      state.currentCustomer = res.customer;
+    }
 
     const photoMeta = {
       customerId: state.currentCustomer.customerId,
