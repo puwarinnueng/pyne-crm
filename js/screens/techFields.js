@@ -1,6 +1,6 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { saveVisit, uploadImage, createCustomer, ensureVisitFolder } from "../mockApi.js";
+import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
@@ -92,40 +92,21 @@ export function initTechFields() {
     saveBtn.disabled = true;
 
     const draft = state.visitDraft;
-    const isNewCustomer = !state.currentCustomer;
 
-    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทร (รู้ค่าได้ทันทีตั้งแต่ page 1) แทน customerId (ที่ต้องรอ
-    // สร้างลูกค้าเสร็จก่อนถึงจะรู้) เพื่อให้ "สร้างลูกค้า" กับ "หา/สร้าง visit folder" รันพร้อมกันได้เลย
+    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
+    if (!state.currentCustomer) { saveBtn.disabled = false; show("home"); return; }
+
+    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทรของลูกค้าปัจจุบัน
     const folderMeta = {
-      customerPhone: isNewCustomer ? (draft.newCustomerPhone || "").trim() : state.currentCustomer.phoneNormalized,
-      customerName: isNewCustomer ? (draft.newCustomerName || "").trim() : state.currentCustomer.name,
+      customerPhone: state.currentCustomer.phoneNormalized,
+      customerName: state.currentCustomer.name,
       serviceType: state.serviceType,
       visitKey: ensureVisitSessionKey(draft)
     };
 
-    const customerPromise = isNewCustomer
-      ? createCustomer({
-          name: (draft.newCustomerName || "").trim(),
-          phone: (draft.newCustomerPhone || "").trim(),
-          line: (draft.newCustomerLine || "").trim()
-        })
-      : Promise.resolve({ success: true, customer: state.currentCustomer });
-
     const hasSignature = Boolean(draft.signatureCustomerDataUrl);
 
-    // สร้างลูกค้า + หา/สร้าง visit folder พร้อมกันเลย (ไม่พึ่งกัน) — พอได้ folderId แน่นอนแล้วค่อย
-    // upload รูป/ลายเซ็นทั้งหมดแบบขนานเต็มที่ ไม่มี race เพราะไม่มีไฟล์ไหนต้องมาหา/สร้างโฟลเดอร์ซ้ำอีก
-    const [customerRes, folderRes] = await Promise.all([
-      customerPromise,
-      ensureVisitFolder(folderMeta)
-    ]);
-
-    if (!customerRes.success) {
-      alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
-      saveBtn.disabled = false;
-      return;
-    }
-    state.currentCustomer = customerRes.customer;
+    const folderRes = await ensureVisitFolder(folderMeta);
 
     const uploadMeta = { folderId: folderRes.folderId };
     const [beforeUp, afterUp, sigUp] = await Promise.all([

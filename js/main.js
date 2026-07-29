@@ -4,6 +4,7 @@ import { getCustomer } from "./mockApi.js";
 import { initShell } from "./shell.js";
 // import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
 import { initHome } from "./screens/home.js";
+import { initNewCustomer } from "./screens/newCustomer.js";
 import { initCustomerProfile } from "./screens/customerProfile.js";
 import { initVisitDetail } from "./screens/visitDetail.js";
 import { initServiceType } from "./screens/serviceType.js";
@@ -15,6 +16,7 @@ import { initConfirmation } from "./screens/confirmation.js";
 initShell();
 // initGate();
 initHome();
+initNewCustomer();
 initCustomerProfile();
 initVisitDetail();
 initServiceType();

@@ -4,6 +4,7 @@ import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { getHistoryByCustomer } from "../mockApi.js";
 import { formatDate, escapeHtml } from "../utils.js";
+import { openServiceTypeModal } from "./serviceType.js";
 
 export function initFormTouchup() {
   const prevBox = document.getElementById("touchupPrevVisit");
@@ -11,6 +12,12 @@ export function initFormTouchup() {
   const intensityEl = document.getElementById("tuIntensity");
   const priceEl = document.getElementById("tuPrice");
   const nextBtn = document.getElementById("tuNextBtn");
+  const backBtn = document.getElementById("touchupBackBtn");
+
+  backBtn.addEventListener("click", () => {
+    show(state.currentCustomer ? "customerProfile" : "home");
+    openServiceTypeModal();
+  });
 
   nextBtn.addEventListener("click", () => {
     state.visitDraft.adjustFromLast = adjustEl.value.trim();

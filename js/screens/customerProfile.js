@@ -2,6 +2,7 @@ import { getHistoryByCustomer } from "../mockApi.js";
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { formatDate, escapeHtml } from "../utils.js";
+import { openServiceTypeModal } from "./serviceType.js";
 
 export function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
@@ -11,7 +12,7 @@ export function initCustomerProfile() {
   addVisitBtn.addEventListener("click", () => {
     state.resetVisitDraft();
     state.serviceType = null;
-    show("serviceType");
+    openServiceTypeModal();
   });
 
   onEnter("customerProfile", async () => {

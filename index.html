@@ -16,13 +16,20 @@
       <img src="assets/pyne-logo.png" alt="Pyne Studio" class="logo-img">
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="sidebar-nav-item active" data-nav="home">
+      <a href="#" class="sidebar-nav-item active" data-nav="home" aria-label="Customers" title="Customers">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Customers</span>
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div class="sidebar-copyright">© 2026 Pyne Studio</div>
+      <div class="sidebar-user">
+        <span class="sidebar-user-avatar">P</span>
+        <span class="sidebar-user-meta">
+          <span class="sidebar-user-name">Pyne Studio</span>
+          <span class="sidebar-user-role">Admin</span>
+        </span>
+        <svg class="sidebar-user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
     </div>
   </aside>
 
@@ -37,8 +44,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <nav class="mobile-dropdown" id="mobileDropdown" hidden>
+        <div class="mobile-menu-head">
+          <span class="mobile-menu-title">Menu</span>
+          <button class="mobile-menu-close" id="mobileMenuClose" type="button" aria-label="Close menu">×</button>
+        </div>
         <a href="#" class="mobile-dropdown-item active" data-nav="home">Customers</a>
       </nav>
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay" hidden></div>
     </header>
 
     <div id="app">
@@ -58,31 +70,35 @@
 
       <!-- ===================== 2. HOME / CUSTOMERS ===================== -->
       <section class="screen" id="screen-home">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Customers</h1>
+            <p class="page-subtitle">Manage your client database</p>
+          </div>
+        </header>
+
         <div class="customers-page">
-          <div class="customers-header">
-            <div>
-              <h1 class="page-title">Customers</h1>
-              <p class="page-subtitle">Manage your client database.</p>
+          <div class="toolbar-row">
+            <div class="search-bar-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="searchInput" class="input search-input" placeholder="Search by name, phone, or LINE...">
             </div>
             <button class="btn btn-primary" id="newCustomerBtn">+ New Customer</button>
           </div>
 
-          <div class="search-bar-wrap">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchInput" class="input search-input" placeholder="Search by name, phone, or LINE...">
-          </div>
+          <div class="customers-summary" id="customersSummary"></div>
 
           <div class="customers-table-card">
             <div class="table-scroll">
               <table class="customers-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
+                    <th>Customer</th>
                     <th>Phone</th>
-                    <th>Visits</th>
+                    <th>Line</th>
                     <th>Last Visit</th>
-                    <th>Technique</th>
-                    <th></th>
+                    <th>Visits</th>
+                    <th>Tag</th>
                   </tr>
                 </thead>
                 <tbody id="customersTableBody"></tbody>
@@ -93,12 +109,30 @@
         </div>
       </section>
 
+  <!-- ===================== 3. NEW CUSTOMER (สร้างลูกค้าใหม่) ===================== -->
+  <section class="screen" id="screen-newCustomer">
+    <header class="topbar">
+      <button class="back-link" id="newCustomerBackBtn">‹ กลับ</button>
+      <h2 class="topbar-title">สร้างลูกค้าใหม่</h2>
+    </header>
+    <div class="page-pad">
+      <p class="choose-lead">กรอกข้อมูลลูกค้าเพื่อบันทึกเข้าฐานข้อมูล แล้วจึงเลือกบริการ</p>
+      <label class="field-label">ชื่อเล่น <span class="required-star">*</span></label>
+      <input type="text" id="ncName" class="input" placeholder="เช่น มายด์" autocomplete="off">
+      <label class="field-label">เบอร์โทร <span class="required-star">*</span></label>
+      <input type="tel" id="ncPhone" class="input" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="off">
+      <label class="field-label">ชื่อ LINE</label>
+      <input type="text" id="ncLine" class="input" placeholder="ไม่บังคับ" autocomplete="off">
+      <div id="ncWarning"></div>
+      <button class="btn btn-primary btn-block" id="ncCreateBtn" style="margin-top:10px">สร้างลูกค้า</button>
+    </div>
+  </section>
+
   <!-- ===================== 4. CUSTOMER PROFILE ===================== -->
   <section class="screen" id="screen-customerProfile">
     <header class="topbar">
-      <button class="icon-btn" data-back="home">‹ กลับ</button>
-      <div class="topbar-title">ประวัติลูกค้า</div>
-      <div style="width:44px"></div>
+      <button class="back-link" data-back="home">‹ กลับ</button>
+      <h2 class="topbar-title">ประวัติลูกค้า</h2>
     </header>
     <div class="page-pad">
       <div class="profile-card" id="profileCard"></div>
@@ -111,32 +145,48 @@
   <!-- ===================== 4b. VISIT DETAIL (อ่านอย่างเดียว แก้ไขไม่ได้) ===================== -->
   <section class="screen" id="screen-visitDetail">
     <header class="topbar">
-      <button class="icon-btn" data-back="customerProfile">‹ กลับ</button>
-      <div class="topbar-title">รายละเอียดประวัติ</div>
-      <div style="width:44px"></div>
+      <button class="back-link" data-back="customerProfile">‹ กลับ</button>
+      <h2 class="topbar-title">รายละเอียดประวัติ</h2>
     </header>
     <div class="page-pad" id="visitDetailBody"></div>
   </section>
 
-  <!-- ===================== 5. SERVICE TYPE ===================== -->
-  <section class="screen" id="screen-serviceType">
-    <header class="topbar">
-      <button class="icon-btn" id="serviceTypeBackBtn">‹ กลับ</button>
-      <div class="topbar-title">เลือกประเภทบริการ</div>
-      <div style="width:44px"></div>
-    </header>
-    <div class="page-pad center-col">
-      <button class="btn btn-primary btn-block btn-tall" id="chooseBrowBtn">สักคิ้ว<span class="btn-sub">คอนเซ้าครั้งแรก / เต็มรูปแบบ</span></button>
-      <button class="btn btn-secondary btn-block btn-tall" id="chooseTouchupBtn">เติมสี<span class="btn-sub">สำหรับลูกค้าเก่าที่กลับมา</span></button>
+  <!-- ===================== 5. SERVICE TYPE (glass modal) ===================== -->
+  <div class="modal-overlay" id="serviceTypeModal" hidden>
+    <div class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="serviceTypeModalTitle">
+      <button class="glass-modal-close" id="serviceTypeCloseBtn" type="button" aria-label="ปิด">×</button>
+      <h2 class="glass-modal-title" id="serviceTypeModalTitle">เลือกประเภทบริการ</h2>
+      <p class="glass-modal-sub">เลือกประเภทบริการที่ต้องการบันทึกให้ลูกค้า</p>
+      <div class="service-choices">
+        <button class="service-card" id="chooseBrowBtn">
+          <span class="service-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </span>
+          <span class="service-card-text">
+            <span class="service-card-title">สักคิ้ว</span>
+            <span class="service-card-sub">คอนเซ้าครั้งแรก / เต็มรูปแบบ</span>
+          </span>
+          <span class="service-card-arrow">›</span>
+        </button>
+        <button class="service-card" id="chooseTouchupBtn">
+          <span class="service-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </span>
+          <span class="service-card-text">
+            <span class="service-card-title">เติมสี</span>
+            <span class="service-card-sub">สำหรับลูกค้าเก่าที่กลับมา</span>
+          </span>
+          <span class="service-card-arrow">›</span>
+        </button>
+      </div>
     </div>
-  </section>
+  </div>
 
   <!-- ===================== 6. FORM สักคิ้ว — หน้า 1: ข้อมูล + เงื่อนไข + เซ็นลูกค้า ===================== -->
   <section class="screen" id="screen-formBrow">
     <header class="topbar">
-      <button class="icon-btn" id="browBackBtn">‹ กลับ</button>
-      <div class="topbar-title">แบบฟอร์มให้คำปรึกษา (1/2)</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="browBackBtn">‹ กลับ</button>
+      <h2 class="topbar-title">แบบฟอร์มให้คำปรึกษา (1/2)</h2>
     </header>
     <div class="page-pad" id="browBody"></div>
     <footer class="footer-actions">
@@ -147,9 +197,8 @@
   <!-- ===================== 7. FORM เติมสี (draft) ===================== -->
   <section class="screen" id="screen-formTouchup">
     <header class="topbar">
-      <button class="icon-btn" data-back="serviceType">‹ กลับ</button>
-      <div class="topbar-title">ฟอร์มเติมสี</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="touchupBackBtn">‹ กลับ</button>
+      <h2 class="topbar-title">ฟอร์มเติมสี</h2>
     </header>
     <div class="page-pad">
       <p class="draft-badge">ร่าง — รอยืนยันฟิลด์ฉบับสมบูรณ์จากร้าน</p>
@@ -177,9 +226,8 @@
   <!-- ===================== 8. TECH FIELDS + PHOTOS — หน้า 2 ===================== -->
   <section class="screen" id="screen-techFields">
     <header class="topbar">
-      <button class="icon-btn" id="techBackBtn">‹ กลับ</button>
-      <div class="topbar-title">ขั้นตอนช่าง (2/2)</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="techBackBtn">‹ กลับ</button>
+      <h2 class="topbar-title">ขั้นตอนช่าง (2/2)</h2>
     </header>
     <div class="page-pad" id="techBody"></div>
     <footer class="footer-actions">

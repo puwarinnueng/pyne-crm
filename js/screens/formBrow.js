@@ -1,18 +1,17 @@
 // formBrow.js — ฟอร์มคอนเซ้าต์ "สักคิ้ว" หน้าเดียวยาว (Page 1 ตาม Jotform ต้นฉบับ)
-// รวมชื่อ/เบอร์โทร/LINE ลูกค้า + ทุกฟิลด์ + consent 4 บล็อก + เลือกความเข้ม + ยินยอม (radio ตัวเลือกเดียว) + เซ็นชื่อลูกค้า
+// ทุกฟิลด์ + consent 4 บล็อก + เลือกความเข้ม + ยินยอม (radio ตัวเลือกเดียว) + เซ็นชื่อลูกค้า
 // จบด้วยปุ่ม "ถัดไป" เดียว ไปหน้า techFields (Page 2)
 //
-// กรณีลูกค้าใหม่ (state.currentCustomer ยังไม่มี — มาจาก home > "+ ลูกค้าใหม่" > เลือกประเภทบริการ):
-// ช่วงบนสุดของฟอร์มจะถามชื่อ/เบอร์โทร/LINE แทนกล่องแสดงชื่อลูกค้าเดิม ตรงตามโครงสร้าง Jotform จริง
-// (Jotform ถามชื่อ+เบอร์เป็นส่วนหนึ่งของฟอร์มเดียวกัน ไม่ใช่หน้าแยกก่อนเลือกบริการ)
+// flow: ลูกค้า (ทั้งใหม่/เก่า) ถูกสร้าง/เลือกเข้าฐานข้อมูลก่อนเข้าฟอร์มนี้เสมอ
+// (จากหน้า newCustomer หรือ customerProfile) — ฟอร์มนี้จึงแสดงแค่ชื่อลูกค้าปัจจุบัน ไม่ถามชื่อ/เบอร์ซ้ำ
 
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { OPTIONS } from "../data/options.js";
 import { CONSENT_BLOCKS, INTENSITY_OPTIONS, AGREEMENT_TEXT } from "../data/consentText.js";
+import { openServiceTypeModal } from "./serviceType.js";
 import { radioField, chipGroup, textField, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { findCustomerByPhone } from "../mockApi.js";
 import { escapeHtml } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -32,27 +31,8 @@ export function initFormBrow() {
   let pad = null;
 
   function customerInfoHtml() {
-    const draft = state.visitDraft;
     const c = state.currentCustomer;
-    if (c) {
-      return `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>`;
-    }
-    return `
-      <div class="step-group-title">ชื่อเล่น <span class="required-star">*</span></div>
-      <!-- placeholder="เช่น มายด์" -->
-      <input type="text" class="input" data-text-key="newCustomerName" value="${escapeHtml(draft.newCustomerName || "")}">
-      <div class="step-group-title">เบอร์โทร <span class="required-star">*</span></div>
-      <!-- placeholder="08x-xxx-xxxx" -->
-      <input type="tel" class="input" data-text-key="newCustomerPhone" value="${escapeHtml(draft.newCustomerPhone || "")}">
-      <div class="step-group-title">ชื่อ LINE</div>
-      <!-- placeholder="ไม่บังคับ" -->
-      <input type="text" class="input" data-text-key="newCustomerLine" value="${escapeHtml(draft.newCustomerLine || "")}">
-      <div id="newCustomerWarning"></div>
-    `;
-  }
-
-  function renderCustomerInfoBlock() {
-    document.getElementById("customerInfoBlock").innerHTML = customerInfoHtml();
+    return c ? `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>` : "";
   }
 
   function render() {
@@ -195,45 +175,9 @@ export function initFormBrow() {
     return !first;
   }
 
-  async function ensureCustomer() {
-    if (state.currentCustomer) return true;
-    const draft = state.visitDraft;
-    const name = (draft.newCustomerName || "").trim();
-    const phone = (draft.newCustomerPhone || "").trim();
-    if (!name || !phone) {
-      const nameEl = !name ? flagError('[data-text-key="newCustomerName"]') : null;
-      const phoneEl = !phone ? flagError('[data-text-key="newCustomerPhone"]') : null;
-      scrollToFirstError(nameEl, phoneEl);
-      return false;
-    }
-
-    nextBtn.disabled = true;
-    const existing = await findCustomerByPhone(phone);
-    nextBtn.disabled = false;
-
-    if (existing) {
-      const warningEl = document.getElementById("newCustomerWarning");
-      warningEl.innerHTML = `
-        <div class="dup-warning">
-          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
-          กรุณาใช้ลูกค้าเดิมแทนการสร้างใหม่
-          <br><button class="btn btn-primary" id="dupUseExistingBtn" type="button" style="margin-top:8px">ใช้ลูกค้าคนนี้ แล้วกรอกต่อ</button>
-        </div>`;
-      document.getElementById("dupUseExistingBtn").addEventListener("click", () => {
-        state.currentCustomer = existing;
-        renderCustomerInfoBlock();
-      });
-      return false;
-    }
-
-    // ไม่ซ้ำ — ยังไม่สร้างลูกค้าจริงตรงนี้ ชื่อ/เบอร์/LINE ค้างอยู่ใน state.visitDraft แล้ว
-    // รอสร้างจริงพร้อมกับ saveVisit() ตอนกด "บันทึกประวัติ" ที่ page 2 (กัน orphan customer ถ้า flow ไม่จบ)
-    return true;
-  }
-
   nextBtn.addEventListener("click", async () => {
-    const ok = await ensureCustomer();
-    if (!ok) return;
+    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
+    if (!state.currentCustomer) { show("home"); return; }
 
     clearFieldErrors();
     const draft = state.visitDraft;
@@ -252,9 +196,8 @@ export function initFormBrow() {
     const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
     if (!noErrors) return;
 
-    // เก็บแค่ dataURL ดิบไว้ก่อน ยังไม่ upload ตรงนี้ — เพราะตอนนี้ (ลูกค้าใหม่) ยังไม่มี customerId จริง
-    // (สร้างจริงตอนกด "บันทึกประวัติ" ที่ page 2) ถ้า upload ตอนนี้จะได้ customerId เป็น "unknown"
-    // ทำให้ลายเซ็นตกไปอยู่คนละ customer folder กับรูปก่อน-หลัง จึง upload พร้อมกันที่ page 2 แทน
+    // เก็บลายเซ็นเป็น dataURL ดิบไว้ใน draft ก่อน แล้วค่อย upload รวมกับรูป before/after
+    // ที่หน้า techFields (page 2) ทีเดียว เพื่อให้ทุกไฟล์ของ visit นี้ลงโฟลเดอร์เดียวกัน
     if (!pad.isEmpty()) {
       draft.signatureCustomerDataUrl = pad.toDataURL();
     }
@@ -262,7 +205,10 @@ export function initFormBrow() {
     show("techFields");
   });
 
-  backBtn.addEventListener("click", () => show("serviceType"));
+  backBtn.addEventListener("click", () => {
+    show(state.currentCustomer ? "customerProfile" : "home");
+    openServiceTypeModal();
+  });
 
   onEnter("formBrow", render);
 }
