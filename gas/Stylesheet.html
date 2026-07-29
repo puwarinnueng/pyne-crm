@@ -1,4 +1,6 @@
 <style>
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Dancing+Script:wght@600&display=swap");
+
 :root {
   --green-900: #6b4a30;
   --green-700: #8a6142;
@@ -11,6 +13,11 @@
   --radius: 12px;
   --cream: #eeece0;
   --ink: #2c3345;
+
+  --bg-page: #f6f3ec;
+  --bg-white: #ffffff;
+  --sidebar-w: 250px;
+  --mobile-topbar-h: 58px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -18,30 +25,101 @@
 html, body {
   margin: 0; padding: 0; height: 100%;
   font-family: "Sarabun", "Thonburi", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--cream);
+  background: var(--bg-page);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
 
-#app { max-width: 720px; margin: 0 auto; min-height: 100%; background: var(--cream); position: relative; }
+#app { min-height: 100%; background: var(--bg-page); position: relative; }
 
-/* จอกว้าง (แท็บเล็ต/เดสก์ท็อป): ขยายเป็นการ์ดกึ่งกลางแทนแถบแคบชิดซ้าย */
+/* จอกว้าง (แท็บเล็ต/เดสก์ท็อป): topbar ของหน้าย่อย (profile/forms) ชิดขอบบนสุดของ main-area ได้เลย เพราะ mobile topbar ถูกซ่อนไปแล้ว */
 @media (min-width: 860px) {
-  html, body { background: var(--green-50); }
-  #app {
-    max-width: 860px; margin: 24px auto; min-height: calc(100% - 48px);
-    border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(43,30,15,.12);
-    border: 1px solid var(--border);
-  }
-  .screen { min-height: calc(100vh - 48px); }
-  .topbar, .footer-actions { border-radius: 0; }
   .topbar { top: 0; }
   .page-pad { max-width: 640px; margin: 0 auto; width: 100%; }
   .page-pad.center-col { max-width: 480px; }
 }
 
+/* จอแคบ: topbar ของหน้าย่อยต้องอยู่ใต้ mobile topbar ที่ sticky ค้างอยู่บนสุดแล้ว ไม่งั้นซ้อนทับกัน */
+@media (max-width: 859px) {
+  .topbar { top: var(--mobile-topbar-h); }
+}
+
 .screen { display: none; min-height: 100vh; flex-direction: column; }
 .screen.active { display: flex; }
+
+/* ===================== App shell: sidebar (desktop) + mobile topbar/hamburger ===================== */
+.app-shell { display: flex; min-height: 100vh; background: var(--bg-page); }
+
+.logo-pyne {
+  font-family: "Playfair Display", Georgia, serif;
+  font-style: italic; font-weight: 600; font-size: 26px; color: var(--green-900);
+  display: block; line-height: 1;
+}
+.logo-studio {
+  font-family: "Dancing Script", cursive;
+  font-size: 17px; color: var(--green-700);
+  display: block; margin-top: 2px; margin-left: 2px;
+}
+
+.sidebar {
+  width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+  background: var(--bg-white); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 24px 18px;
+  position: sticky; top: 0; height: 100vh;
+}
+.sidebar-logo {
+  margin: -4px -18px 18px; padding: 18px 14px 16px;
+  border-bottom: 1px solid var(--border); text-align: center;
+}
+.sidebar-logo .logo-pyne { font-size: 54px; line-height: .85; }
+.sidebar-logo .logo-studio {
+  font-size: 24px; display: block; margin: -8px 0 0 auto; width: fit-content;
+  margin-right: 14%;
+}
+.sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.sidebar-nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  border-radius: 10px; color: var(--ink); text-decoration: none;
+  font-size: 14.5px; font-weight: 600; transition: background .15s, color .15s;
+}
+.sidebar-nav-item:hover { background: var(--bg-page); }
+.sidebar-nav-item.active { background: var(--green-900); color: #fff; }
+.sidebar-nav-item .nav-icon { width: 19px; height: 19px; flex-shrink: 0; }
+.sidebar-footer { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.sidebar-copyright { font-size: 11.5px; color: #9a978c; padding: 10px 14px 0; }
+
+.main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.mobile-topbar {
+  display: none; align-items: center; justify-content: space-between;
+  height: var(--mobile-topbar-h); padding: 0 16px; background: var(--bg-white);
+  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
+}
+.mobile-logo { display: flex; align-items: baseline; gap: 6px; }
+.mobile-logo .logo-pyne { font-size: 21px; }
+.mobile-logo .logo-studio { font-size: 14px; }
+.hamburger-btn {
+  background: none; border: none; color: var(--green-900); padding: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.hamburger-btn svg { width: 24px; height: 24px; }
+.mobile-dropdown {
+  position: absolute; top: 100%; right: 12px; margin-top: 6px; width: 190px;
+  background: var(--bg-white); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(43,30,15,.15); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.mobile-dropdown[hidden] { display: none; }
+.mobile-dropdown-item {
+  display: block; padding: 10px 12px; border-radius: 8px; color: var(--ink);
+  text-decoration: none; font-size: 14px; font-weight: 600;
+}
+.mobile-dropdown-item.active { background: var(--green-900); color: #fff; }
+.mobile-dropdown-item:not(.active):hover { background: var(--bg-page); }
+
+@media (max-width: 859px) {
+  .sidebar { display: none; }
+  .mobile-topbar { display: flex; }
+}
 
 .page-pad { padding: 18px 20px 100px; flex: 1; }
 .center-col { display: flex; flex-direction: column; justify-content: center; gap: 16px; min-height: 60vh; }
@@ -103,42 +181,48 @@ select.input { -webkit-appearance: none; appearance: none; }
 .field-error.radio-row, .field-error.choice-grid { padding: 8px; background: #fdf1f0; }
 input.field-error, textarea.field-error { background: #fdf1f0; }
 
-/* Topbar แบบมีค้นหา + เพิ่มลูกค้าอยู่ในแถบเดียวกัน (หน้า Home) */
-/* มือถือ: เรียงเป็นคอลัมน์ (ชื่อร้าน / ช่องค้นหา / ปุ่มเพิ่มลูกค้า) กันข้อความถูกบีบจนตัดคำ */
-.topbar-home { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
-.topbar-home .topbar-title { white-space: nowrap; }
-.topbar-search { display: flex; gap: 8px; width: 100%; }
-.input-topbar { margin: 0; flex: 1; min-width: 0; }
-.btn-topbar { background: #fff; color: var(--green-900); flex: 0 0 auto; padding: 10px 16px; font-size: 14px; white-space: nowrap; }
-.btn-topbar-outline {
-  background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.7);
-  padding: 10px 16px; font-size: 14px; width: 100%; white-space: nowrap;
+/* ===================== Customers page (dashboard-style list) ===================== */
+.customers-page { padding: 28px 32px 60px; max-width: 1180px; }
+
+.customers-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 22px;
+}
+.page-title { font-family: "Playfair Display", Georgia, serif; font-size: 30px; font-weight: 600; color: var(--ink); margin: 0; }
+.page-subtitle { color: var(--gray-500); font-size: 14px; margin: 4px 0 0; }
+
+.search-bar-wrap { position: relative; margin-bottom: 20px; }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--gray-500); pointer-events: none; }
+.search-input { margin: 0; padding-left: 42px; }
+
+.customers-table-card {
+  background: var(--bg-white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+}
+.table-scroll { overflow-x: auto; }
+.customers-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.customers-table thead th {
+  text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--gray-500); background: var(--bg-page); padding: 14px 20px; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.customers-table tbody td { padding: 16px 20px; border-bottom: 1px solid #f0ede3; font-size: 14px; color: var(--ink); white-space: nowrap; }
+.customers-table tbody tr:last-child td { border-bottom: none; }
+.customers-table tbody tr:hover { background: var(--bg-page); }
+.cell-name { font-weight: 700; white-space: nowrap; }
+.btn-link-view {
+  background: none; border: 1.5px solid var(--border); color: var(--green-900); font-weight: 600;
+  font-size: 13px; padding: 7px 14px; border-radius: 8px; cursor: pointer; font-family: inherit;
+}
+.btn-link-view:hover { background: var(--bg-page); }
+.customers-table-card .empty-hint { padding: 40px 20px; }
+
+@media (max-width: 640px) {
+  .customers-page { padding: 20px 16px 60px; }
+  .customers-header { flex-direction: column; align-items: stretch; }
+  .customers-header .btn { width: 100%; }
 }
 
-/* จอกว้างขึ้น: เรียงแถวเดียวกันได้พอดี ไม่ต้องขึ้นบรรทัดใหม่ */
-@media (min-width: 640px) {
-  .topbar-home { flex-direction: row; align-items: center; }
-  .topbar-search { flex: 1 1 auto; }
-  .btn-topbar-outline { width: auto; }
-}
-
-/* Search / results */
-.result-list {
-  margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 10px;
-}
-.result-item {
-  border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;
-  display: flex; justify-content: space-between; align-items: center; cursor: pointer;
-  background: #fff;
-}
-.result-item:active { background: var(--green-50); }
-.result-name { font-weight: 600; }
-.result-meta { font-size: 12px; color: #667; margin-top: 2px; }
-.empty-hint { text-align: center; color: #999; padding: 30px 10px; font-size: 13.5px; grid-column: 1 / -1; }
-
-@media (min-width: 640px) {
-  .result-list { grid-template-columns: repeat(2, 1fr); }
-}
+.empty-hint { text-align: center; color: #999; padding: 30px 10px; font-size: 13.5px; }
 
 /* Profile */
 .profile-card {

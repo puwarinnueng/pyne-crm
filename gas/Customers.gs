@@ -62,6 +62,27 @@ function findCustomerByPhone(phone) {
   return existing ? rowToCustomer_(existing) : null;
 }
 
+// รายชื่อลูกค้าทั้งหมด พร้อมสถิติที่ join จากแท็บ ServiceHistory (จำนวนครั้ง, วันที่ล่าสุด, เทคนิคล่าสุด)
+// ใช้แสดงในตาราง Customers — ต้องคืนรูปแบบเดียวกับ js/mockApi.js:listCustomersWithStats() ทุกฟิลด์
+function listCustomersWithStats() {
+  const customers = sheetToObjects_(getCustomersSheet_()).map(rowToCustomer_);
+  const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
+
+  return customers
+    .map((c) => {
+      const visits = history
+        .filter((v) => v.customerId === c.customerId)
+        .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+      const lastVisit = visits[0] || null;
+      return Object.assign({}, c, {
+        visitsCount: visits.length,
+        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-"
+      });
+    })
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
 function createCustomer(data) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);

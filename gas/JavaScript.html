@@ -8,6 +8,14 @@ function formatDate(ts) {
   return `${d.getDate()} ${months[d.getMonth()]} ${buddhistYear}`;
 }
 
+// วันที่แบบสั้น YYYY-MM-DD ใช้ในตาราง Customers (ตรงตามสไตล์ตัวอย่างที่ร้านส่งมา)
+function formatDateShort(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -189,6 +197,42 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ==== js/shell.js ====
+function initShell() {
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const dropdown = document.getElementById("mobileDropdown");
+
+  function closeDropdown() {
+    dropdown.hidden = true;
+    hamburgerBtn.setAttribute("aria-expanded", "false");
+  }
+
+  hamburgerBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = dropdown.hidden;
+    dropdown.hidden = !willOpen;
+    hamburgerBtn.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!dropdown.hidden && !dropdown.contains(e.target) && e.target !== hamburgerBtn) {
+      closeDropdown();
+    }
+  });
+
+  dropdown.querySelectorAll(".mobile-dropdown-item").forEach((item) => {
+    item.addEventListener("click", closeDropdown);
+  });
+
+  // ลิงก์เมนู (sidebar เดสก์ท็อป + dropdown มือถือ) ที่มี data-nav ให้พาไปหน้านั้นจริง ๆ
+  document.querySelectorAll("[data-nav]").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      show(link.dataset.nav);
+    });
+  });
+}
+
 // ==== js/signaturePad.js ====
 // signaturePad.js — canvas เซ็นชื่อแบบง่าย รองรับ touch/pen บน iPad Safari
 
@@ -344,6 +388,15 @@ function bindFieldEvents(container, draft, onChange) {
 
 // ==== Server API bridge (แทนที่ js/mockApi.js) ====
 // ห่อ google.script.run ให้เรียกแบบ Promise เหมือน mockApi.js เดิม ชื่อฟังก์ชันตรงกันทุกตัว
+// normalizePhone เป็น utility ล้วน ๆ (ไม่ต้องยิงเซิร์ฟเวอร์) — คัดลอกมาจาก js/mockApi.js ตรงตัว
+// เพราะฝั่ง client (gas/JavaScript.html) กับฝั่ง server (gas/*.gs) เป็นคนละ scope กันโดยสิ้นเชิงใน Apps Script
+function normalizePhone(phone) {
+  if (!phone) return "";
+  let p = String(phone).replace(/[^\d+]/g, "");
+  if (p.startsWith("+66")) p = "0" + p.slice(3);
+  else if (p.startsWith("66") && p.length > 9) p = "0" + p.slice(2);
+  return p;
+}
 function callServer_(name, ...args) {
   return new Promise((resolve, reject) => {
     google.script.run
@@ -355,6 +408,7 @@ function callServer_(name, ...args) {
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
+function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
 function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
@@ -397,62 +451,70 @@ function initGate() {
 
 // ==== js/screens/home.js ====
 function initHome() {
-  const input = document.getElementById("searchInput");
-  const btn = document.getElementById("searchBtn");
-  const resultsTitleEl = document.getElementById("searchResultsTitle");
-  const resultsEl = document.getElementById("searchResults");
+  const tbody = document.getElementById("customersTableBody");
+  const tableCard = document.getElementById("customersTableBody").closest(".customers-table-card");
+  const table = tableCard.querySelector("table");
+  const emptyState = document.getElementById("customersEmptyState");
+  const searchInput = document.getElementById("searchInput");
   const newCustomerBtn = document.getElementById("newCustomerBtn");
 
-  function renderList(results) {
-    if (results.length === 0) {
-      resultsEl.innerHTML = `<div class="empty-hint">ยังไม่มีลูกค้าในระบบ<br>กด "+ ลูกค้าใหม่" เพื่อเพิ่มได้เลย</div>`;
+  let allCustomers = [];
+
+  function render() {
+    const q = searchInput.value.trim().toLowerCase();
+    const qPhone = normalizePhone(searchInput.value);
+
+    let rows = allCustomers;
+    if (q) {
+      rows = rows.filter((c) => {
+        const nameHit = c.name.toLowerCase().includes(q);
+        const lineHit = (c.line || "").toLowerCase().includes(q);
+        const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
+        return nameHit || lineHit || phoneHit;
+      });
+    }
+
+    if (rows.length === 0) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = allCustomers.length === 0
+        ? `No customers yet — click "+ New Customer" to add one.`
+        : `No customers match "${escapeHtml(searchInput.value.trim())}".`;
       return;
     }
-    resultsEl.innerHTML = results.map((c) => `
-      <div class="result-item" data-id="${c.customerId}">
-        <div>
-          <div class="result-name">${escapeHtml(c.name)}</div>
-          <div class="result-meta">${escapeHtml(c.phoneDisplay)}${c.line ? " · LINE: " + escapeHtml(c.line) : ""}</div>
-        </div>
-        <div>›</div>
-      </div>
+    table.hidden = false;
+    emptyState.hidden = true;
+
+    tbody.innerHTML = rows.map((c) => `
+      <tr data-id="${c.customerId}">
+        <td class="cell-name">${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.phoneDisplay)}</td>
+        <td>${c.visitsCount}</td>
+        <td>${c.visitsCount === 0 ? "New customer" : formatDateShort(c.lastVisitDate)}</td>
+        <td>${escapeHtml(c.lastTechnique)}</td>
+        <td class="cell-actions"><button class="btn-link-view" type="button">View Profile</button></td>
+      </tr>
     `).join("");
 
-    resultsEl.querySelectorAll(".result-item").forEach((el) => {
-      el.addEventListener("click", () => {
-        const customer = results.find((c) => c.customerId === el.dataset.id);
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const customer = rows.find((c) => c.customerId === tr.dataset.id);
         state.currentCustomer = customer;
         show("customerProfile");
       });
     });
   }
 
-  async function showRecent() {
-    resultsTitleEl.textContent = "ลูกค้าล่าสุด";
-    resultsEl.innerHTML = `<div class="empty-hint">กำลังโหลด...</div>`;
-    const results = await listRecentCustomers(10);
-    renderList(results);
+  async function loadCustomers() {
+    table.hidden = true;
+    emptyState.hidden = false;
+    emptyState.textContent = "Loading...";
+    allCustomers = await listCustomersWithStats();
+    render();
   }
 
-  async function runSearch() {
-    const q = input.value.trim();
-    if (!q) {
-      await showRecent();
-      return;
-    }
-    resultsTitleEl.textContent = `ผลการค้นหา "${q}"`;
-    resultsEl.innerHTML = `<div class="empty-hint">กำลังค้นหา...</div>`;
-    const results = await searchCustomers(q);
-    if (results.length === 0) {
-      resultsEl.innerHTML = `<div class="empty-hint">ไม่พบลูกค้าที่ตรงกับ "${escapeHtml(q)}"<br>กด "+ ลูกค้าใหม่" เพื่อเพิ่มได้เลย</div>`;
-      return;
-    }
-    renderList(results);
-  }
+  searchInput.addEventListener("input", render);
 
-  btn.addEventListener("click", runSearch);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
-  input.addEventListener("input", () => { if (!input.value.trim()) showRecent(); });
   newCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: เลือกประเภทบริการก่อน แล้วค่อยกรอกชื่อ/เบอร์โทร/LINE ในฟอร์มหน้า 1 เลย (ตาม Jotform จริง)
     state.currentCustomer = null;
@@ -462,8 +524,8 @@ function initHome() {
   });
 
   onEnter("home", () => {
-    input.value = "";
-    showRecent();
+    searchInput.value = "";
+    loadCustomers();
   });
 }
 
@@ -1150,6 +1212,7 @@ function initConfirmation() {
 
 
 
+initShell();
 // initGate();
 initHome();
 initCustomerProfile();

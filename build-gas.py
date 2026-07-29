@@ -22,6 +22,7 @@ JS_ORDER = [
     "js/data/techSignature.js",
     "js/state.js",
     "js/router.js",
+    "js/shell.js",
     "js/signaturePad.js",
     "js/fieldHelpers.js",
     "__BRIDGE__",
@@ -39,6 +40,15 @@ JS_ORDER = [
 
 BRIDGE = '''// ==== Server API bridge (แทนที่ js/mockApi.js) ====
 // ห่อ google.script.run ให้เรียกแบบ Promise เหมือน mockApi.js เดิม ชื่อฟังก์ชันตรงกันทุกตัว
+// normalizePhone เป็น utility ล้วน ๆ (ไม่ต้องยิงเซิร์ฟเวอร์) — คัดลอกมาจาก js/mockApi.js ตรงตัว
+// เพราะฝั่ง client (gas/JavaScript.html) กับฝั่ง server (gas/*.gs) เป็นคนละ scope กันโดยสิ้นเชิงใน Apps Script
+function normalizePhone(phone) {
+  if (!phone) return "";
+  let p = String(phone).replace(/[^\\d+]/g, "");
+  if (p.startsWith("+66")) p = "0" + p.slice(3);
+  else if (p.startsWith("66") && p.length > 9) p = "0" + p.slice(2);
+  return p;
+}
 function callServer_(name, ...args) {
   return new Promise((resolve, reject) => {
     google.script.run
@@ -50,6 +60,7 @@ function callServer_(name, ...args) {
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
+function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
 function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
