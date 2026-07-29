@@ -204,6 +204,62 @@
   </div>
 </div>
 
+<!-- ===================== DEV-ONLY: seed localStorage ด้วยลูกค้า mock 10 คน =====================
+     เปิด index.html?seedDemo=1 แล้วรีเฟรชได้เลย ไม่ต้องเปิด console — ไฟล์นี้อยู่แค่ index.html ฝั่ง local
+     ไม่ถูก compile เข้า gas/ ทางไหนเลย ไม่กระทบ production
+     ===================================================================================================== -->
+<script>
+(function () {
+  if (new URLSearchParams(location.search).get("seedDemo") !== "1") return;
+  var now = Date.now();
+  var day = 24 * 60 * 60 * 1000;
+  var customers = [
+    { customerId: "C0001", name: "ธิดา ใจดี",        phoneNormalized: "0812223334", phoneDisplay: "081-222-3334", line: "",         createdAt: now - 1   * day },
+    { customerId: "C0002", name: "มะปราง สวยงาม",     phoneNormalized: "0823334445", phoneDisplay: "082-333-4445", line: "maprang_s", createdAt: now - 45  * day },
+    { customerId: "C0003", name: "เอิร์ธ ชัยเจริญ",    phoneNormalized: "0834445556", phoneDisplay: "083-444-5556", line: "",         createdAt: now - 120 * day },
+    { customerId: "C0004", name: "แนน",               phoneNormalized: "0850373790", phoneDisplay: "085-037-3790", line: "nan.aa",    createdAt: now - 20  * day },
+    { customerId: "C0005", name: "หนึ่ง",              phoneNormalized: "0954504068", phoneDisplay: "095-450-4068", line: "",         createdAt: now - 15  * day },
+    { customerId: "C0006", name: "Sarah Johnson",     phoneNormalized: "0865556667", phoneDisplay: "086-555-6667", line: "",         createdAt: now - 2   * day },
+    { customerId: "C0007", name: "พลอย ศิริชัย",       phoneNormalized: "0876667778", phoneDisplay: "087-666-7778", line: "ploysc",    createdAt: now - 200 * day },
+    { customerId: "C0008", name: "กัญญา รุ่งเรือง",     phoneNormalized: "0887778889", phoneDisplay: "088-777-8889", line: "",         createdAt: now - 60  * day },
+    { customerId: "C0009", name: "นภัสสร แสงทอง",      phoneNormalized: "0898889990", phoneDisplay: "089-888-9990", line: "napat_s",   createdAt: now - 150 * day },
+    { customerId: "C0010", name: "Emily Davis",       phoneNormalized: "0809990001", phoneDisplay: "080-999-0001", line: "emilyd",    createdAt: now - 90  * day }
+  ];
+  var seq = 1;
+  function mkVisit(customerId, daysAgo, serviceType, technique) {
+    return {
+      serviceId: "S" + String(seq++).padStart(4, "0"),
+      customerId: customerId, createdAt: now - daysAgo * day, visitDate: now - daysAgo * day,
+      serviceType: serviceType, technique: technique
+    };
+  }
+  var serviceHistory = [
+    mkVisit("C0002", 45, "สักคิ้ว", "Powder Brows"),
+    mkVisit("C0003", 120, "สักคิ้ว", "Microblading"),
+    mkVisit("C0003", 60, "เติมสี", "Microblading"),
+    mkVisit("C0003", 10, "เติมสี", "Microblading"),
+    mkVisit("C0004", 20, "สักคิ้ว", "Shading brow"),
+    mkVisit("C0004", 1, "เติมสี", "Shading brow"),
+    mkVisit("C0005", 15, "สักคิ้ว", "Shading brow"),
+    mkVisit("C0007", 200, "สักคิ้ว", "Ombre Powder"),
+    mkVisit("C0007", 140, "เติมสี", "Ombre Powder"),
+    mkVisit("C0007", 80, "เติมสี", "Ombre Powder"),
+    mkVisit("C0007", 30, "เติมสี", "Ombre Powder"),
+    mkVisit("C0007", 3, "เติมสี", "Ombre Powder"),
+    mkVisit("C0008", 60, "สักคิ้ว", "Microblading"),
+    mkVisit("C0009", 150, "สักคิ้ว", "Powder Brows"),
+    mkVisit("C0009", 100, "เติมสี", "Powder Brows"),
+    mkVisit("C0009", 50, "เติมสี", "Powder Brows"),
+    mkVisit("C0009", 5, "เติมสี", "Powder Brows"),
+    mkVisit("C0010", 90, "สักคิ้ว", "Microblading"),
+    mkVisit("C0010", 25, "เติมสี", "Microblading")
+  ];
+  localStorage.setItem("pyneCrmMockDB_v1", JSON.stringify({
+    customers: customers, serviceHistory: serviceHistory, seq: { customer: 11, service: seq }
+  }));
+})();
+</script>
+
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
