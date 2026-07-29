@@ -47,6 +47,27 @@ export async function listRecentCustomers(limit) {
   return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
 }
 
+// รายชื่อลูกค้าทั้งหมด พร้อมสถิติที่คำนวณจาก serviceHistory (จำนวนครั้ง, วันที่ล่าสุด, เทคนิคล่าสุด)
+// ใช้แสดงในตาราง Customers — ของจริง (gas/) จะ join ฝั่งเซิร์ฟเวอร์แบบเดียวกันแล้วคืนรูปแบบนี้เหมือนกัน
+export async function listCustomersWithStats() {
+  await wait();
+  const { customers, serviceHistory } = db.get();
+  return customers
+    .map((c) => {
+      const visits = serviceHistory
+        .filter((v) => v.customerId === c.customerId)
+        .sort((a, b) => b.visitDate - a.visitDate);
+      const lastVisit = visits[0] || null;
+      return {
+        ...c,
+        visitsCount: visits.length,
+        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-"
+      };
+    })
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
 export async function findCustomerByPhone(phone) {
   await wait();
   const normalized = normalizePhone(phone);

@@ -1,6 +1,7 @@
 import { show } from "./router.js";
 import { state } from "./state.js";
 import { getCustomer } from "./mockApi.js";
+import { initShell } from "./shell.js";
 // import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
 import { initHome } from "./screens/home.js";
 import { initCustomerProfile } from "./screens/customerProfile.js";
@@ -11,6 +12,7 @@ import { initFormTouchup } from "./screens/formTouchup.js";
 import { initTechFields } from "./screens/techFields.js";
 import { initConfirmation } from "./screens/confirmation.js";
 
+initShell();
 // initGate();
 initHome();
 initCustomerProfile();

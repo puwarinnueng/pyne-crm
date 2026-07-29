@@ -1,65 +1,73 @@
-import { searchCustomers, listRecentCustomers } from "../mockApi.js";
+import { listCustomersWithStats, normalizePhone } from "../mockApi.js";
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { escapeHtml } from "../utils.js";
+import { escapeHtml, formatDateShort } from "../utils.js";
 
 export function initHome() {
-  const input = document.getElementById("searchInput");
-  const btn = document.getElementById("searchBtn");
-  const resultsTitleEl = document.getElementById("searchResultsTitle");
-  const resultsEl = document.getElementById("searchResults");
+  const tbody = document.getElementById("customersTableBody");
+  const tableCard = document.getElementById("customersTableBody").closest(".customers-table-card");
+  const table = tableCard.querySelector("table");
+  const emptyState = document.getElementById("customersEmptyState");
+  const searchInput = document.getElementById("searchInput");
   const newCustomerBtn = document.getElementById("newCustomerBtn");
 
-  function renderList(results) {
-    if (results.length === 0) {
-      resultsEl.innerHTML = `<div class="empty-hint">ยังไม่มีลูกค้าในระบบ<br>กด "+ ลูกค้าใหม่" เพื่อเพิ่มได้เลย</div>`;
+  let allCustomers = [];
+
+  function render() {
+    const q = searchInput.value.trim().toLowerCase();
+    const qPhone = normalizePhone(searchInput.value);
+
+    let rows = allCustomers;
+    if (q) {
+      rows = rows.filter((c) => {
+        const nameHit = c.name.toLowerCase().includes(q);
+        const lineHit = (c.line || "").toLowerCase().includes(q);
+        const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
+        return nameHit || lineHit || phoneHit;
+      });
+    }
+
+    if (rows.length === 0) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = allCustomers.length === 0
+        ? `No customers yet — click "+ New Customer" to add one.`
+        : `No customers match "${escapeHtml(searchInput.value.trim())}".`;
       return;
     }
-    resultsEl.innerHTML = results.map((c) => `
-      <div class="result-item" data-id="${c.customerId}">
-        <div>
-          <div class="result-name">${escapeHtml(c.name)}</div>
-          <div class="result-meta">${escapeHtml(c.phoneDisplay)}${c.line ? " · LINE: " + escapeHtml(c.line) : ""}</div>
-        </div>
-        <div>›</div>
-      </div>
+    table.hidden = false;
+    emptyState.hidden = true;
+
+    tbody.innerHTML = rows.map((c) => `
+      <tr data-id="${c.customerId}">
+        <td class="cell-name">${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.phoneDisplay)}</td>
+        <td>${c.visitsCount}</td>
+        <td>${c.visitsCount === 0 ? "New customer" : formatDateShort(c.lastVisitDate)}</td>
+        <td>${escapeHtml(c.lastTechnique)}</td>
+        <td class="cell-actions"><button class="btn-link-view" type="button">View Profile</button></td>
+      </tr>
     `).join("");
 
-    resultsEl.querySelectorAll(".result-item").forEach((el) => {
-      el.addEventListener("click", () => {
-        const customer = results.find((c) => c.customerId === el.dataset.id);
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const customer = rows.find((c) => c.customerId === tr.dataset.id);
         state.currentCustomer = customer;
         show("customerProfile");
       });
     });
   }
 
-  async function showRecent() {
-    resultsTitleEl.textContent = "ลูกค้าล่าสุด";
-    resultsEl.innerHTML = `<div class="empty-hint">กำลังโหลด...</div>`;
-    const results = await listRecentCustomers(10);
-    renderList(results);
+  async function loadCustomers() {
+    table.hidden = true;
+    emptyState.hidden = false;
+    emptyState.textContent = "Loading...";
+    allCustomers = await listCustomersWithStats();
+    render();
   }
 
-  async function runSearch() {
-    const q = input.value.trim();
-    if (!q) {
-      await showRecent();
-      return;
-    }
-    resultsTitleEl.textContent = `ผลการค้นหา "${q}"`;
-    resultsEl.innerHTML = `<div class="empty-hint">กำลังค้นหา...</div>`;
-    const results = await searchCustomers(q);
-    if (results.length === 0) {
-      resultsEl.innerHTML = `<div class="empty-hint">ไม่พบลูกค้าที่ตรงกับ "${escapeHtml(q)}"<br>กด "+ ลูกค้าใหม่" เพื่อเพิ่มได้เลย</div>`;
-      return;
-    }
-    renderList(results);
-  }
+  searchInput.addEventListener("input", render);
 
-  btn.addEventListener("click", runSearch);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
-  input.addEventListener("input", () => { if (!input.value.trim()) showRecent(); });
   newCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: เลือกประเภทบริการก่อน แล้วค่อยกรอกชื่อ/เบอร์โทร/LINE ในฟอร์มหน้า 1 เลย (ตาม Jotform จริง)
     state.currentCustomer = null;
@@ -69,7 +77,7 @@ export function initHome() {
   });
 
   onEnter("home", () => {
-    input.value = "";
-    showRecent();
+    searchInput.value = "";
+    loadCustomers();
   });
 }

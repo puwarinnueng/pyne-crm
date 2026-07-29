@@ -6,6 +6,14 @@ export function formatDate(ts) {
   return `${d.getDate()} ${months[d.getMonth()]} ${buddhistYear}`;
 }
 
+// วันที่แบบสั้น YYYY-MM-DD ใช้ในตาราง Customers (ตรงตามสไตล์ตัวอย่างที่ร้านส่งมา)
+export function formatDateShort(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 export function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
