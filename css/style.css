@@ -59,6 +59,7 @@ html, body {
   font-size: 17px; color: var(--green-700);
   display: block; margin-top: 2px; margin-left: 2px;
 }
+.logo-img { display: block; width: 100%; height: auto; object-fit: contain; }
 
 .sidebar {
   width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
@@ -75,6 +76,7 @@ html, body {
   font-size: 24px; display: block; margin: -8px 0 0 auto; width: fit-content;
   margin-right: 14%;
 }
+.sidebar-logo .logo-img { max-width: 150px; margin: 0 auto; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .sidebar-nav-item {
   display: flex; align-items: center; gap: 12px; padding: 11px 14px;
@@ -94,9 +96,10 @@ html, body {
   height: var(--mobile-topbar-h); padding: 0 16px; background: var(--bg-white);
   border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
 }
-.mobile-logo { display: flex; align-items: baseline; gap: 6px; }
+.mobile-logo { display: flex; align-items: center; gap: 6px; }
 .mobile-logo .logo-pyne { font-size: 21px; }
 .mobile-logo .logo-studio { font-size: 14px; }
+.mobile-logo .logo-img { width: auto; height: 30px; }
 .hamburger-btn {
   background: none; border: none; color: var(--green-900); padding: 8px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
