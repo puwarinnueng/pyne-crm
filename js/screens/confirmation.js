@@ -9,10 +9,10 @@ export function initConfirmation() {
 
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
-    exportBtn.textContent = "กำลังสร้าง PDF...";
+    exportBtn.textContent = "Generating PDF...";
     const res = await exportConsentPdf(state.lastSavedServiceId);
     exportBtn.disabled = false;
-    exportBtn.textContent = "Export ใบคอนเซ้นต์ (PDF) — mock";
+    exportBtn.textContent = "Export Consent Form (PDF) — mock";
     alert(res.note);
   });
 
@@ -23,6 +23,6 @@ export function initConfirmation() {
 
   onEnter("confirmation", () => {
     const c = state.currentCustomer;
-    summaryEl.textContent = `บันทึกประวัติ ${state.serviceType} ของ ${c ? c.name : ""} เรียบร้อยแล้ว (รหัส ${state.lastSavedServiceId})`;
+    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? c.name : ""} (ID ${state.lastSavedServiceId})`;
   });
 }

@@ -1,4 +1,5 @@
 import { show } from "./router.js";
+import { showLogin, openReset, setLoggedIn } from "./screens/login.js";
 
 export function initShell() {
   const hamburgerBtn = document.getElementById("hamburgerBtn");
@@ -48,11 +49,77 @@ export function initShell() {
     item.addEventListener("click", closeDropdown);
   });
 
+  // ปุ่มโปรไฟล์ในเมนูมือถือ (Reset password / Log out)
+  dropdown.querySelectorAll("[data-account-action]").forEach((item) => {
+    item.addEventListener("click", () => {
+      const action = item.dataset.accountAction;
+      closeDropdown();
+      if (action === "reset") {
+        openReset();
+      } else if (action === "logout") {
+        setLoggedIn(false);
+        show("home");
+        showLogin();
+      }
+    });
+  });
+
   // ลิงก์เมนู (sidebar เดสก์ท็อป + dropdown มือถือ) ที่มี data-nav ให้พาไปหน้านั้นจริง ๆ
   document.querySelectorAll("[data-nav]").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       show(link.dataset.nav);
+    });
+  });
+
+  initUserMenu();
+}
+
+// เมนูผู้ใช้ที่ footer ของ sidebar: Reset password / Log out
+function initUserMenu() {
+  const menu = document.getElementById("userMenu");
+  const trigger = document.getElementById("userMenuTrigger");
+  const popover = document.getElementById("userMenuPopover");
+  if (!menu || !trigger || !popover) return;
+
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    popover.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    popover.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (popover.hidden) openMenu();
+    else closeMenu();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!popover.hidden && !menu.contains(e.target)) closeMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+
+  popover.querySelectorAll(".user-menu-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const action = item.dataset.action;
+      closeMenu();
+      // TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
+      if (action === "reset") {
+        openReset();
+      } else if (action === "logout") {
+        setLoggedIn(false);
+        show("home");
+        showLogin();
+      }
     });
   });
 }

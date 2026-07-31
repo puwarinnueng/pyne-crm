@@ -8,23 +8,97 @@
 <?!= include('Stylesheet'); ?>
 </head>
 <body>
+<!-- ===================== LOGIN ===================== -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-inner">
+    <div class="login-logo">
+      <img src="assets/pyne-logo.png" alt="Pyne Studio">
+    </div>
+    <form class="login-card" id="loginForm" novalidate>
+      <div class="login-field">
+        <input type="email" id="loginEmail" class="login-input" placeholder="Email" autocomplete="email" required>
+      </div>
+      <div class="login-field">
+        <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="current-password" required>
+        <button type="button" class="login-eye" id="loginTogglePw" aria-label="Show password">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="login-forgot">
+        <button type="button" class="login-forgot-link" id="loginForgot">Forgot password?</button>
+      </div>
+      <p class="login-error" id="loginError" hidden>Please enter your email and password.</p>
+      <button type="submit" class="login-submit">Sign In</button>
+    </form>
+    <p class="login-copyright">© 2025 Pyne Studio</p>
+  </div>
+</div>
+
+<!-- ===================== RESET PASSWORD MODAL ===================== -->
+<div class="reset-overlay" id="resetOverlay" hidden>
+  <form class="reset-card" id="resetForm" novalidate>
+    <button type="button" class="reset-close" id="resetClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 class="reset-title">Reset new password</h2>
+    <p class="reset-sub">Enter your new password below.</p>
+
+    <div class="login-field">
+      <input type="password" id="resetPw" class="login-input" placeholder="New password" autocomplete="new-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetPw" aria-label="Show password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <div class="login-field">
+      <input type="password" id="resetPwConfirm" class="login-input" placeholder="Confirm new password" autocomplete="new-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetPwConfirm" aria-label="Show password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <p class="login-error" id="resetError" hidden>Passwords do not match.</p>
+
+    <button type="submit" class="login-submit">Save new password</button>
+    <button type="button" class="reset-back" id="resetBack">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span>Back to sign in</span>
+    </button>
+  </form>
+</div>
 
 <div class="app-shell">
 
   <!-- ===================== SIDEBAR (desktop) ===================== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <span class="logo-pyne">pyne</span>
-      <span class="logo-studio">studio</span>
+      <img src="assets/pyne-logo.png" alt="Pyne Studio" class="logo-img">
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="sidebar-nav-item active" data-nav="home">
+      <a href="#" class="sidebar-nav-item active" data-nav="home" aria-label="Customers" title="Customers">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Customers</span>
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div class="sidebar-copyright">© 2026 Pyne Studio</div>
+      <div class="user-menu" id="userMenu">
+        <button class="sidebar-user" id="userMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="sidebar-user-avatar">P</span>
+          <span class="sidebar-user-meta">
+            <span class="sidebar-user-name">Pyne Studio</span>
+            <span class="sidebar-user-role">Admin</span>
+          </span>
+          <svg class="sidebar-user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="user-menu-popover" id="userMenuPopover" hidden>
+          <button class="user-menu-item" type="button" data-action="reset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Reset password</span>
+          </button>
+          <button class="user-menu-item user-menu-item-danger" type="button" data-action="logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Log out</span>
+          </button>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -33,15 +107,37 @@
     <!-- ===================== MOBILE TOPBAR (hamburger dropdown) ===================== -->
     <header class="mobile-topbar">
       <div class="mobile-logo">
-        <span class="logo-pyne">pyne</span>
-        <span class="logo-studio">studio</span>
+        <img src="assets/pyne-logo.png" alt="Pyne Studio" class="logo-img">
       </div>
       <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <nav class="mobile-dropdown" id="mobileDropdown" hidden>
+        <div class="mobile-menu-head">
+          <span class="mobile-menu-title">Menu</span>
+          <button class="mobile-menu-close" id="mobileMenuClose" type="button" aria-label="Close menu">×</button>
+        </div>
         <a href="#" class="mobile-dropdown-item active" data-nav="home">Customers</a>
+
+        <div class="mobile-menu-account">
+          <div class="mobile-account-user">
+            <span class="sidebar-user-avatar">P</span>
+            <span class="sidebar-user-meta">
+              <span class="sidebar-user-name">Pyne Studio</span>
+              <span class="sidebar-user-role">Admin</span>
+            </span>
+          </div>
+          <button class="mobile-account-item" type="button" data-account-action="reset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Reset password</span>
+          </button>
+          <button class="mobile-account-item mobile-account-item-danger" type="button" data-account-action="logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Log out</span>
+          </button>
+        </div>
       </nav>
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay" hidden></div>
     </header>
 
     <div id="app">
@@ -54,37 +150,42 @@
           <input type="password" inputmode="numeric" id="passcodeInput" class="input input-lg" placeholder="รหัสผ่าน" autocomplete="off">
           <p class="error-text" id="gateError" hidden>รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง</p>
           <button class="btn btn-primary btn-block" id="gateSubmit">เข้าสู่ระบบ</button>
+          <p class="muted small mock-hint">Mock: รหัสผ่านคือ <code>1234</code></p>
         </div>
       </section>
       ===================================================================================================== -->
 
       <!-- ===================== 2. HOME / CUSTOMERS ===================== -->
       <section class="screen" id="screen-home">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Customers</h1>
+            <p class="page-subtitle">Manage your client database</p>
+          </div>
+        </header>
+
         <div class="customers-page">
-          <div class="customers-header">
-            <div>
-              <h1 class="page-title">Customers</h1>
-              <p class="page-subtitle">Manage your client database.</p>
+          <div class="toolbar-row">
+            <div class="search-bar-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="searchInput" class="input search-input" placeholder="Search by name, phone, or LINE...">
             </div>
             <button class="btn btn-primary" id="newCustomerBtn">+ New Customer</button>
           </div>
 
-          <div class="search-bar-wrap">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchInput" class="input search-input" placeholder="Search by name, phone, or LINE...">
-          </div>
+          <div class="customers-summary" id="customersSummary"></div>
 
           <div class="customers-table-card">
             <div class="table-scroll">
               <table class="customers-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
+                    <th>Customer</th>
                     <th>Phone</th>
-                    <th>Visits</th>
+                    <th>Line</th>
                     <th>Last Visit</th>
-                    <th>Technique</th>
-                    <th></th>
+                    <th>Visits</th>
+                    <th class="th-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="customersTableBody"></tbody>
@@ -95,17 +196,35 @@
         </div>
       </section>
 
+  <!-- ===================== 3. NEW CUSTOMER (สร้างลูกค้าใหม่) ===================== -->
+  <section class="screen" id="screen-newCustomer">
+    <header class="topbar">
+      <button class="back-link" id="newCustomerBackBtn">‹ Back</button>
+      <h2 class="topbar-title">New Customer</h2>
+    </header>
+    <div class="page-pad">
+      <p class="choose-lead">Enter customer details to save, then choose a service</p>
+      <label class="field-label">Nickname <span class="required-star">*</span></label>
+      <input type="text" id="ncName" class="input" placeholder="e.g. Mind" autocomplete="off">
+      <label class="field-label">Phone <span class="required-star">*</span></label>
+      <input type="tel" id="ncPhone" class="input" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="off">
+      <label class="field-label">LINE ID</label>
+      <input type="text" id="ncLine" class="input" placeholder="Optional" autocomplete="off">
+      <div id="ncWarning"></div>
+      <button class="btn btn-primary btn-block" id="ncCreateBtn" style="margin-top:10px">Create Customer</button>
+    </div>
+  </section>
+
   <!-- ===================== 4. CUSTOMER PROFILE ===================== -->
   <section class="screen" id="screen-customerProfile">
     <header class="topbar">
-      <button class="icon-btn" data-back="home">‹ กลับ</button>
-      <div class="topbar-title">ประวัติลูกค้า</div>
-      <div style="width:44px"></div>
+      <button class="back-link" data-back="home">‹ Back</button>
+      <h2 class="topbar-title">Customer Profile</h2>
     </header>
     <div class="page-pad">
       <div class="profile-card" id="profileCard"></div>
-      <button class="btn btn-primary btn-block" id="addVisitBtn" style="margin-top:14px">+ เพิ่มประวัติใหม่</button>
-      <h3 class="section-title">ประวัติการเข้ารับบริการ</h3>
+      <button class="btn btn-primary btn-block" id="addVisitBtn" style="margin-top:14px">+ Add New Visit</button>
+      <h3 class="section-title">Service History</h3>
       <div id="historyList" class="history-list"></div>
     </div>
   </section>
@@ -113,45 +232,60 @@
   <!-- ===================== 4b. VISIT DETAIL (อ่านอย่างเดียว แก้ไขไม่ได้) ===================== -->
   <section class="screen" id="screen-visitDetail">
     <header class="topbar">
-      <button class="icon-btn" data-back="customerProfile">‹ กลับ</button>
-      <div class="topbar-title">รายละเอียดประวัติ</div>
-      <div style="width:44px"></div>
+      <button class="back-link" data-back="customerProfile">‹ Back</button>
+      <h2 class="topbar-title">Visit Details</h2>
     </header>
     <div class="page-pad" id="visitDetailBody"></div>
   </section>
 
-  <!-- ===================== 5. SERVICE TYPE ===================== -->
-  <section class="screen" id="screen-serviceType">
-    <header class="topbar">
-      <button class="icon-btn" id="serviceTypeBackBtn">‹ กลับ</button>
-      <div class="topbar-title">เลือกประเภทบริการ</div>
-      <div style="width:44px"></div>
-    </header>
-    <div class="page-pad center-col">
-      <button class="btn btn-primary btn-block btn-tall" id="chooseBrowBtn">สักคิ้ว<span class="btn-sub">คอนเซ้าครั้งแรก / เต็มรูปแบบ</span></button>
-      <button class="btn btn-secondary btn-block btn-tall" id="chooseTouchupBtn">เติมสี<span class="btn-sub">สำหรับลูกค้าเก่าที่กลับมา</span></button>
+  <!-- ===================== 5. SERVICE TYPE (glass modal) ===================== -->
+  <div class="modal-overlay" id="serviceTypeModal" hidden>
+    <div class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="serviceTypeModalTitle">
+      <button class="glass-modal-close" id="serviceTypeCloseBtn" type="button" aria-label="Close">×</button>
+      <h2 class="glass-modal-title" id="serviceTypeModalTitle">Select Service Type</h2>
+      <p class="glass-modal-sub">Choose the service type to record for this customer</p>
+      <div class="service-choices">
+        <button class="service-card" id="chooseBrowBtn">
+          <span class="service-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </span>
+          <span class="service-card-text">
+            <span class="service-card-title">สักคิ้ว</span>
+            <span class="service-card-sub">First consultation / full service</span>
+          </span>
+          <span class="service-card-arrow">›</span>
+        </button>
+        <button class="service-card" id="chooseTouchupBtn">
+          <span class="service-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+          </span>
+          <span class="service-card-text">
+            <span class="service-card-title">เติมสี</span>
+            <span class="service-card-sub">For returning customers</span>
+          </span>
+          <span class="service-card-arrow">›</span>
+        </button>
+      </div>
     </div>
-  </section>
+  </div>
 
   <!-- ===================== 6. FORM สักคิ้ว — หน้า 1: ข้อมูล + เงื่อนไข + เซ็นลูกค้า ===================== -->
   <section class="screen" id="screen-formBrow">
     <header class="topbar">
-      <button class="icon-btn" id="browBackBtn">‹ กลับ</button>
-      <div class="topbar-title">แบบฟอร์มให้คำปรึกษา (1/2)</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="browBackBtn">‹ Back</button>
+      <h2 class="topbar-title">Consultation Form (1/2)</h2>
     </header>
     <div class="page-pad" id="browBody"></div>
     <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="browNextBtn">ถัดไป: ขั้นตอนช่าง</button>
+      <button class="btn btn-primary btn-block" id="browNextBtn">Next: Technician Step</button>
     </footer>
   </section>
 
   <!-- ===================== 7. FORM เติมสี (draft) ===================== -->
   <section class="screen" id="screen-formTouchup">
     <header class="topbar">
-      <button class="icon-btn" data-back="serviceType">‹ กลับ</button>
-      <div class="topbar-title">ฟอร์มเติมสี</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="touchupBackBtn">‹ Back</button>
+      <h2 class="topbar-title">Touch-up Form</h2>
     </header>
     <div class="page-pad">
       <p class="draft-badge">ร่าง — รอยืนยันฟิลด์ฉบับสมบูรณ์จากร้าน</p>
@@ -172,20 +306,19 @@
       <!-- placeholder="1000-1500" -->
       <input type="number" id="tuPrice" class="input">
 
-      <button class="btn btn-primary btn-block" id="tuNextBtn" style="margin-top:18px">ถัดไป: ขั้นตอนช่าง</button>
+      <button class="btn btn-primary btn-block" id="tuNextBtn" style="margin-top:18px">Next: Technician Step</button>
     </div>
   </section>
 
   <!-- ===================== 8. TECH FIELDS + PHOTOS — หน้า 2 ===================== -->
   <section class="screen" id="screen-techFields">
     <header class="topbar">
-      <button class="icon-btn" id="techBackBtn">‹ กลับ</button>
-      <div class="topbar-title">ขั้นตอนช่าง (2/2)</div>
-      <div style="width:44px"></div>
+      <button class="back-link" id="techBackBtn">‹ Back</button>
+      <h2 class="topbar-title">Technician Step (2/2)</h2>
     </header>
     <div class="page-pad" id="techBody"></div>
     <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="techSaveBtn">บันทึกประวัติ</button>
+      <button class="btn btn-primary btn-block" id="techSaveBtn">Save Visit</button>
     </footer>
   </section>
 
@@ -193,10 +326,10 @@
   <section class="screen" id="screen-confirmation">
     <div class="confirm-wrap">
       <div class="confirm-check">✓</div>
-      <h2>บันทึกสำเร็จ</h2>
+      <h2>Saved successfully</h2>
       <p class="muted" id="confirmSummary"></p>
-      <button class="btn btn-outline btn-block" id="exportPdfBtn">Export ใบคอนเซ้นต์ (PDF)</button>
-      <button class="btn btn-primary btn-block" id="backHomeBtn" style="margin-top:10px">กลับหน้าแรก</button>
+      <button class="btn btn-outline btn-block" id="exportPdfBtn">Export Consent Form (PDF) — mock</button>
+      <button class="btn btn-primary btn-block" id="backHomeBtn" style="margin-top:10px">Back to Home</button>
     </div>
   </section>
 

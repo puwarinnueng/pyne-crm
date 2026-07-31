@@ -24,11 +24,11 @@ export function initCustomerProfile() {
       <div class="pmeta">📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}</div>
     `;
 
-    historyList.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
+    historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     const history = await getHistoryByCustomer(c.customerId);
 
     if (history.length === 0) {
-      historyList.innerHTML = `<div class="empty-hint">ยังไม่มีประวัติการเข้ารับบริการ</div>`;
+      historyList.innerHTML = `<div class="empty-hint">No service history yet</div>`;
       return;
     }
 
@@ -37,9 +37,9 @@ export function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         <div class="hdetail">
-          เทคนิค: ${escapeHtml(v.technique || "-")} · สี: ${escapeHtml(v.colorUsed || "-")}<br>
-          ความเข้ม: ${escapeHtml(v.intensity || "-")}
-          ${v.note ? `<br>หมายเหตุ: ${escapeHtml(v.note)}` : ""}
+          Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
+          Intensity: ${escapeHtml(v.intensity || "-")}
+          ${v.note ? `<br>Note: ${escapeHtml(v.note)}` : ""}
         </div>
       </div>
     `).join("");

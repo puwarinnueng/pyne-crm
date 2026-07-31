@@ -201,18 +201,40 @@ document.addEventListener("click", (e) => {
 function initShell() {
   const hamburgerBtn = document.getElementById("hamburgerBtn");
   const dropdown = document.getElementById("mobileDropdown");
+  const overlay = document.getElementById("mobileMenuOverlay");
+  const closeBtn = document.getElementById("mobileMenuClose");
+  let closeTimer;
 
   function closeDropdown() {
-    dropdown.hidden = true;
+    dropdown.classList.remove("is-open");
+    overlay.classList.remove("is-visible");
     hamburgerBtn.setAttribute("aria-expanded", "false");
+    clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(() => {
+      dropdown.hidden = true;
+      overlay.hidden = true;
+    }, 220);
+  }
+
+  function openDropdown() {
+    clearTimeout(closeTimer);
+    dropdown.hidden = false;
+    overlay.hidden = false;
+    requestAnimationFrame(() => {
+      dropdown.classList.add("is-open");
+      overlay.classList.add("is-visible");
+    });
+    hamburgerBtn.setAttribute("aria-expanded", "true");
   }
 
   hamburgerBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const willOpen = dropdown.hidden;
-    dropdown.hidden = !willOpen;
-    hamburgerBtn.setAttribute("aria-expanded", String(willOpen));
+    if (dropdown.hidden) openDropdown();
+    else closeDropdown();
   });
+
+  closeBtn.addEventListener("click", closeDropdown);
+  overlay.addEventListener("click", closeDropdown);
 
   document.addEventListener("click", (e) => {
     if (!dropdown.hidden && !dropdown.contains(e.target) && e.target !== hamburgerBtn) {
@@ -224,11 +246,77 @@ function initShell() {
     item.addEventListener("click", closeDropdown);
   });
 
+  // ปุ่มโปรไฟล์ในเมนูมือถือ (Reset password / Log out)
+  dropdown.querySelectorAll("[data-account-action]").forEach((item) => {
+    item.addEventListener("click", () => {
+      const action = item.dataset.accountAction;
+      closeDropdown();
+      if (action === "reset") {
+        openReset();
+      } else if (action === "logout") {
+        setLoggedIn(false);
+        show("home");
+        showLogin();
+      }
+    });
+  });
+
   // ลิงก์เมนู (sidebar เดสก์ท็อป + dropdown มือถือ) ที่มี data-nav ให้พาไปหน้านั้นจริง ๆ
   document.querySelectorAll("[data-nav]").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       show(link.dataset.nav);
+    });
+  });
+
+  initUserMenu();
+}
+
+// เมนูผู้ใช้ที่ footer ของ sidebar: Reset password / Log out
+function initUserMenu() {
+  const menu = document.getElementById("userMenu");
+  const trigger = document.getElementById("userMenuTrigger");
+  const popover = document.getElementById("userMenuPopover");
+  if (!menu || !trigger || !popover) return;
+
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    popover.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    popover.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (popover.hidden) openMenu();
+    else closeMenu();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!popover.hidden && !menu.contains(e.target)) closeMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+
+  popover.querySelectorAll(".user-menu-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const action = item.dataset.action;
+      closeMenu();
+      // TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
+      if (action === "reset") {
+        openReset();
+      } else if (action === "logout") {
+        setLoggedIn(false);
+        show("home");
+        showLogin();
+      }
     });
   });
 }
@@ -449,7 +537,143 @@ function initGate() {
   });
 }
 
+// ==== js/screens/login.js ====
+// login.js — หน้าเข้าสู่ระบบ + modal รีเซ็ตรหัสผ่าน (UI เท่านั้น) วางทับทั้งแอปด้วย z-index สูง
+// TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
+
+const LOGGED_IN_KEY = "pyneCrmLoggedIn";
+
+let screen, form, emailInput, pwInput, errorEl;
+let resetOverlay, resetForm, resetPw, resetPwConfirm, resetError;
+
+function isLoggedIn() {
+  return localStorage.getItem(LOGGED_IN_KEY) === "1";
+}
+
+function setLoggedIn(value) {
+  if (value) localStorage.setItem(LOGGED_IN_KEY, "1");
+  else localStorage.removeItem(LOGGED_IN_KEY);
+}
+
+function showLogin() {
+  if (!screen) return;
+  closeReset(); // กันไม่ให้ modal reset ค้างทับหน้า login
+  screen.hidden = false;
+  if (emailInput) emailInput.value = "";
+  if (pwInput) pwInput.value = "";
+  if (errorEl) errorEl.hidden = true;
+  if (emailInput) emailInput.focus();
+}
+
+function hideLogin() {
+  if (screen) screen.hidden = true;
+}
+
+function openReset() {
+  if (!resetOverlay) return;
+  resetPw.value = "";
+  resetPwConfirm.value = "";
+  resetError.hidden = true;
+  resetOverlay.hidden = false;
+  resetPw.focus();
+}
+
+function closeReset() {
+  if (resetOverlay) resetOverlay.hidden = true;
+}
+
+function initLogin() {
+  screen = document.getElementById("loginScreen");
+  form = document.getElementById("loginForm");
+  emailInput = document.getElementById("loginEmail");
+  pwInput = document.getElementById("loginPassword");
+  errorEl = document.getElementById("loginError");
+  const toggleBtn = document.getElementById("loginTogglePw");
+  const forgotBtn = document.getElementById("loginForgot");
+
+  resetOverlay = document.getElementById("resetOverlay");
+  resetForm = document.getElementById("resetForm");
+  resetPw = document.getElementById("resetPw");
+  resetPwConfirm = document.getElementById("resetPwConfirm");
+  resetError = document.getElementById("resetError");
+  closeReset(); // เริ่มต้นให้ modal ปิดเสมอ กันสถานะค้างจากการโหลดผิดปกติ
+
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      // ยังไม่มีระบบ auth จริง (รอ backend) — กด Sign In เข้าหน้าหลักได้เลย
+      errorEl.hidden = true;
+      setLoggedIn(true);
+      hideLogin();
+    });
+
+    toggleBtn.addEventListener("click", () => {
+      const show = pwInput.type === "password";
+      pwInput.type = show ? "text" : "password";
+      toggleBtn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+
+    forgotBtn.addEventListener("click", openReset);
+  }
+
+  initResetModal();
+}
+
+function initResetModal() {
+  if (!resetOverlay || !resetForm) return;
+  const closeBtn = document.getElementById("resetClose");
+  const backBtn = document.getElementById("resetBack");
+
+  resetForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const pw = resetPw.value.trim();
+    const confirm = resetPwConfirm.value.trim();
+    if (!pw || pw !== confirm) {
+      resetError.hidden = false;
+      return;
+    }
+    resetError.hidden = true;
+    // TODO: ส่งรหัสใหม่ไป backend จริงเมื่อพร้อม
+    closeReset();
+    alert("Password updated");
+  });
+
+  // ปุ่มลูกตาโชว์/ซ่อนรหัสของทั้งสองช่อง
+  resetForm.querySelectorAll("[data-reset-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const field = document.getElementById(btn.dataset.resetToggle);
+      const show = field.type === "password";
+      field.type = show ? "text" : "password";
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+  });
+
+  closeBtn.addEventListener("click", closeReset);
+  backBtn.addEventListener("click", closeReset);
+  resetOverlay.addEventListener("click", (e) => {
+    if (e.target === resetOverlay) closeReset();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !resetOverlay.hidden) closeReset();
+  });
+}
+
 // ==== js/screens/home.js ====
+const ICON_PHONE = `<svg class="cell-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>`;
+const ICON_LINE = `<svg class="cell-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>`;
+const ICON_CAL = `<svg class="cell-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const ICON_STAR = `<svg class="cell-star" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+const ICON_MORE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
+const ICON_VIEW = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const ICON_SERVICE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+
+function initials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 function initHome() {
   const tbody = document.getElementById("customersTableBody");
   const tableCard = document.getElementById("customersTableBody").closest(".customers-table-card");
@@ -457,8 +681,26 @@ function initHome() {
   const emptyState = document.getElementById("customersEmptyState");
   const searchInput = document.getElementById("searchInput");
   const newCustomerBtn = document.getElementById("newCustomerBtn");
+  const summary = document.getElementById("customersSummary");
 
   let allCustomers = [];
+
+  function renderSummary() {
+    const total = allCustomers.length;
+    summary.innerHTML = `<strong>${total}</strong> customer${total === 1 ? "" : "s"}`;
+  }
+
+  function openProfile(customer) {
+    state.currentCustomer = customer;
+    show("customerProfile");
+  }
+
+  function openService(customer) {
+    state.currentCustomer = customer;
+    state.serviceType = null;
+    state.resetVisitDraft();
+    openServiceTypeModal();
+  }
 
   function render() {
     const q = searchInput.value.trim().toLowerCase();
@@ -485,47 +727,222 @@ function initHome() {
     table.hidden = false;
     emptyState.hidden = true;
 
-    tbody.innerHTML = rows.map((c) => `
+    tbody.innerHTML = rows.map((c) => {
+      const sub = c.visitsCount > 0 && c.lastTechnique && c.lastTechnique !== "-"
+        ? `<span class="cust-sub">${escapeHtml(c.lastTechnique)}</span>` : "";
+      const lineCell = c.line
+        ? `${ICON_LINE}<span>@${escapeHtml(c.line)}</span>`
+        : `<span class="cell-empty">—</span>`;
+      const lastVisit = c.visitsCount === 0
+        ? `<span class="cell-empty">New customer</span>`
+        : `${ICON_CAL}<span>${escapeHtml(formatDateShort(c.lastVisitDate))}</span>`;
+      return `
       <tr data-id="${c.customerId}">
-        <td class="cell-name">${escapeHtml(c.name)}</td>
-        <td>${escapeHtml(c.phoneDisplay)}</td>
-        <td>${c.visitsCount}</td>
-        <td>${c.visitsCount === 0 ? "New customer" : formatDateShort(c.lastVisitDate)}</td>
-        <td>${escapeHtml(c.lastTechnique)}</td>
-        <td class="cell-actions"><button class="btn-link-view" type="button">View Profile</button></td>
-      </tr>
-    `).join("");
+        <td class="cell-customer">
+          <span class="avatar">${escapeHtml(initials(c.name))}</span>
+          <span class="cust-meta">
+            <span class="cust-name">${escapeHtml(c.name)}</span>
+            ${sub}
+          </span>
+        </td>
+        <td><span class="cell-ico">${ICON_PHONE}<span>${escapeHtml(c.phoneDisplay)}</span></span></td>
+        <td><span class="cell-ico">${lineCell}</span></td>
+        <td><span class="cell-ico">${lastVisit}</span></td>
+        <td><span class="cell-visits">${ICON_STAR}<span><strong>${c.visitsCount}</strong> visit${c.visitsCount === 1 ? "" : "s"}</span></span></td>
+        <td class="cell-actions">
+          <div class="row-menu">
+            <button type="button" class="row-menu-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Actions">
+              ${ICON_MORE}
+            </button>
+            <div class="row-menu-popover" role="menu" hidden>
+              <button type="button" class="row-menu-item" role="menuitem" data-action="view">
+                ${ICON_VIEW}<span>View profile</span>
+              </button>
+              <button type="button" class="row-menu-item" role="menuitem" data-action="service">
+                ${ICON_SERVICE}<span>New service</span>
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+
+    function closeAllMenus() {
+      tbody.querySelectorAll(".row-menu").forEach((menu) => {
+        menu.classList.remove("is-open");
+        const pop = menu.querySelector(".row-menu-popover");
+        const trigger = menu.querySelector(".row-menu-trigger");
+        if (pop) pop.hidden = true;
+        if (trigger) trigger.setAttribute("aria-expanded", "false");
+      });
+    }
 
     tbody.querySelectorAll("tr").forEach((tr) => {
-      tr.addEventListener("click", () => {
-        const customer = rows.find((c) => c.customerId === tr.dataset.id);
-        state.currentCustomer = customer;
-        show("customerProfile");
+      const customer = rows.find((c) => c.customerId === tr.dataset.id);
+      const menu = tr.querySelector(".row-menu");
+      const trigger = tr.querySelector(".row-menu-trigger");
+      const popover = tr.querySelector(".row-menu-popover");
+      if (!menu || !trigger || !popover) return;
+
+      trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willOpen = popover.hidden;
+        closeAllMenus();
+        if (willOpen) {
+          menu.classList.add("is-open");
+          popover.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+
+          // ลอย dropdown ออกจากกรอบ table-scroll เพื่อไม่ให้ overflow ตัดเมนู
+          const triggerRect = trigger.getBoundingClientRect();
+          const popoverRect = popover.getBoundingClientRect();
+          const gap = 6;
+          const left = Math.min(
+            window.innerWidth - popoverRect.width - 12,
+            Math.max(12, triggerRect.right - popoverRect.width)
+          );
+          const spaceBelow = window.innerHeight - triggerRect.bottom;
+          const top = spaceBelow >= popoverRect.height + gap
+            ? triggerRect.bottom + gap
+            : triggerRect.top - popoverRect.height - gap;
+          popover.style.left = `${left}px`;
+          popover.style.top = `${Math.max(12, top)}px`;
+        }
+      });
+
+      popover.querySelectorAll("[data-action]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllMenus();
+          if (!customer) return;
+          if (btn.dataset.action === "view") openProfile(customer);
+          else if (btn.dataset.action === "service") openService(customer);
+        });
       });
     });
   }
+
+  function closeAllOpenMenus() {
+    tbody.querySelectorAll(".row-menu.is-open").forEach((menu) => {
+      menu.classList.remove("is-open");
+      const pop = menu.querySelector(".row-menu-popover");
+      const trigger = menu.querySelector(".row-menu-trigger");
+      if (pop) pop.hidden = true;
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".row-menu")) closeAllOpenMenus();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllOpenMenus();
+  });
 
   async function loadCustomers() {
     table.hidden = true;
     emptyState.hidden = false;
     emptyState.textContent = "Loading...";
     allCustomers = await listCustomersWithStats();
+    renderSummary();
     render();
   }
 
   searchInput.addEventListener("input", render);
 
   newCustomerBtn.addEventListener("click", () => {
-    // ลูกค้าใหม่: เลือกประเภทบริการก่อน แล้วค่อยกรอกชื่อ/เบอร์โทร/LINE ในฟอร์มหน้า 1 เลย (ตาม Jotform จริง)
+    // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
     state.serviceType = null;
     state.resetVisitDraft();
-    show("serviceType");
+    show("newCustomer");
   });
 
   onEnter("home", () => {
     searchInput.value = "";
     loadCustomers();
+  });
+}
+
+// ==== js/screens/newCustomer.js ====
+// newCustomer.js — หน้าสร้างลูกค้าใหม่ (แยกออกจากฟอร์มบริการ)
+// flow: home > "+ New Customer" > หน้านี้ > สร้างลูกค้าเข้า DB > เปิด modal เลือกบริการ
+
+
+
+
+
+
+function initNewCustomer() {
+  const nameEl = document.getElementById("ncName");
+  const phoneEl = document.getElementById("ncPhone");
+  const lineEl = document.getElementById("ncLine");
+  const warnEl = document.getElementById("ncWarning");
+  const createBtn = document.getElementById("ncCreateBtn");
+  const backBtn = document.getElementById("newCustomerBackBtn");
+
+  backBtn.addEventListener("click", () => show("home"));
+
+  function clearErrors() {
+    [nameEl, phoneEl].forEach((el) => el.classList.remove("field-error"));
+    warnEl.innerHTML = "";
+  }
+
+  [nameEl, phoneEl].forEach((el) => {
+    el.addEventListener("input", () => el.classList.remove("field-error"));
+  });
+
+  createBtn.addEventListener("click", async () => {
+    clearErrors();
+    const name = nameEl.value.trim();
+    const phone = phoneEl.value.trim();
+    const line = lineEl.value.trim();
+
+    let firstErr = null;
+    if (!name) { nameEl.classList.add("field-error"); firstErr = firstErr || nameEl; }
+    if (!phone) { phoneEl.classList.add("field-error"); firstErr = firstErr || phoneEl; }
+    if (firstErr) { firstErr.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+
+    createBtn.disabled = true;
+
+    // กันเบอร์ซ้ำ: ถ้ามีลูกค้าเบอร์นี้แล้ว เสนอให้เปิดประวัติคนเดิมแทนการสร้างซ้ำ
+    const existing = await findCustomerByPhone(phone);
+    if (existing) {
+      createBtn.disabled = false;
+      warnEl.innerHTML = `
+        <div class="dup-warning">
+          ⚠ This phone number already exists: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
+          Please use the existing customer instead of creating a duplicate.
+          <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">Open this customer</button>
+        </div>`;
+      document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
+        state.currentCustomer = existing;
+        show("customerProfile");
+      });
+      return;
+    }
+
+    const res = await createCustomer({ name, phone, line });
+    createBtn.disabled = false;
+    if (!res.success) {
+      warnEl.innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
+      return;
+    }
+
+    // สร้างลูกค้าสำเร็จ → ตั้งเป็นลูกค้าปัจจุบัน แล้วพาไปหน้าประวัติพร้อมเปิด modal เลือกบริการทับ
+    state.currentCustomer = res.customer;
+    state.serviceType = null;
+    state.resetVisitDraft();
+    show("customerProfile");
+    openServiceTypeModal();
+  });
+
+  onEnter("newCustomer", () => {
+    nameEl.value = "";
+    phoneEl.value = "";
+    lineEl.value = "";
+    clearErrors();
+    createBtn.disabled = false;
   });
 }
 
@@ -538,7 +955,7 @@ function initCustomerProfile() {
   addVisitBtn.addEventListener("click", () => {
     state.resetVisitDraft();
     state.serviceType = null;
-    show("serviceType");
+    openServiceTypeModal();
   });
 
   onEnter("customerProfile", async () => {
@@ -550,11 +967,11 @@ function initCustomerProfile() {
       <div class="pmeta">📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}</div>
     `;
 
-    historyList.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
+    historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     const history = await getHistoryByCustomer(c.customerId);
 
     if (history.length === 0) {
-      historyList.innerHTML = `<div class="empty-hint">ยังไม่มีประวัติการเข้ารับบริการ</div>`;
+      historyList.innerHTML = `<div class="empty-hint">No service history yet</div>`;
       return;
     }
 
@@ -563,9 +980,9 @@ function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         <div class="hdetail">
-          เทคนิค: ${escapeHtml(v.technique || "-")} · สี: ${escapeHtml(v.colorUsed || "-")}<br>
-          ความเข้ม: ${escapeHtml(v.intensity || "-")}
-          ${v.note ? `<br>หมายเหตุ: ${escapeHtml(v.note)}` : ""}
+          Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
+          Intensity: ${escapeHtml(v.intensity || "-")}
+          ${v.note ? `<br>Note: ${escapeHtml(v.note)}` : ""}
         </div>
       </div>
     `).join("");
@@ -677,39 +1094,71 @@ function initVisitDetail() {
 }
 
 // ==== js/screens/serviceType.js ====
+let modalEl = null;
+let closeTimer = null;
+
+function getModal() {
+  if (!modalEl) modalEl = document.getElementById("serviceTypeModal");
+  return modalEl;
+}
+
+// เปิด modal เลือกประเภทบริการทับหน้าจอปัจจุบัน (home หรือ customerProfile)
+function openServiceTypeModal() {
+  const modal = getModal();
+  if (!modal) return;
+  // "เติมสี" ใช้ได้เฉพาะลูกค้าเก่าที่มีประวัติอยู่แล้ว — ลูกค้าใหม่ต้องทำ "สักคิ้ว" เท่านั้น
+  document.getElementById("chooseTouchupBtn").hidden = !state.currentCustomer;
+  clearTimeout(closeTimer);
+  modal.hidden = false;
+  requestAnimationFrame(() => modal.classList.add("is-open"));
+}
+
+function closeServiceTypeModal() {
+  const modal = getModal();
+  if (!modal || modal.hidden) return;
+  modal.classList.remove("is-open");
+  closeTimer = setTimeout(() => { modal.hidden = true; }, 220);
+}
+
 function initServiceType() {
-  document.getElementById("serviceTypeBackBtn").addEventListener("click", () => {
-    show(state.currentCustomer ? "customerProfile" : "home");
+  const modal = getModal();
+  if (!modal) return;
+
+  document.getElementById("serviceTypeCloseBtn").addEventListener("click", closeServiceTypeModal);
+
+  // คลิกพื้นหลัง (backdrop) เพื่อปิด
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeServiceTypeModal();
+  });
+
+  // ปุ่ม Esc เพื่อปิด
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) closeServiceTypeModal();
   });
 
   document.getElementById("chooseBrowBtn").addEventListener("click", () => {
     state.serviceType = "สักคิ้ว";
     state.resetVisitDraft();
     state.browStepIndex = 0;
+    closeServiceTypeModal();
     show("formBrow");
   });
 
   document.getElementById("chooseTouchupBtn").addEventListener("click", () => {
     state.serviceType = "เติมสี";
     state.resetVisitDraft();
+    closeServiceTypeModal();
     show("formTouchup");
-  });
-
-  onEnter("serviceType", () => {
-    // ลูกค้าใหม่ (ยังไม่มี state.currentCustomer) ต้องทำ "สักคิ้ว" (ฟอร์มคอนเซ้าครั้งแรก) เท่านั้น
-    // "เติมสี" ใช้ได้เฉพาะลูกค้าเก่าที่มีประวัติอยู่แล้ว
-    document.getElementById("chooseTouchupBtn").hidden = !state.currentCustomer;
   });
 }
 
 // ==== js/screens/formBrow.js ====
 // formBrow.js — ฟอร์มคอนเซ้าต์ "สักคิ้ว" หน้าเดียวยาว (Page 1 ตาม Jotform ต้นฉบับ)
-// รวมชื่อ/เบอร์โทร/LINE ลูกค้า + ทุกฟิลด์ + consent 4 บล็อก + เลือกความเข้ม + ยินยอม (radio ตัวเลือกเดียว) + เซ็นชื่อลูกค้า
+// ทุกฟิลด์ + consent 4 บล็อก + เลือกความเข้ม + ยินยอม (radio ตัวเลือกเดียว) + เซ็นชื่อลูกค้า
 // จบด้วยปุ่ม "ถัดไป" เดียว ไปหน้า techFields (Page 2)
 //
-// กรณีลูกค้าใหม่ (state.currentCustomer ยังไม่มี — มาจาก home > "+ ลูกค้าใหม่" > เลือกประเภทบริการ):
-// ช่วงบนสุดของฟอร์มจะถามชื่อ/เบอร์โทร/LINE แทนกล่องแสดงชื่อลูกค้าเดิม ตรงตามโครงสร้าง Jotform จริง
-// (Jotform ถามชื่อ+เบอร์เป็นส่วนหนึ่งของฟอร์มเดียวกัน ไม่ใช่หน้าแยกก่อนเลือกบริการ)
+// flow: ลูกค้า (ทั้งใหม่/เก่า) ถูกสร้าง/เลือกเข้าฐานข้อมูลก่อนเข้าฟอร์มนี้เสมอ
+// (จากหน้า newCustomer หรือ customerProfile) — ฟอร์มนี้จึงแสดงแค่ชื่อลูกค้าปัจจุบัน ไม่ถามชื่อ/เบอร์ซ้ำ
 
 
 
@@ -736,27 +1185,8 @@ function initFormBrow() {
   let pad = null;
 
   function customerInfoHtml() {
-    const draft = state.visitDraft;
     const c = state.currentCustomer;
-    if (c) {
-      return `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>`;
-    }
-    return `
-      <div class="step-group-title">ชื่อเล่น <span class="required-star">*</span></div>
-      <!-- placeholder="เช่น มายด์" -->
-      <input type="text" class="input" data-text-key="newCustomerName" value="${escapeHtml(draft.newCustomerName || "")}">
-      <div class="step-group-title">เบอร์โทร <span class="required-star">*</span></div>
-      <!-- placeholder="08x-xxx-xxxx" -->
-      <input type="tel" class="input" data-text-key="newCustomerPhone" value="${escapeHtml(draft.newCustomerPhone || "")}">
-      <div class="step-group-title">ชื่อ LINE</div>
-      <!-- placeholder="ไม่บังคับ" -->
-      <input type="text" class="input" data-text-key="newCustomerLine" value="${escapeHtml(draft.newCustomerLine || "")}">
-      <div id="newCustomerWarning"></div>
-    `;
-  }
-
-  function renderCustomerInfoBlock() {
-    document.getElementById("customerInfoBlock").innerHTML = customerInfoHtml();
+    return c ? `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>` : "";
   }
 
   function render() {
@@ -899,45 +1329,9 @@ function initFormBrow() {
     return !first;
   }
 
-  async function ensureCustomer() {
-    if (state.currentCustomer) return true;
-    const draft = state.visitDraft;
-    const name = (draft.newCustomerName || "").trim();
-    const phone = (draft.newCustomerPhone || "").trim();
-    if (!name || !phone) {
-      const nameEl = !name ? flagError('[data-text-key="newCustomerName"]') : null;
-      const phoneEl = !phone ? flagError('[data-text-key="newCustomerPhone"]') : null;
-      scrollToFirstError(nameEl, phoneEl);
-      return false;
-    }
-
-    nextBtn.disabled = true;
-    const existing = await findCustomerByPhone(phone);
-    nextBtn.disabled = false;
-
-    if (existing) {
-      const warningEl = document.getElementById("newCustomerWarning");
-      warningEl.innerHTML = `
-        <div class="dup-warning">
-          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
-          กรุณาใช้ลูกค้าเดิมแทนการสร้างใหม่
-          <br><button class="btn btn-primary" id="dupUseExistingBtn" type="button" style="margin-top:8px">ใช้ลูกค้าคนนี้ แล้วกรอกต่อ</button>
-        </div>`;
-      document.getElementById("dupUseExistingBtn").addEventListener("click", () => {
-        state.currentCustomer = existing;
-        renderCustomerInfoBlock();
-      });
-      return false;
-    }
-
-    // ไม่ซ้ำ — ยังไม่สร้างลูกค้าจริงตรงนี้ ชื่อ/เบอร์/LINE ค้างอยู่ใน state.visitDraft แล้ว
-    // รอสร้างจริงพร้อมกับ saveVisit() ตอนกด "บันทึกประวัติ" ที่ page 2 (กัน orphan customer ถ้า flow ไม่จบ)
-    return true;
-  }
-
   nextBtn.addEventListener("click", async () => {
-    const ok = await ensureCustomer();
-    if (!ok) return;
+    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
+    if (!state.currentCustomer) { show("home"); return; }
 
     clearFieldErrors();
     const draft = state.visitDraft;
@@ -956,9 +1350,8 @@ function initFormBrow() {
     const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
     if (!noErrors) return;
 
-    // เก็บแค่ dataURL ดิบไว้ก่อน ยังไม่ upload ตรงนี้ — เพราะตอนนี้ (ลูกค้าใหม่) ยังไม่มี customerId จริง
-    // (สร้างจริงตอนกด "บันทึกประวัติ" ที่ page 2) ถ้า upload ตอนนี้จะได้ customerId เป็น "unknown"
-    // ทำให้ลายเซ็นตกไปอยู่คนละ customer folder กับรูปก่อน-หลัง จึง upload พร้อมกันที่ page 2 แทน
+    // เก็บลายเซ็นเป็น dataURL ดิบไว้ใน draft ก่อน แล้วค่อย upload รวมกับรูป before/after
+    // ที่หน้า techFields (page 2) ทีเดียว เพื่อให้ทุกไฟล์ของ visit นี้ลงโฟลเดอร์เดียวกัน
     if (!pad.isEmpty()) {
       draft.signatureCustomerDataUrl = pad.toDataURL();
     }
@@ -966,7 +1359,10 @@ function initFormBrow() {
     show("techFields");
   });
 
-  backBtn.addEventListener("click", () => show("serviceType"));
+  backBtn.addEventListener("click", () => {
+    show(state.currentCustomer ? "customerProfile" : "home");
+    openServiceTypeModal();
+  });
 
   onEnter("formBrow", render);
 }
@@ -978,12 +1374,19 @@ function initFormBrow() {
 
 
 
+
 function initFormTouchup() {
   const prevBox = document.getElementById("touchupPrevVisit");
   const adjustEl = document.getElementById("tuAdjust");
   const intensityEl = document.getElementById("tuIntensity");
   const priceEl = document.getElementById("tuPrice");
   const nextBtn = document.getElementById("tuNextBtn");
+  const backBtn = document.getElementById("touchupBackBtn");
+
+  backBtn.addEventListener("click", () => {
+    show(state.currentCustomer ? "customerProfile" : "home");
+    openServiceTypeModal();
+  });
 
   nextBtn.addEventListener("click", () => {
     state.visitDraft.adjustFromLast = adjustEl.value.trim();
@@ -1100,40 +1503,21 @@ function initTechFields() {
     saveBtn.disabled = true;
 
     const draft = state.visitDraft;
-    const isNewCustomer = !state.currentCustomer;
 
-    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทร (รู้ค่าได้ทันทีตั้งแต่ page 1) แทน customerId (ที่ต้องรอ
-    // สร้างลูกค้าเสร็จก่อนถึงจะรู้) เพื่อให้ "สร้างลูกค้า" กับ "หา/สร้าง visit folder" รันพร้อมกันได้เลย
+    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
+    if (!state.currentCustomer) { saveBtn.disabled = false; show("home"); return; }
+
+    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทรของลูกค้าปัจจุบัน
     const folderMeta = {
-      customerPhone: isNewCustomer ? (draft.newCustomerPhone || "").trim() : state.currentCustomer.phoneNormalized,
-      customerName: isNewCustomer ? (draft.newCustomerName || "").trim() : state.currentCustomer.name,
+      customerPhone: state.currentCustomer.phoneNormalized,
+      customerName: state.currentCustomer.name,
       serviceType: state.serviceType,
       visitKey: ensureVisitSessionKey(draft)
     };
 
-    const customerPromise = isNewCustomer
-      ? createCustomer({
-          name: (draft.newCustomerName || "").trim(),
-          phone: (draft.newCustomerPhone || "").trim(),
-          line: (draft.newCustomerLine || "").trim()
-        })
-      : Promise.resolve({ success: true, customer: state.currentCustomer });
-
     const hasSignature = Boolean(draft.signatureCustomerDataUrl);
 
-    // สร้างลูกค้า + หา/สร้าง visit folder พร้อมกันเลย (ไม่พึ่งกัน) — พอได้ folderId แน่นอนแล้วค่อย
-    // upload รูป/ลายเซ็นทั้งหมดแบบขนานเต็มที่ ไม่มี race เพราะไม่มีไฟล์ไหนต้องมาหา/สร้างโฟลเดอร์ซ้ำอีก
-    const [customerRes, folderRes] = await Promise.all([
-      customerPromise,
-      ensureVisitFolder(folderMeta)
-    ]);
-
-    if (!customerRes.success) {
-      alert("เบอร์นี้ถูกสร้างเป็นลูกค้าไปแล้วระหว่างกรอกฟอร์ม กรุณากลับไปหน้าก่อนหน้าแล้วเลือกลูกค้าเดิม");
-      saveBtn.disabled = false;
-      return;
-    }
-    state.currentCustomer = customerRes.customer;
+    const folderRes = await ensureVisitFolder(folderMeta);
 
     const uploadMeta = { folderId: folderRes.folderId };
     const [beforeUp, afterUp, sigUp] = await Promise.all([
@@ -1184,10 +1568,10 @@ function initConfirmation() {
 
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
-    exportBtn.textContent = "กำลังสร้าง PDF...";
+    exportBtn.textContent = "Generating PDF...";
     const res = await exportConsentPdf(state.lastSavedServiceId);
     exportBtn.disabled = false;
-    exportBtn.textContent = "Export ใบคอนเซ้นต์ (PDF) — mock";
+    exportBtn.textContent = "Export Consent Form (PDF) — mock";
     alert(res.note);
   });
 
@@ -1198,7 +1582,7 @@ function initConfirmation() {
 
   onEnter("confirmation", () => {
     const c = state.currentCustomer;
-    summaryEl.textContent = `บันทึกประวัติ ${state.serviceType} ของ ${c ? c.name : ""} เรียบร้อยแล้ว (รหัส ${state.lastSavedServiceId})`;
+    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? c.name : ""} (ID ${state.lastSavedServiceId})`;
   });
 }
 
@@ -1212,9 +1596,12 @@ function initConfirmation() {
 
 
 
+
 initShell();
+initLogin();
 // initGate();
 initHome();
+initNewCustomer();
 initCustomerProfile();
 initVisitDetail();
 initServiceType();
@@ -1240,5 +1627,12 @@ initConfirmation();
     state.serviceType = debugServiceType;
   }
   show(debugScreen || "home", { pushHistory: false });
+
+  // debug เจาะจงหน้า / หรือเคย Sign In ไว้แล้ว → ข้าม login; ไม่เช่นนั้นโชว์ login
+  if (debugScreen || isLoggedIn()) {
+    hideLogin();
+  } else {
+    showLogin();
+  }
 })();
 </script>

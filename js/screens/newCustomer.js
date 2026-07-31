@@ -45,9 +45,9 @@ export function initNewCustomer() {
       createBtn.disabled = false;
       warnEl.innerHTML = `
         <div class="dup-warning">
-          ⚠ เบอร์นี้มีอยู่ในระบบแล้ว: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
-          ควรใช้ลูกค้าเดิมแทนการสร้างซ้ำ
-          <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">เปิดประวัติลูกค้าคนนี้</button>
+          ⚠ This phone number already exists: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
+          Please use the existing customer instead of creating a duplicate.
+          <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">Open this customer</button>
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
@@ -59,7 +59,7 @@ export function initNewCustomer() {
     const res = await createCustomer({ name, phone, line });
     createBtn.disabled = false;
     if (!res.success) {
-      warnEl.innerHTML = `<div class="dup-warning">⚠ ไม่สามารถสร้างลูกค้าได้ (เบอร์อาจเพิ่งถูกสร้างไปแล้ว) ลองอีกครั้ง</div>`;
+      warnEl.innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
       return;
     }
 

@@ -2,6 +2,7 @@ import { show } from "./router.js";
 import { state } from "./state.js";
 import { getCustomer } from "./mockApi.js";
 import { initShell } from "./shell.js";
+import { initLogin, showLogin, hideLogin, isLoggedIn } from "./screens/login.js";
 // import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
 import { initHome } from "./screens/home.js";
 import { initNewCustomer } from "./screens/newCustomer.js";
@@ -14,6 +15,7 @@ import { initTechFields } from "./screens/techFields.js";
 import { initConfirmation } from "./screens/confirmation.js";
 
 initShell();
+initLogin();
 // initGate();
 initHome();
 initNewCustomer();
@@ -42,4 +44,11 @@ initConfirmation();
     state.serviceType = debugServiceType;
   }
   show(debugScreen || "home", { pushHistory: false });
+
+  // debug เจาะจงหน้า / หรือเคย Sign In ไว้แล้ว → ข้าม login; ไม่เช่นนั้นโชว์ login
+  if (debugScreen || isLoggedIn()) {
+    hideLogin();
+  } else {
+    showLogin();
+  }
 })();

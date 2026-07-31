@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Dancing+Script:wght@600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Prompt:wght@300;400;500;600;700&family=Dancing+Script:wght@600&display=swap");
 
 :root {
   --green-900: #6b4a30;
@@ -25,9 +25,12 @@
 
 html, body {
   margin: 0; padding: 0; height: 100%;
-  font-family: "Sarabun", "Thonburi", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Prompt", "Sarabun", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-page);
   color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: .01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -91,11 +94,39 @@ html, body {
 .sidebar-nav-item .nav-icon { width: 19px; height: 19px; flex-shrink: 0; }
 .sidebar-footer { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
 .sidebar-copyright { font-size: 11.5px; color: #9a978c; padding: 10px 14px 0; }
+.user-menu { position: relative; }
 .sidebar-user {
-  display: flex; align-items: center; gap: 10px; padding: 8px 8px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 8px; width: 100%;
+  border: none; background: transparent; text-align: left; font: inherit;
   border-radius: 12px; cursor: pointer; transition: background .15s;
 }
 .sidebar-user:hover { background: var(--green-50); }
+.user-menu.is-open .sidebar-user { background: var(--green-50); }
+.user-menu.is-open .sidebar-user-chevron { transform: rotate(180deg); }
+.sidebar-user-chevron { transition: transform .18s ease; }
+
+.user-menu-popover {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 8px);
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,.14);
+  padding: 6px; z-index: 60;
+  transform-origin: bottom center; animation: userMenuIn .16s ease;
+}
+@keyframes userMenuIn {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.user-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px 12px; border: none; background: transparent; cursor: pointer;
+  border-radius: 10px; font: inherit; font-size: 13.5px; color: var(--ink);
+  text-align: left; transition: background .12s;
+}
+.user-menu-item:hover { background: var(--green-50); }
+.user-menu-item svg { width: 17px; height: 17px; flex: 0 0 auto; color: #9a978c; }
+.user-menu-item-danger { color: #c0392b; }
+.user-menu-item-danger svg { color: #c0392b; }
+.user-menu-item-danger:hover { background: #fdecea; }
 .sidebar-user-avatar {
   flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -132,7 +163,7 @@ html, body {
 .mobile-dropdown[hidden] { display: none; }
 .mobile-dropdown.is-open { transform: translateX(0); }
 .mobile-menu-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.mobile-menu-title { color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 24px; font-weight: 600; }
+.mobile-menu-title { color: var(--ink); font-family: "Prompt", sans-serif; font-size: 22px; font-weight: 600; }
 .mobile-menu-close {
   width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 10px;
   background: var(--green-50); color: var(--green-900); cursor: pointer; font-size: 30px; line-height: 1;
@@ -143,6 +174,29 @@ html, body {
 }
 .mobile-dropdown-item.active { background: var(--green-900); color: #fff; }
 .mobile-dropdown-item:not(.active):hover { background: var(--green-50); }
+/* กล่องโปรไฟล์ท้ายเมนูมือถือ (Reset password / Log out) */
+.mobile-menu-account {
+  margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mobile-account-user {
+  display: flex; align-items: center; gap: 12px; padding: 10px 6px 14px;
+}
+.mobile-account-user .sidebar-user-avatar { flex: 0 0 42px; width: 42px; height: 42px; font-size: 16px; }
+.mobile-account-user .sidebar-user-name { font-size: 15px; }
+.mobile-account-user .sidebar-user-role { font-size: 12.5px; }
+.mobile-account-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  min-height: 50px; padding: 13px 16px; border: none; background: transparent;
+  border-radius: 10px; cursor: pointer; font: inherit; font-size: 15.5px; font-weight: 600;
+  color: var(--ink); text-align: left;
+}
+.mobile-account-item:hover { background: var(--green-50); }
+.mobile-account-item svg { width: 19px; height: 19px; flex: 0 0 auto; color: #9a978c; }
+.mobile-account-item-danger { color: #c0392b; }
+.mobile-account-item-danger svg { color: #c0392b; }
+.mobile-account-item-danger:hover { background: #fdecea; }
+
 .mobile-menu-overlay {
   position: fixed; inset: 0; z-index: 100; background: rgba(44, 36, 26, .36);
   opacity: 0; transition: opacity .22s ease-out;
@@ -275,7 +329,7 @@ select.input { -webkit-appearance: none; appearance: none; }
 }
 .modal-overlay.is-open .glass-modal { transform: translateY(0) scale(1); }
 .glass-modal-title {
-  font-family: "Playfair Display", Georgia, serif; font-size: 25px; font-weight: 600;
+  font-family: "Prompt", sans-serif; font-size: 22px; font-weight: 600;
   color: var(--ink); margin: 0 0 4px; text-align: center;
 }
 .glass-modal-sub { text-align: center; color: #6f6656; font-size: 13.5px; margin: 0 0 22px; }
@@ -310,43 +364,82 @@ input.field-error, textarea.field-error { background: #fdf1f0; }
 /* Page header (title + subtitle) — แถบหัวหน้า Customers */
 .page-header {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-  padding: 22px clamp(24px, 3vw, 48px);
+  padding: 28px clamp(24px, 3vw, 48px);
   background: var(--bg-white); border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 20;
 }
-.page-title { font-family: "Playfair Display", Georgia, serif; font-size: 28px; font-weight: 600; color: var(--ink); margin: 0; line-height: 1.1; }
-.page-subtitle { color: #8a8372; font-size: 14px; margin: 4px 0 0; }
+.page-title { font-family: "Prompt", sans-serif; font-size: 27px; font-weight: 600; color: var(--ink); margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+.page-subtitle { color: #8a8372; font-size: 14.5px; margin: 6px 0 0; }
 
 .customers-page {
   width: 100%;
-  padding: clamp(20px, 2.5vw, 30px) clamp(24px, 3vw, 48px) 60px;
+  padding: clamp(24px, 2.5vw, 34px) clamp(24px, 3vw, 48px) 64px;
 }
 
-.toolbar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.toolbar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .search-bar-wrap { position: relative; flex: 1; min-width: 0; }
 .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--gray-500); pointer-events: none; }
 .search-input { margin: 0; padding-left: 44px; border-radius: 999px; background: var(--bg-white); }
 .toolbar-row .btn-primary { flex: 0 0 auto; border-radius: 999px; white-space: nowrap; }
 
-.customers-summary { font-size: 13.5px; color: #8a8372; margin: 0 4px 16px; }
+.customers-summary { font-size: 14px; color: #8a8372; margin: 0 4px 20px; }
 .customers-summary strong { color: var(--ink); font-weight: 700; }
 .customers-summary .dot { margin: 0 8px; color: #cabfa6; }
 
 .customers-table-card {
-  background: var(--bg-white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  background: var(--bg-white); border: 1px solid var(--border); border-radius: 16px;
   box-shadow: var(--shadow-sm);
+  /* อย่าใช้ overflow:hidden — จะตัด dropdown Actions ของแต่ละแถว */
+  overflow: visible;
 }
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; overflow-y: visible; }
 .customers-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .customers-table thead th {
-  text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  color: #9a927f; background: #faf7f0; padding: 14px 22px; border-bottom: 1px solid var(--border);
+  text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: #9a927f; background: #faf7f0; padding: 16px 24px; border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
-.customers-table tbody td { padding: 15px 22px; border-bottom: 1px solid #f0ede3; font-size: 14px; color: var(--ink); white-space: nowrap; vertical-align: middle; }
-.customers-table tbody tr { cursor: pointer; transition: background .12s; }
+.customers-table tbody td { padding: 18px 24px; border-bottom: 1px solid #f0ede3; font-size: 14px; color: var(--ink); white-space: nowrap; vertical-align: middle; }
+.customers-table tbody tr { transition: background .12s; }
 .customers-table tbody tr:last-child td { border-bottom: none; }
 .customers-table tbody tr:hover { background: #faf7f0; }
+.th-actions, .cell-actions { text-align: right; width: 1%; vertical-align: middle; }
+.row-menu { position: relative; display: inline-flex; justify-content: flex-end; }
+
+.row-menu-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; border-radius: 8px;
+  border: 1px solid transparent; background: transparent; color: #8a8372;
+  cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+}
+.row-menu-trigger:hover,
+.row-menu.is-open .row-menu-trigger {
+  background: var(--green-50); border-color: var(--border); color: var(--ink);
+}
+.row-menu-trigger svg { width: 16px; height: 16px; display: block; }
+
+.row-menu-popover {
+  position: fixed; z-index: 200;
+  min-width: 168px; padding: 6px;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 10px 28px rgba(58, 41, 24, .14);
+}
+.row-menu-popover[hidden] { display: none !important; }
+
+.row-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  height: 38px; padding: 0 12px; margin: 0;
+  border: none; background: transparent; cursor: pointer;
+  border-radius: 8px; font: inherit; font-size: 13.5px; font-weight: 500;
+  color: var(--ink); text-align: left; white-space: nowrap;
+  transition: background .12s;
+}
+.row-menu-item:hover { background: var(--green-50); }
+.row-menu-item svg {
+  width: 16px !important; height: 16px !important;
+  max-width: 16px; max-height: 16px;
+  flex: 0 0 16px; color: #9a978c; display: block;
+}
 
 /* Customer cell: avatar + name + note */
 .cell-customer { display: flex; align-items: center; gap: 12px; }
@@ -368,11 +461,6 @@ input.field-error, textarea.field-error { background: #fdf1f0; }
 .cell-visits { display: inline-flex; align-items: center; gap: 6px; color: #4b5563; }
 .cell-visits strong { color: var(--ink); font-weight: 700; }
 .cell-star { width: 15px; height: 15px; color: #e0a80f; flex: 0 0 auto; }
-
-/* Tag badges */
-.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 13px; border-radius: 999px; }
-.tag-regular { background: #ecebe4; color: #6b7280; }
-.tag-new { background: #e0f0e5; color: #3f8f5b; }
 
 .customers-table-card .empty-hint { padding: 40px 20px; }
 
@@ -513,4 +601,154 @@ input.field-error, textarea.field-error { background: #fdf1f0; }
 
 @media (min-width: 600px) {
   .page-pad { padding-left: 32px; padding-right: 32px; }
+}
+
+/* ===================== LOGIN ===================== */
+.login-screen {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(130% 100% at 50% -10%, #7d5836 0%, #5d4028 34%, #3b2717 68%, #241609 100%);
+}
+.login-screen[hidden] { display: none; }
+
+.login-inner {
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.login-logo { margin-bottom: 30px; }
+.login-logo img {
+  width: 190px; height: auto; display: block;
+  /* โลโก้ต้นฉบับเป็นสีน้ำตาล — แปลงเป็นครีมอ่อนให้เด่นบนพื้นเข้ม */
+  filter: brightness(0) invert(1);
+  opacity: .95;
+}
+
+.login-card {
+  width: 100%;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 20px;
+  padding: 28px 26px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+}
+
+.login-field { position: relative; margin-bottom: 14px; }
+.login-input {
+  width: 100%; height: 52px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06);
+  color: #f5efe6; font-size: 15px;
+  outline: none; transition: border-color .15s, background .15s;
+}
+.login-input::placeholder { color: rgba(245, 239, 230, .55); }
+.login-input:focus {
+  border-color: rgba(255, 255, 255, .4);
+  background: rgba(255, 255, 255, .1);
+}
+.login-field .login-input { padding-right: 46px; }
+
+.login-eye {
+  position: absolute; top: 50%; right: 12px; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 6px;
+  color: rgba(245, 239, 230, .6); display: flex;
+}
+.login-eye:hover { color: #f5efe6; }
+.login-eye svg { width: 18px; height: 18px; }
+
+.login-forgot { text-align: right; margin-bottom: 18px; }
+.login-forgot-link {
+  background: none; border: none; cursor: pointer;
+  color: rgba(245, 239, 230, .7); font-size: 13px; padding: 0;
+}
+.login-forgot-link:hover { color: #f5efe6; text-decoration: underline; }
+
+.login-error {
+  color: #f7c9c4; font-size: 13px; margin: 0 0 14px; text-align: center;
+}
+
+.login-submit {
+  width: 100%; height: 52px;
+  border: none; border-radius: 12px; cursor: pointer;
+  background: #f4efe6; color: #2c241b;
+  font-size: 15px; font-weight: 700;
+  transition: transform .12s, box-shadow .15s, background .15s;
+}
+.login-submit:hover { background: #fff; box-shadow: 0 8px 20px rgba(0, 0, 0, .2); }
+.login-submit:active { transform: translateY(1px); }
+
+.login-copyright {
+  margin-top: 22px; font-size: 12.5px; color: rgba(245, 239, 230, .45);
+}
+
+/* ===================== RESET PASSWORD MODAL ===================== */
+.reset-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: rgba(30, 18, 8, .55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.reset-overlay[hidden] { display: none; }
+
+.reset-card {
+  position: relative;
+  width: 100%; max-width: 404px;
+  background: rgba(60, 44, 30, .55);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 18px;
+  padding: 30px 28px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .4);
+  animation: userMenuIn .18s ease;
+}
+.reset-close {
+  position: absolute; top: 16px; right: 16px;
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: rgba(245, 239, 230, .6); display: flex;
+}
+.reset-close:hover { color: #f5efe6; }
+.reset-close svg { width: 18px; height: 18px; }
+
+.reset-title {
+  margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #f5efe6;
+}
+.reset-sub {
+  margin: 0 0 22px; font-size: 13.5px; color: rgba(245, 239, 230, .6);
+}
+
+.reset-back {
+  width: 100%; margin-top: 12px;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  color: rgba(245, 239, 230, .7); font-size: 13.5px; padding: 8px;
+}
+.reset-back:hover { color: #f5efe6; }
+.reset-back svg { width: 15px; height: 15px; }
+
+/* Login / Reset — จอมือถือ */
+@media (max-width: 480px) {
+  .login-screen { padding: 20px 18px; }
+  .login-logo { margin-bottom: 22px; }
+  .login-logo img { width: 150px; }
+  .login-card { padding: 22px 18px; border-radius: 16px; }
+  .login-input { height: 48px; font-size: 16px; } /* 16px กัน iOS zoom ตอนโฟกัส */
+  .login-submit { height: 48px; }
+  .login-copyright { margin-top: 18px; }
+
+  .reset-overlay { padding: 18px; }
+  .reset-card { padding: 26px 20px 20px; border-radius: 16px; }
+  .reset-title { font-size: 18px; }
+}
+
+/* จอเตี้ย (มือถือแนวนอน) — ให้เลื่อนได้ ไม่ให้การ์ดโดนตัด */
+@media (max-height: 640px) {
+  .login-screen, .reset-overlay { align-items: flex-start; overflow-y: auto; }
+  .login-logo { margin-bottom: 18px; }
 }
