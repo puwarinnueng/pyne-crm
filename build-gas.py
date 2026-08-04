@@ -63,6 +63,8 @@ function callServer_(name, ...args) {
   });
 }
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
+function checkLogin(username, password) { return callServer_("checkLogin", username, password); }
+function changePassword(newPassword) { return callServer_("changePassword", newPassword); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
 function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }

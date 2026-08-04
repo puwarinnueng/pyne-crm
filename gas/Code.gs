@@ -19,3 +19,15 @@ function checkPasscode(pin) {
   const value = getConfigValue_("PASSCODE");
   return { success: String(pin) === String(value) };
 }
+
+function checkLogin(username, password) {
+  const storedUsername = getConfigValue_("USERNAME");
+  const storedPassword = getConfigValue_("PASSWORD");
+  const success = String(username || "") === String(storedUsername) && String(password || "") === String(storedPassword);
+  return { success: success };
+}
+
+function changePassword(newPassword) {
+  setConfigValue_("PASSWORD", newPassword);
+  return { success: true };
+}

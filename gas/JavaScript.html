@@ -676,6 +676,8 @@ function callServer_(name, ...args) {
   });
 }
 function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
+function checkLogin(username, password) { return callServer_("checkLogin", username, password); }
+function changePassword(newPassword) { return callServer_("changePassword", newPassword); }
 function searchCustomers(query) { return callServer_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
 function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
@@ -789,12 +791,14 @@ function initGate() {
 }
 
 // ==== js/screens/login.js ====
-// login.js — หน้าเข้าสู่ระบบ + modal รีเซ็ตรหัสผ่าน (UI เท่านั้น) วางทับทั้งแอปด้วย z-index สูง
-// TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
+// login.js — หน้าเข้าสู่ระบบ + modal รีเซ็ตรหัสผ่าน วางทับทั้งแอปด้วย z-index สูง
+// ตรวจ username/password จริง: local (mock) เทียบกับ js/data/authConfig.js,
+// production (gas/) เทียบกับแท็บ Config ของ Sheet ผ่าน checkLogin()/changePassword() — ดู gas/Code.gs
+
 
 const LOGGED_IN_KEY = "pyneCrmLoggedIn";
 
-let screen, form, emailInput, pwInput, errorEl;
+let screen, form, userInput, pwInput, errorEl, submitBtn;
 let resetOverlay, resetForm, resetPw, resetPwConfirm, resetError;
 
 function isLoggedIn() {
@@ -810,10 +814,10 @@ function showLogin() {
   if (!screen) return;
   closeReset(); // กันไม่ให้ modal reset ค้างทับหน้า login
   screen.hidden = false;
-  if (emailInput) emailInput.value = "";
+  if (userInput) userInput.value = "";
   if (pwInput) pwInput.value = "";
   if (errorEl) errorEl.hidden = true;
-  if (emailInput) emailInput.focus();
+  if (userInput) userInput.focus();
 }
 
 function hideLogin() {
@@ -836,9 +840,10 @@ function closeReset() {
 function initLogin() {
   screen = document.getElementById("loginScreen");
   form = document.getElementById("loginForm");
-  emailInput = document.getElementById("loginEmail");
+  userInput = document.getElementById("loginUsername");
   pwInput = document.getElementById("loginPassword");
   errorEl = document.getElementById("loginError");
+  submitBtn = form ? form.querySelector(".login-submit") : null;
   const toggleBtn = document.getElementById("loginTogglePw");
   const forgotBtn = document.getElementById("loginForgot");
 
@@ -850,12 +855,26 @@ function initLogin() {
   closeReset(); // เริ่มต้นให้ modal ปิดเสมอ กันสถานะค้างจากการโหลดผิดปกติ
 
   if (form) {
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      // ยังไม่มีระบบ auth จริง (รอ backend) — กด Sign In เข้าหน้าหลักได้เลย
+      const username = userInput.value.trim();
+      const password = pwInput.value;
+      if (!username || !password) {
+        errorEl.textContent = "Please enter your username and password.";
+        errorEl.hidden = false;
+        return;
+      }
       errorEl.hidden = true;
-      setLoggedIn(true);
-      hideLogin();
+      if (submitBtn) submitBtn.disabled = true;
+      const res = await checkLogin(username, password);
+      if (submitBtn) submitBtn.disabled = false;
+      if (res.success) {
+        setLoggedIn(true);
+        hideLogin();
+      } else {
+        errorEl.textContent = "Invalid username or password.";
+        errorEl.hidden = false;
+      }
     });
 
     toggleBtn.addEventListener("click", () => {
@@ -874,19 +893,28 @@ function initResetModal() {
   if (!resetOverlay || !resetForm) return;
   const closeBtn = document.getElementById("resetClose");
   const backBtn = document.getElementById("resetBack");
+  const resetSubmitBtn = resetForm.querySelector(".login-submit");
 
-  resetForm.addEventListener("submit", (e) => {
+  resetForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const pw = resetPw.value.trim();
     const confirm = resetPwConfirm.value.trim();
     if (!pw || pw !== confirm) {
+      resetError.textContent = "Passwords do not match.";
       resetError.hidden = false;
       return;
     }
     resetError.hidden = true;
-    // TODO: ส่งรหัสใหม่ไป backend จริงเมื่อพร้อม
-    closeReset();
-    alert("Password updated");
+    if (resetSubmitBtn) resetSubmitBtn.disabled = true;
+    const res = await changePassword(pw);
+    if (resetSubmitBtn) resetSubmitBtn.disabled = false;
+    if (res.success) {
+      closeReset();
+      alert("Password updated");
+    } else {
+      resetError.textContent = "Could not update password. Please try again.";
+      resetError.hidden = false;
+    }
   });
 
   // ปุ่มลูกตาโชว์/ซ่อนรหัสของทั้งสองช่อง

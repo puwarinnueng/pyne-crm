@@ -5,6 +5,7 @@
 // เป็น wrapper ที่เรียก google.script.run แทน (โครงสร้างพารามิเตอร์/ผลลัพธ์ไม่ต้องเปลี่ยน)
 
 import { db } from "./data/mockData.js";
+import { AUTH_CONFIG } from "./data/authConfig.js";
 
 const DELAY = 250; // จำลอง network latency ให้เห็น loading state จริง
 
@@ -13,6 +14,34 @@ function wait(ms = DELAY) {
 }
 
 const PASSCODE = "1234"; // mock — ของจริงเก็บใน Config sheet
+
+// เก็บ username/password ที่เปลี่ยนผ่านหน้า Reset password ไว้ใน localStorage (เฉพาะ local/dev)
+// ของจริง (gas/) จะเขียนทับค่าในแท็บ Config ของ Sheet แทน — ดู gas/Code.gs: changePassword()
+const AUTH_OVERRIDE_KEY = "pyneCrmAuthOverride";
+
+function getAuthCreds() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(AUTH_OVERRIDE_KEY) || "null");
+    if (stored && stored.username && stored.password) return stored;
+  } catch (e) {
+    // ค่าที่เก็บไว้พังหรืออ่านไม่ได้ — ใช้ค่า default แทน
+  }
+  return AUTH_CONFIG;
+}
+
+export async function checkLogin(username, password) {
+  await wait();
+  const creds = getAuthCreds();
+  const success = String(username || "").trim() === creds.username && String(password || "") === creds.password;
+  return { success };
+}
+
+export async function changePassword(newPassword) {
+  await wait();
+  const creds = getAuthCreds();
+  localStorage.setItem(AUTH_OVERRIDE_KEY, JSON.stringify({ username: creds.username, password: newPassword }));
+  return { success: true };
+}
 
 export function normalizePhone(phone) {
   if (!phone) return "";

@@ -31,6 +31,8 @@ function setupSpreadsheet() {
   const configSheet = ensureSheetWithHeaders_(ss, SHEET_NAMES.CONFIG, CONFIG_HEADERS);
 
   ensureConfigRow_(configSheet, "PASSCODE", DEFAULT_PASSCODE);
+  ensureConfigRow_(configSheet, "USERNAME", DEFAULT_USERNAME);
+  ensureConfigRow_(configSheet, "PASSWORD", DEFAULT_PASSWORD);
 
   // สำคัญ: บังคับคอลัมน์เบอร์โทรเป็น Plain text ทั้งคอลัมน์ ป้องกัน Sheets แปลงเป็นตัวเลข
   // แล้วตัดเลข 0 นำหน้าทิ้ง (เช่น 0850373790 -> 850373790) — รันซ้ำได้ปลอดภัย
