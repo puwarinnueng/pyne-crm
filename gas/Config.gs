@@ -14,8 +14,10 @@ const SHEET_ID = "1SyENEryBoq8EEbNRDyTZjZOgpopTAG88Uh7HB7-T2Yc";
 
 const DRIVE_ROOT_FOLDER_ID = "1lMxxmJeZFXhgOKV4atsZ6qyvjXJAW4Sh";
 
-// username/password สำหรับหน้า Sign In — เปลี่ยนได้ทีหลังผ่านแท็บ Config ใน Sheet โดยตรง (คีย์ USERNAME/PASSWORD)
-// หรือจากหน้า "Reset password" ในแอป (แก้เฉพาะ PASSWORD) ไม่ต้องแก้ที่นี่/deploy ใหม่
+// username/password เริ่มต้นสำหรับหน้า Sign In — ใช้แค่ตอน setupSpreadsheet() ครั้งแรก (ดู Setup.gs)
+// หลังจากนั้น USERNAME แก้ได้ทีหลังผ่านแท็บ Config ใน Sheet โดยตรง แต่ PASSWORD ต้องเปลี่ยนผ่านหน้า
+// "Reset password" ในแอปเท่านั้น เพราะแท็บ Config เก็บแค่ salted hash (PASSWORD_HASH/PASSWORD_SALT)
+// ไม่เก็บรหัสผ่านตัวเต็ม แก้ในชีตตรงๆ ไม่ได้ — ดู gas/Utils.gs: hashPassword_()
 const DEFAULT_USERNAME = "admin@gmail.com";
 const DEFAULT_PASSWORD = "pyne1234";
 

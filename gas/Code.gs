@@ -17,8 +17,11 @@ function include(filename) {
 
 function login(username, password) {
   const storedUsername = getConfigValue_("USERNAME");
-  const storedPassword = getConfigValue_("PASSWORD");
-  const ok = String(username || "") === String(storedUsername) && String(password || "") === String(storedPassword);
+  const storedHash = getConfigValue_("PASSWORD_HASH");
+  const storedSalt = getConfigValue_("PASSWORD_SALT");
+  const ok = String(username || "") === String(storedUsername)
+    && !!storedHash
+    && hashPassword_(password, storedSalt) === String(storedHash);
   if (!ok) return { success: false };
   const token = Utilities.getUuid();
   setSessionToken_(token);
@@ -38,11 +41,14 @@ function logout(token) {
 // เปลี่ยนรหัสผ่าน — ต้องกรอกรหัสผ่านเดิมถูกต้องก่อนเสมอ (กันไม่ให้ใครตั้งรหัสใหม่ได้จากหน้า login
 // โดยไม่รู้รหัสเดิม) เปลี่ยนสำเร็จแล้ว invalidate session ทันที บังคับ login ใหม่ด้วยรหัสผ่านใหม่
 function changePassword(oldPassword, newPassword) {
-  const storedPassword = getConfigValue_("PASSWORD");
-  if (String(oldPassword || "") !== String(storedPassword)) {
+  const storedHash = getConfigValue_("PASSWORD_HASH");
+  const storedSalt = getConfigValue_("PASSWORD_SALT");
+  if (!storedHash || hashPassword_(oldPassword, storedSalt) !== String(storedHash)) {
     return { success: false, error: "wrong_password" };
   }
-  setConfigValue_("PASSWORD", newPassword);
+  const newSalt = generateSalt_();
+  setConfigValue_("PASSWORD_HASH", hashPassword_(newPassword, newSalt));
+  setConfigValue_("PASSWORD_SALT", newSalt);
   clearSessionToken_();
   return { success: true };
 }

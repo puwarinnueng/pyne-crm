@@ -72,3 +72,15 @@ function requireSession_(token) {
     throw new Error("UNAUTHORIZED");
   }
 }
+
+// ==== Password hashing ====
+// ไม่เก็บรหัสผ่านตัวเต็มในแท็บ Config เลย — เก็บแค่ salted SHA-256 hash (PASSWORD_HASH + PASSWORD_SALT)
+// ใครก็ตามที่เปิดดู/แชร์ Sheet ได้ (ซึ่งมักจะเป็นกลุ่มกว้างกว่าคนที่แก้โค้ดได้) จะไม่เห็นรหัสผ่านจริง
+function generateSalt_() {
+  return Utilities.getUuid();
+}
+
+function hashPassword_(password, salt) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(password) + String(salt));
+  return bytes.map((b) => ((b < 0 ? b + 256 : b).toString(16).padStart(2, "0"))).join("");
+}

@@ -35,8 +35,10 @@ function setupSpreadsheet() {
   resetSheetWithHeaders_(ss, SHEET_NAMES.SERVICE_HISTORY, SERVICE_HISTORY_HEADERS);
   const configSheet = resetSheetWithHeaders_(ss, SHEET_NAMES.CONFIG, CONFIG_HEADERS);
 
+  const salt = generateSalt_();
   configSheet.appendRow(["USERNAME", DEFAULT_USERNAME]);
-  configSheet.appendRow(["PASSWORD", DEFAULT_PASSWORD]);
+  configSheet.appendRow(["PASSWORD_HASH", hashPassword_(DEFAULT_PASSWORD, salt)]);
+  configSheet.appendRow(["PASSWORD_SALT", salt]);
 
   // บังคับคอลัมน์เบอร์โทรเป็น Plain text ทั้งคอลัมน์ตั้งแต่ก่อนมีข้อมูลใด ๆ ป้องกัน Sheets แปลงเป็น
   // ตัวเลขแล้วตัดเลข 0 นำหน้าทิ้ง (เช่น 0850373790 -> 850373790)
