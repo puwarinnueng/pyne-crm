@@ -41,8 +41,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
     <h2 class="reset-title">Reset new password</h2>
-    <p class="reset-sub">Enter your new password below.</p>
+    <p class="reset-sub">Enter your current password, then choose a new one.</p>
 
+    <div class="login-field">
+      <input type="password" id="resetOldPw" class="login-input" placeholder="Current password" autocomplete="current-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetOldPw" aria-label="Show password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <div class="login-field">
       <input type="password" id="resetPw" class="login-input" placeholder="New password" autocomplete="new-password">
       <button type="button" class="login-eye" data-reset-toggle="resetPw" aria-label="Show password">
@@ -141,19 +147,6 @@
     </header>
 
     <div id="app">
-
-      <!-- ===================== 1. PASSCODE GATE (ปิดใช้งานไว้ก่อน เผื่อเปิดใช้ในอนาคต) =====================
-      <section class="screen" id="screen-gate">
-        <div class="gate-wrap">
-          <h1 class="brand">pyne <span>studio</span></h1>
-          <p class="muted">กรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
-          <input type="password" inputmode="numeric" id="passcodeInput" class="input input-lg" placeholder="รหัสผ่าน" autocomplete="off">
-          <p class="error-text" id="gateError" hidden>รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง</p>
-          <button class="btn btn-primary btn-block" id="gateSubmit">เข้าสู่ระบบ</button>
-          <p class="muted small mock-hint">Mock: รหัสผ่านคือ <code>1234</code></p>
-        </div>
-      </section>
-      ===================================================================================================== -->
 
       <!-- ===================== 2. HOME / CUSTOMERS ===================== -->
       <section class="screen" id="screen-home">

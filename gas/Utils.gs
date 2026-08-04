@@ -47,3 +47,28 @@ function nextId_(sheet, prefix, padLength) {
   const count = lastRow <= 1 ? 0 : lastRow - 1;
   return prefix + String(count + 1).padStart(padLength, "0");
 }
+
+// ==== Session helpers (login) ====
+// เก็บ session token "ปัจจุบัน" ไว้ที่เดียวใน Script Properties แอปนี้มี admin คนเดียว จึงรองรับแค่
+// 1 session ที่ active พร้อมกัน — login เครื่องใหม่จะเขียนทับ token เก่า ทำให้เครื่องเดิม logout อัตโนมัติ
+function getSessionToken_() {
+  return PropertiesService.getScriptProperties().getProperty("SESSION_TOKEN");
+}
+
+function setSessionToken_(token) {
+  PropertiesService.getScriptProperties().setProperty("SESSION_TOKEN", token);
+}
+
+function clearSessionToken_() {
+  PropertiesService.getScriptProperties().deleteProperty("SESSION_TOKEN");
+}
+
+// เรียกที่ต้นทุกฟังก์ชันที่ต้อง login ก่อนถึงจะใช้ได้ — โยน error กลับไปให้ client ผ่าน
+// google.script.run .withFailureHandler ถ้า token ไม่มี/ไม่ตรงกับ session ที่ active อยู่จริง
+// กันไม่ให้ใครเปิด console เรียก google.script.run ข้ามหน้า login ไปยิงข้อมูลตรงๆ ได้
+function requireSession_(token) {
+  const stored = getSessionToken_();
+  if (!stored || !token || String(token) !== String(stored)) {
+    throw new Error("UNAUTHORIZED");
+  }
+}

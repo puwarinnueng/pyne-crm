@@ -266,6 +266,37 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ==== js/session.js ====
+// session.js — จัดการ session token ฝั่ง client เก็บใน cookie (ไม่ใช่ localStorage) เพื่อให้ทั้ง dev (mockApi.js)
+// และ production (gas/JavaScript.html bridge) ส่ง token เดิมแนบไปกับทุก request ฝั่งเซิร์ฟเวอร์ได้
+// อายุคุกกี้ยาวโดยตั้งใจ — ไม่ได้เป็นตัวกำหนดว่า session ใช้ได้จริงหรือไม่ เซิร์ฟเวอร์เป็นคนตัดสินผ่าน
+// checkSession()/logout()/changePassword() (ดู gas/Code.gs) session จะอยู่จนกว่าจะ logout หรือรีเซ็ตรหัสผ่าน
+
+const TOKEN_COOKIE = "pyneCrmToken";
+const COOKIE_MAX_AGE_DAYS = 400; // ค่าสูงสุดที่เบราว์เซอร์ยอมรับสำหรับ Set-Cookie max-age
+
+function getToken() {
+  const match = document.cookie.match(new RegExp("(?:^|; )" + TOKEN_COOKIE + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function setToken(token) {
+  const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; max-age=${maxAge}; path=/; SameSite=Lax${secure}`;
+}
+
+function clearToken() {
+  document.cookie = `${TOKEN_COOKIE}=; max-age=0; path=/; SameSite=Lax`;
+}
+
+// เรียกตอนพบว่า session ไม่ valid แล้วระหว่างใช้งาน (เช่น login เครื่องอื่นทับ หรือมีคนเปลี่ยนรหัสผ่าน)
+// ล้าง cookie แล้วยิง event ให้ login.js ไปโชว์หน้า login ต่อ — แยกกันด้วย event กันไม่ให้ import วนกัน
+function sessionExpired() {
+  clearToken();
+  window.dispatchEvent(new CustomEvent("pyne:session-expired"));
+}
+
 // ==== js/shell.js ====
 function initShell() {
   const hamburgerBtn = document.getElementById("hamburgerBtn");
@@ -323,9 +354,10 @@ function initShell() {
       if (action === "reset") {
         openReset();
       } else if (action === "logout") {
-        setLoggedIn(false);
-        show("home");
-        showLogin();
+        logoutUser().finally(() => {
+          show("home");
+          showLogin();
+        });
       }
     });
   });
@@ -378,13 +410,13 @@ function initUserMenu() {
     item.addEventListener("click", () => {
       const action = item.dataset.action;
       closeMenu();
-      // TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
       if (action === "reset") {
         openReset();
       } else if (action === "logout") {
-        setLoggedIn(false);
-        show("home");
-        showLogin();
+        logoutUser().finally(() => {
+          show("home");
+          showLogin();
+        });
       }
     });
   });
@@ -675,25 +707,37 @@ function callServer_(name, ...args) {
       [name](...args);
   });
 }
-function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
-function checkLogin(username, password) { return callServer_("checkLogin", username, password); }
-function changePassword(newPassword) { return callServer_("changePassword", newPassword); }
-function searchCustomers(query) { return callServer_("searchCustomers", query); }
-function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
-function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
-function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
-function createCustomer(data) { return callServer_("createCustomer", data); }
-function confirmCustomerProfile(customerId) { return callServer_("confirmCustomerProfile", customerId); }
-function saveSkinProfile(customerId, skinProfile) { return callServer_("saveSkinProfile", customerId, skinProfile); }
-function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServer_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
-function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
-function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
-function createVisit(payload) { return callServer_("createVisit", payload); }
-function closeVisitNotServed(visitId, reason) { return callServer_("closeVisitNotServed", visitId, reason); }
-function saveVisit(payload) { return callServer_("saveVisit", payload); }
-function ensureVisitFolder(meta) { return callServer_("ensureVisitFolder", meta); }
-function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }
-function exportConsentPdf(serviceId) { return callServer_("exportConsentPdf", serviceId); }
+// ฟังก์ชันที่ต้อง login ก่อนถึงจะเรียกได้ (เซิร์ฟเวอร์เช็คด้วย requireSession_() ดู gas/Utils.gs) — แนบ
+// session token (จาก cookie ผ่าน getToken() ใน js/session.js) เป็นอาร์กิวเมนต์แรกให้อัตโนมัติทุกครั้ง
+// ถ้าเซิร์ฟเวอร์ตอบ UNAUTHORIZED (session ไม่ valid แล้ว เช่น login เครื่องอื่นทับ/ถูกเปลี่ยนรหัสผ่าน)
+// จะเคลียร์ cookie แล้วเด้งกลับหน้า login ทันทีผ่าน sessionExpired()
+function callServerAuthed_(name, ...args) {
+  return callServer_(name, getToken(), ...args).catch((err) => {
+    const message = (err && err.message) || String(err || "");
+    if (message.indexOf("UNAUTHORIZED") >= 0) sessionExpired();
+    throw err;
+  });
+}
+function login(username, password) { return callServer_("login", username, password); }
+function checkSession(token) { return callServer_("checkSession", token); }
+function logout(token) { return callServer_("logout", token); }
+function changePassword(oldPassword, newPassword) { return callServer_("changePassword", oldPassword, newPassword); }
+function searchCustomers(query) { return callServerAuthed_("searchCustomers", query); }
+function listRecentCustomers(limit) { return callServerAuthed_("listRecentCustomers", limit); }
+function listCustomersWithStats() { return callServerAuthed_("listCustomersWithStats"); }
+function findCustomerByPhone(phone) { return callServerAuthed_("findCustomerByPhone", phone); }
+function createCustomer(data) { return callServerAuthed_("createCustomer", data); }
+function confirmCustomerProfile(customerId) { return callServerAuthed_("confirmCustomerProfile", customerId); }
+function saveSkinProfile(customerId, skinProfile) { return callServerAuthed_("saveSkinProfile", customerId, skinProfile); }
+function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServerAuthed_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
+function getCustomer(customerId) { return callServerAuthed_("getCustomer", customerId); }
+function getHistoryByCustomer(customerId) { return callServerAuthed_("getHistoryByCustomer", customerId); }
+function createVisit(payload) { return callServerAuthed_("createVisit", payload); }
+function closeVisitNotServed(visitId, reason) { return callServerAuthed_("closeVisitNotServed", visitId, reason); }
+function saveVisit(payload) { return callServerAuthed_("saveVisit", payload); }
+function ensureVisitFolder(meta) { return callServerAuthed_("ensureVisitFolder", meta); }
+function uploadImage(dataUrl, meta) { return callServerAuthed_("uploadImage", dataUrl, meta); }
+function exportConsentPdf(serviceId) { return callServerAuthed_("exportConsentPdf", serviceId); }
 
 // ==== js/visitFlow.js ====
 // visitFlow.js — ส่วนที่ใช้ร่วมกันทุกฟอร์ม Consultation (Form 1/2/3 + หน้าบันทึกหลังทำ)
@@ -759,56 +803,17 @@ function wireNotServedButton(buttonEl) {
   });
 }
 
-// ==== js/screens/gate.js ====
-function initGate() {
-  const input = document.getElementById("passcodeInput");
-  const errorEl = document.getElementById("gateError");
-  const submitBtn = document.getElementById("gateSubmit");
-
-  async function trySubmit() {
-    errorEl.hidden = true;
-    submitBtn.disabled = true;
-    const res = await checkPasscode(input.value.trim());
-    submitBtn.disabled = false;
-    if (res.success) {
-      input.value = "";
-      show("home");
-    } else {
-      errorEl.hidden = false;
-    }
-  }
-
-  submitBtn.addEventListener("click", trySubmit);
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") trySubmit();
-  });
-
-  onEnter("gate", () => {
-    input.value = "";
-    errorEl.hidden = true;
-    input.focus();
-  });
-}
-
 // ==== js/screens/login.js ====
 // login.js — หน้าเข้าสู่ระบบ + modal รีเซ็ตรหัสผ่าน วางทับทั้งแอปด้วย z-index สูง
 // ตรวจ username/password จริง: local (mock) เทียบกับ js/data/authConfig.js,
-// production (gas/) เทียบกับแท็บ Config ของ Sheet ผ่าน checkLogin()/changePassword() — ดู gas/Code.gs
+// production (gas/) เทียบกับแท็บ Config ของ Sheet ผ่าน login()/changePassword() — ดู gas/Code.gs
+// สถานะ login จริงคือ session token ที่เซิร์ฟเวอร์ออกให้ (ดู js/session.js) ไม่ใช่ flag ฝั่ง client เฉยๆ
 
 
-const LOGGED_IN_KEY = "pyneCrmLoggedIn";
+
 
 let screen, form, userInput, pwInput, errorEl, submitBtn;
-let resetOverlay, resetForm, resetPw, resetPwConfirm, resetError;
-
-function isLoggedIn() {
-  return localStorage.getItem(LOGGED_IN_KEY) === "1";
-}
-
-function setLoggedIn(value) {
-  if (value) localStorage.setItem(LOGGED_IN_KEY, "1");
-  else localStorage.removeItem(LOGGED_IN_KEY);
-}
+let resetOverlay, resetForm, resetOldPw, resetPw, resetPwConfirm, resetError;
 
 function showLogin() {
   if (!screen) return;
@@ -824,13 +829,28 @@ function hideLogin() {
   if (screen) screen.hidden = true;
 }
 
+// ออกจากระบบ: แจ้งเซิร์ฟเวอร์ให้เพิกถอน session token ก่อน (best-effort) แล้วค่อยล้าง cookie ฝั่ง client
+// เผื่อเรียกซ้ำได้ปลอดภัยแม้ session จะหมดอายุไปแล้วก็ตาม
+async function logoutUser() {
+  const token = getToken();
+  clearToken();
+  if (token) {
+    try {
+      await logout(token);
+    } catch (e) {
+      // เพิกเฉย — client ล้าง token ไปแล้ว ต่อให้แจ้งเซิร์ฟเวอร์ไม่สำเร็จก็ยัง logout ฝั่งนี้ได้จริง
+    }
+  }
+}
+
 function openReset() {
   if (!resetOverlay) return;
+  resetOldPw.value = "";
   resetPw.value = "";
   resetPwConfirm.value = "";
   resetError.hidden = true;
   resetOverlay.hidden = false;
-  resetPw.focus();
+  resetOldPw.focus();
 }
 
 function closeReset() {
@@ -849,6 +869,7 @@ function initLogin() {
 
   resetOverlay = document.getElementById("resetOverlay");
   resetForm = document.getElementById("resetForm");
+  resetOldPw = document.getElementById("resetOldPw");
   resetPw = document.getElementById("resetPw");
   resetPwConfirm = document.getElementById("resetPwConfirm");
   resetError = document.getElementById("resetError");
@@ -866,11 +887,14 @@ function initLogin() {
       }
       errorEl.hidden = true;
       if (submitBtn) submitBtn.disabled = true;
-      const res = await checkLogin(username, password);
+      const res = await login(username, password);
       if (submitBtn) submitBtn.disabled = false;
       if (res.success) {
-        setLoggedIn(true);
+        setToken(res.token);
         hideLogin();
+        // หน้า home ถูก mount ไว้ใต้ overlay login ตั้งแต่ตอนเปิดแอป (ตอนนั้นยังไม่มี session จริง
+        // โหลดข้อมูลลูกค้าไม่สำเร็จ) สั่ง show("home") ซ้ำหลัง login ผ่านเพื่อโหลดข้อมูลใหม่ด้วย session จริง
+        show("home");
       } else {
         errorEl.textContent = "Invalid username or password.";
         errorEl.hidden = false;
@@ -887,6 +911,11 @@ function initLogin() {
   }
 
   initResetModal();
+
+  // session หมดอายุระหว่างใช้งาน (เช่น login เครื่องอื่นทับ หรือถูกเปลี่ยนรหัสผ่าน) — เด้งกลับหน้า login
+  window.addEventListener("pyne:session-expired", () => {
+    showLogin();
+  });
 }
 
 function initResetModal() {
@@ -897,8 +926,14 @@ function initResetModal() {
 
   resetForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const oldPw = resetOldPw.value.trim();
     const pw = resetPw.value.trim();
     const confirm = resetPwConfirm.value.trim();
+    if (!oldPw) {
+      resetError.textContent = "Please enter your current password.";
+      resetError.hidden = false;
+      return;
+    }
     if (!pw || pw !== confirm) {
       resetError.textContent = "Passwords do not match.";
       resetError.hidden = false;
@@ -906,11 +941,17 @@ function initResetModal() {
     }
     resetError.hidden = true;
     if (resetSubmitBtn) resetSubmitBtn.disabled = true;
-    const res = await changePassword(pw);
+    const res = await changePassword(oldPw, pw);
     if (resetSubmitBtn) resetSubmitBtn.disabled = false;
     if (res.success) {
+      // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
+      clearToken();
       closeReset();
-      alert("Password updated");
+      alert("Password updated. Please sign in again.");
+      showLogin();
+    } else if (res.error === "wrong_password") {
+      resetError.textContent = "Current password is incorrect.";
+      resetError.hidden = false;
     } else {
       resetError.textContent = "Could not update password. Please try again.";
       resetError.hidden = false;
@@ -1122,7 +1163,13 @@ function initHome() {
     table.hidden = true;
     emptyState.hidden = false;
     emptyState.textContent = "Loading...";
-    allCustomers = await listCustomersWithStats();
+    try {
+      // หน้านี้ mount อยู่ใต้ login overlay ตั้งแต่ตอนเปิดแอปเสมอ (ดู js/main.js) ก่อน login สำเร็จ
+      // เรียกนี้จะยังไม่มี session ที่ valid — ปล่อยให้ล้มเงียบๆ ไปก่อน แล้วรอ login.js สั่งโหลดใหม่หลัง login ผ่าน
+      allCustomers = await listCustomersWithStats();
+    } catch (e) {
+      return;
+    }
     renderSummary();
     render();
   }
@@ -2651,21 +2698,8 @@ function initConfirmation() {
 }
 
 // ==== js/main.js ====
-// import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
-
-
-
-
-
-
-
-
-
-
-
 initShell();
 initLogin();
-// initGate();
 initHome();
 initNewCustomer();
 initCustomerProfile();
@@ -2688,19 +2722,27 @@ initConfirmation();
   const debugCustomerId = params.get("debugCustomer");
   const debugServiceType = params.get("debugServiceType");
 
+  // เช็ค session token (คุกกี้) กับเซิร์ฟเวอร์ทุกครั้งที่โหลดหน้า/refresh ใหม่ — ไม่เชื่อ flag ฝั่ง client เฉยๆ
+  const token = getToken();
+  const session = token ? await checkSession(token) : { valid: false };
+
+  // debug เจาะจงหน้า / หรือ session ยัง valid อยู่จริง → ข้าม login; ไม่เช่นนั้นโชว์ login
+  if (debugScreen || session.valid) {
+    hideLogin();
+  } else {
+    showLogin();
+  }
+
   if (debugCustomerId) {
-    state.currentCustomer = await getCustomer(debugCustomerId);
+    try {
+      state.currentCustomer = await getCustomer(debugCustomerId);
+    } catch (e) {
+      console.warn("debugCustomer: ต้อง login ก่อนถึงจะดึงข้อมูลลูกค้าได้", e);
+    }
   }
   if (debugServiceType) {
     state.serviceType = debugServiceType;
   }
   show(debugScreen || "home", { pushHistory: false });
-
-  // debug เจาะจงหน้า / หรือเคย Sign In ไว้แล้ว → ข้าม login; ไม่เช่นนั้นโชว์ login
-  if (debugScreen || isLoggedIn()) {
-    hideLogin();
-  } else {
-    showLogin();
-  }
 })();
 </script>

@@ -1,9 +1,9 @@
 import { show } from "./router.js";
 import { state } from "./state.js";
-import { getCustomer } from "./mockApi.js";
+import { getCustomer, checkSession } from "./mockApi.js";
+import { getToken } from "./session.js";
 import { initShell } from "./shell.js";
-import { initLogin, showLogin, hideLogin, isLoggedIn } from "./screens/login.js";
-// import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
+import { initLogin, showLogin, hideLogin } from "./screens/login.js";
 import { initHome } from "./screens/home.js";
 import { initNewCustomer } from "./screens/newCustomer.js";
 import { initCustomerProfile } from "./screens/customerProfile.js";
@@ -18,7 +18,6 @@ import { initConfirmation } from "./screens/confirmation.js";
 
 initShell();
 initLogin();
-// initGate();
 initHome();
 initNewCustomer();
 initCustomerProfile();
@@ -41,18 +40,26 @@ initConfirmation();
   const debugCustomerId = params.get("debugCustomer");
   const debugServiceType = params.get("debugServiceType");
 
+  // เช็ค session token (คุกกี้) กับเซิร์ฟเวอร์ทุกครั้งที่โหลดหน้า/refresh ใหม่ — ไม่เชื่อ flag ฝั่ง client เฉยๆ
+  const token = getToken();
+  const session = token ? await checkSession(token) : { valid: false };
+
+  // debug เจาะจงหน้า / หรือ session ยัง valid อยู่จริง → ข้าม login; ไม่เช่นนั้นโชว์ login
+  if (debugScreen || session.valid) {
+    hideLogin();
+  } else {
+    showLogin();
+  }
+
   if (debugCustomerId) {
-    state.currentCustomer = await getCustomer(debugCustomerId);
+    try {
+      state.currentCustomer = await getCustomer(debugCustomerId);
+    } catch (e) {
+      console.warn("debugCustomer: ต้อง login ก่อนถึงจะดึงข้อมูลลูกค้าได้", e);
+    }
   }
   if (debugServiceType) {
     state.serviceType = debugServiceType;
   }
   show(debugScreen || "home", { pushHistory: false });
-
-  // debug เจาะจงหน้า / หรือเคย Sign In ไว้แล้ว → ข้าม login; ไม่เช่นนั้นโชว์ login
-  if (debugScreen || isLoggedIn()) {
-    hideLogin();
-  } else {
-    showLogin();
-  }
 })();

@@ -15,19 +15,34 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function checkPasscode(pin) {
-  const value = getConfigValue_("PASSCODE");
-  return { success: String(pin) === String(value) };
-}
-
-function checkLogin(username, password) {
+function login(username, password) {
   const storedUsername = getConfigValue_("USERNAME");
   const storedPassword = getConfigValue_("PASSWORD");
-  const success = String(username || "") === String(storedUsername) && String(password || "") === String(storedPassword);
-  return { success: success };
+  const ok = String(username || "") === String(storedUsername) && String(password || "") === String(storedPassword);
+  if (!ok) return { success: false };
+  const token = Utilities.getUuid();
+  setSessionToken_(token);
+  return { success: true, token: token };
 }
 
-function changePassword(newPassword) {
+function checkSession(token) {
+  const stored = getSessionToken_();
+  return { valid: !!stored && !!token && String(token) === String(stored) };
+}
+
+function logout(token) {
+  clearSessionToken_();
+  return { success: true };
+}
+
+// เปลี่ยนรหัสผ่าน — ต้องกรอกรหัสผ่านเดิมถูกต้องก่อนเสมอ (กันไม่ให้ใครตั้งรหัสใหม่ได้จากหน้า login
+// โดยไม่รู้รหัสเดิม) เปลี่ยนสำเร็จแล้ว invalidate session ทันที บังคับ login ใหม่ด้วยรหัสผ่านใหม่
+function changePassword(oldPassword, newPassword) {
+  const storedPassword = getConfigValue_("PASSWORD");
+  if (String(oldPassword || "") !== String(storedPassword)) {
+    return { success: false, error: "wrong_password" };
+  }
   setConfigValue_("PASSWORD", newPassword);
+  clearSessionToken_();
   return { success: true };
 }

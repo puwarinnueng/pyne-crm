@@ -188,7 +188,13 @@ export function initHome() {
     table.hidden = true;
     emptyState.hidden = false;
     emptyState.textContent = "Loading...";
-    allCustomers = await listCustomersWithStats();
+    try {
+      // หน้านี้ mount อยู่ใต้ login overlay ตั้งแต่ตอนเปิดแอปเสมอ (ดู js/main.js) ก่อน login สำเร็จ
+      // เรียกนี้จะยังไม่มี session ที่ valid — ปล่อยให้ล้มเงียบๆ ไปก่อน แล้วรอ login.js สั่งโหลดใหม่หลัง login ผ่าน
+      allCustomers = await listCustomersWithStats();
+    } catch (e) {
+      return;
+    }
     renderSummary();
     render();
   }

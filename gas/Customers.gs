@@ -38,7 +38,8 @@ function rowToCustomer_(row) {
   };
 }
 
-function searchCustomers(query) {
+function searchCustomers(token, query) {
+  requireSession_(token);
   const q = (query || "").trim().toLowerCase();
   if (!q) return [];
   const qPhone = normalizePhone(query);
@@ -54,7 +55,8 @@ function searchCustomers(query) {
     .map(rowToCustomer_);
 }
 
-function listRecentCustomers(limit) {
+function listRecentCustomers(token, limit) {
+  requireSession_(token);
   const rows = sheetToObjects_(getCustomersSheet_());
   return rows
     .sort((a, b) => (b.CreatedAt || 0) - (a.CreatedAt || 0))
@@ -62,13 +64,15 @@ function listRecentCustomers(limit) {
     .map(rowToCustomer_);
 }
 
-function getCustomer(customerId) {
+function getCustomer(token, customerId) {
+  requireSession_(token);
   const rows = sheetToObjects_(getCustomersSheet_());
   const row = rows.find((r) => r.CustomerID === customerId);
   return row ? rowToCustomer_(row) : null;
 }
 
-function findCustomerByPhone(phone) {
+function findCustomerByPhone(token, phone) {
+  requireSession_(token);
   const normalized = normalizePhone(phone);
   const rows = sheetToObjects_(getCustomersSheet_());
   const existing = rows.find((r) => r.PhoneNormalized === normalized);
@@ -77,7 +81,8 @@ function findCustomerByPhone(phone) {
 
 // รายชื่อลูกค้าทั้งหมด พร้อมสถิติที่ join จากแท็บ ServiceHistory (จำนวนครั้ง, วันที่ล่าสุด, เทคนิคล่าสุด)
 // ใช้แสดงในตาราง Customers — ต้องคืนรูปแบบเดียวกับ js/mockApi.js:listCustomersWithStats() ทุกฟิลด์
-function listCustomersWithStats() {
+function listCustomersWithStats(token) {
+  requireSession_(token);
   const customers = sheetToObjects_(getCustomersSheet_()).map(rowToCustomer_);
   const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
 
@@ -96,7 +101,8 @@ function listCustomersWithStats() {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
-function createCustomer(data) {
+function createCustomer(token, data) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -157,7 +163,8 @@ function createCustomer(data) {
 }
 
 // บันทึกว่าลูกค้ายืนยันข้อมูลส่วนตัวถูกต้องแล้ว พร้อมวันเวลา (ตามสเปก Step 2)
-function confirmCustomerProfile(customerId) {
+function confirmCustomerProfile(token, customerId) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -175,7 +182,8 @@ function confirmCustomerProfile(customerId) {
 }
 
 // บันทึกประวัติผิวและคิ้วของลูกค้า (ข้อมูลระดับลูกค้า แก้ไขได้ ใช้ซ้ำได้ทุก Visit)
-function saveSkinProfile(customerId, skinProfile) {
+function saveSkinProfile(token, customerId, skinProfile) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -193,7 +201,8 @@ function saveSkinProfile(customerId, skinProfile) {
 }
 
 // อัปเดตผลประเมินกล้ามเนื้อคิ้วล่าสุด (กรอกในฟอร์ม 1/2 ตอนวัดทรงจริง) กลับไปแสดงใน Customer Profile
-function updateMuscleEvaluation(customerId, muscle, muscleNote) {
+function updateMuscleEvaluation(token, customerId, muscle, muscleNote) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {

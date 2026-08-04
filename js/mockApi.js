@@ -6,6 +6,7 @@
 
 import { db } from "./data/mockData.js";
 import { AUTH_CONFIG } from "./data/authConfig.js";
+import { getToken, sessionExpired } from "./session.js";
 
 const DELAY = 250; // จำลอง network latency ให้เห็น loading state จริง
 
@@ -13,11 +14,13 @@ function wait(ms = DELAY) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const PASSCODE = "1234"; // mock — ของจริงเก็บใน Config sheet
-
 // เก็บ username/password ที่เปลี่ยนผ่านหน้า Reset password ไว้ใน localStorage (เฉพาะ local/dev)
 // ของจริง (gas/) จะเขียนทับค่าในแท็บ Config ของ Sheet แทน — ดู gas/Code.gs: changePassword()
 const AUTH_OVERRIDE_KEY = "pyneCrmAuthOverride";
+
+// จำลอง session ที่ "เซิร์ฟเวอร์" เก็บไว้ (คนละคีย์กับ cookie ฝั่ง client ใน js/session.js) เทียบเท่า
+// PropertiesService.getScriptProperties() ของจริง — ดู gas/Utils.gs: getSessionToken_()/setSessionToken_()
+const SERVER_SESSION_KEY = "pyneCrmMockServerSession";
 
 function getAuthCreds() {
   try {
@@ -29,17 +32,58 @@ function getAuthCreds() {
   return AUTH_CONFIG;
 }
 
-export async function checkLogin(username, password) {
+function getServerSession() {
+  return localStorage.getItem(SERVER_SESSION_KEY) || "";
+}
+
+function setServerSession(token) {
+  localStorage.setItem(SERVER_SESSION_KEY, token);
+}
+
+function clearServerSession() {
+  localStorage.removeItem(SERVER_SESSION_KEY);
+}
+
+// เทียบเท่า requireSession_() ฝั่งเซิร์ฟเวอร์จริง — เรียกต้นทุกฟังก์ชันที่ต้อง login ก่อนถึงจะใช้ได้
+// ถ้า token ไม่ตรง จะเคลียร์ cookie ฝั่ง client แล้วเด้งกลับหน้า login ทันที เหมือนพฤติกรรม production
+function requireSession(token) {
+  const stored = getServerSession();
+  if (!stored || !token || token !== stored) {
+    sessionExpired();
+    throw new Error("UNAUTHORIZED");
+  }
+}
+
+export async function login(username, password) {
   await wait();
   const creds = getAuthCreds();
   const success = String(username || "").trim() === creds.username && String(password || "") === creds.password;
-  return { success };
+  if (!success) return { success: false };
+  const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  setServerSession(token);
+  return { success: true, token };
 }
 
-export async function changePassword(newPassword) {
+export async function checkSession(token) {
+  await wait(100);
+  const stored = getServerSession();
+  return { valid: !!stored && !!token && token === stored };
+}
+
+export async function logout(token) {
+  await wait(100);
+  clearServerSession();
+  return { success: true };
+}
+
+export async function changePassword(oldPassword, newPassword) {
   await wait();
   const creds = getAuthCreds();
+  if (String(oldPassword || "") !== creds.password) {
+    return { success: false, error: "wrong_password" };
+  }
   localStorage.setItem(AUTH_OVERRIDE_KEY, JSON.stringify({ username: creds.username, password: newPassword }));
+  clearServerSession();
   return { success: true };
 }
 
@@ -51,13 +95,9 @@ export function normalizePhone(phone) {
   return p;
 }
 
-export async function checkPasscode(pin) {
-  await wait();
-  return { success: pin === PASSCODE };
-}
-
 export async function searchCustomers(query) {
   await wait();
+  requireSession(getToken());
   const q = (query || "").trim().toLowerCase();
   if (!q) return [];
   const qPhone = normalizePhone(query);
@@ -72,6 +112,7 @@ export async function searchCustomers(query) {
 
 export async function listRecentCustomers(limit) {
   await wait();
+  requireSession(getToken());
   const { customers } = db.get();
   return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
 }
@@ -80,6 +121,7 @@ export async function listRecentCustomers(limit) {
 // ใช้แสดงในตาราง Customers — ของจริง (gas/) จะ join ฝั่งเซิร์ฟเวอร์แบบเดียวกันแล้วคืนรูปแบบนี้เหมือนกัน
 export async function listCustomersWithStats() {
   await wait();
+  requireSession(getToken());
   const { customers, serviceHistory } = db.get();
   return customers
     .map((c) => {
@@ -99,6 +141,7 @@ export async function listCustomersWithStats() {
 
 export async function findCustomerByPhone(phone) {
   await wait();
+  requireSession(getToken());
   const normalized = normalizePhone(phone);
   const { customers } = db.get();
   return customers.find((c) => c.phoneNormalized === normalized) || null;
@@ -111,6 +154,7 @@ function formatCustomerId(seq) {
 
 export async function createCustomer(data) {
   await wait();
+  requireSession(getToken());
   const database = db.get();
   const normalized = normalizePhone(data.phone);
   const existing = database.customers.find((c) => c.phoneNormalized === normalized);
@@ -142,6 +186,7 @@ export async function createCustomer(data) {
 // บันทึกว่าลูกค้ายืนยันข้อมูลส่วนตัวถูกต้องแล้ว พร้อมวันเวลา (ตามสเปก Step 2)
 export async function confirmCustomerProfile(customerId) {
   await wait(150);
+  requireSession(getToken());
   const database = db.get();
   const customer = database.customers.find((c) => c.customerId === customerId);
   if (!customer) return { success: false };
@@ -153,6 +198,7 @@ export async function confirmCustomerProfile(customerId) {
 // บันทึกประวัติผิวและคิ้วของลูกค้า (ข้อมูลระดับลูกค้า แก้ไขได้ ใช้ซ้ำได้ทุก Visit)
 export async function saveSkinProfile(customerId, skinProfile) {
   await wait(150);
+  requireSession(getToken());
   const database = db.get();
   const customer = database.customers.find((c) => c.customerId === customerId);
   if (!customer) return { success: false };
@@ -164,6 +210,7 @@ export async function saveSkinProfile(customerId, skinProfile) {
 // อัปเดตผลประเมินกล้ามเนื้อคิ้วล่าสุด (กรอกในฟอร์ม 1/2 ตอนวัดทรงจริง) กลับไปแสดงใน Customer Profile
 export async function updateMuscleEvaluation(customerId, muscle, muscleNote) {
   await wait(150);
+  requireSession(getToken());
   const database = db.get();
   const customer = database.customers.find((c) => c.customerId === customerId);
   if (!customer) return { success: false };
@@ -177,12 +224,14 @@ export async function updateMuscleEvaluation(customerId, muscle, muscleNote) {
 
 export async function getCustomer(customerId) {
   await wait();
+  requireSession(getToken());
   const { customers } = db.get();
   return customers.find((c) => c.customerId === customerId) || null;
 }
 
 export async function getHistoryByCustomer(customerId) {
   await wait();
+  requireSession(getToken());
   const { serviceHistory } = db.get();
   return serviceHistory
     .filter((v) => v.customerId === customerId)
@@ -194,6 +243,7 @@ export async function getHistoryByCustomer(customerId) {
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
 export async function createVisit({ customerId, zervaBookingId, visitDate, timeSlot }) {
   await wait(200);
+  requireSession(getToken());
   const database = db.get();
   const visitId = "S" + String(database.seq.service).padStart(4, "0");
   const visit = {
@@ -214,6 +264,7 @@ export async function createVisit({ customerId, zervaBookingId, visitDate, timeS
 // ปิด Visit ด้วยสถานะ "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
 export async function closeVisitNotServed(visitId, reason) {
   await wait(200);
+  requireSession(getToken());
   const database = db.get();
   const idx = database.serviceHistory.findIndex((v) => v.serviceId === visitId);
   if (idx < 0) return { success: false };
@@ -232,6 +283,7 @@ export async function closeVisitNotServed(visitId, reason) {
 // LockService + หา row เดิมจาก serviceId ก่อนตัดสินใจ update/append
 export async function saveVisit(payload) {
   await wait(400);
+  requireSession(getToken());
   const database = db.get();
 
   // agreedAt ถูกฝังอยู่ใน rawAnswers (ตั้งตอนกด "ยินยอม" ในฟอร์ม) ดึงออกมาเป็นฟิลด์แยก consentAgreedAt
@@ -271,6 +323,7 @@ export async function saveVisit(payload) {
 export async function ensureVisitFolder(meta) {
   // mock: ของจริง (gas/DriveStorage.gs) จะหา/สร้าง visit folder ใน Google Drive แล้วคืน folderId จริง
   await wait(150);
+  requireSession(getToken());
   return { success: true, folderId: "mock-folder" };
 }
 
@@ -278,10 +331,12 @@ export async function uploadImage(dataUrl, meta) {
   // mock: ของจริง (gas/DriveStorage.gs) จะใช้ meta.folderId เขียนไฟล์ลง Google Drive แล้วคืน fileUrl จริง
   // ที่นี่แค่ส่ง dataUrl กลับเพื่อ preview
   await wait(150);
+  requireSession(getToken());
   return { success: true, url: dataUrl };
 }
 
 export async function exportConsentPdf(serviceId) {
   await wait(500);
+  requireSession(getToken());
   return { success: true, note: "mock: ของจริงจะสร้างไฟล์ PDF ใน Google Drive แล้วคืนลิงก์" };
 }

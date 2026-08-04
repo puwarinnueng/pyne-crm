@@ -38,7 +38,8 @@ function dataUrlToBlob_(dataUrl, filename) {
  * เสร็จสมบูรณ์ก่อนไฟล์ไหนจะเริ่มเขียนด้วยซ้ำ) เรียกพร้อมกับ createCustomer() ได้เลยไม่ต้องรอกัน
  * meta: { customerPhone, customerName, serviceType, visitKey }
  */
-function ensureVisitFolder(meta) {
+function ensureVisitFolder(token, meta) {
+  requireSession_(token);
   meta = meta || {};
   const root = getDriveRootFolder_();
   // normalizePhone (มาจาก Customers.gs) กัน format เบอร์ไม่ตรงกันระหว่างที่ส่งมาแบบ raw (ลูกค้าใหม่)
@@ -68,7 +69,8 @@ function ensureVisitFolder(meta) {
  * meta: { folderId, filename } — folderId มาจาก ensureVisitFolder() เสมอ (resolve มาแล้วครั้งเดียว
  * ก่อนหน้านี้) จึงเขียนไฟล์ตรงๆ ได้เลยแบบขนานหลายไฟล์พร้อมกันโดยไม่มี race เพราะไม่ต้องหา/สร้างโฟลเดอร์ซ้ำ
  */
-function uploadImage(dataUrl, meta) {
+function uploadImage(token, dataUrl, meta) {
+  requireSession_(token);
   meta = meta || {};
   const filename = meta.filename || ("file_" + Date.now());
   const blob = dataUrlToBlob_(dataUrl, filename);

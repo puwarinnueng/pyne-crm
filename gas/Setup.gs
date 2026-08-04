@@ -3,7 +3,7 @@
  * เพื่อล้างข้อมูลเดิมทั้งหมดในชีตที่ตั้งไว้ใน Config.gs (SHEET_ID) แล้วสร้าง 3 แท็บ
  * (Customers, ServiceHistory, Config) พร้อมหัวคอลัมน์ชุดล่าสุดขึ้นมาใหม่ทั้งหมด
  *
- * !! ล้างข้อมูลทุกแถวในทั้ง 3 แท็บทิ้งก่อนสร้างใหม่เสมอ (รวม Config — Username/Password/Passcode
+ * !! ล้างข้อมูลทุกแถวในทั้ง 3 แท็บทิ้งก่อนสร้างใหม่เสมอ (รวม Config — Username/Password
  * จะถูกรีเซ็ตกลับเป็นค่า default ใน Config.gs ด้วย) ใช้เฉพาะตอนต้องการเริ่มต้น Sheet ใหม่ทั้งหมด
  * ถ้ามีข้อมูลลูกค้าจริงอยู่แล้วห้ามรัน !!
  */
@@ -35,7 +35,6 @@ function setupSpreadsheet() {
   resetSheetWithHeaders_(ss, SHEET_NAMES.SERVICE_HISTORY, SERVICE_HISTORY_HEADERS);
   const configSheet = resetSheetWithHeaders_(ss, SHEET_NAMES.CONFIG, CONFIG_HEADERS);
 
-  configSheet.appendRow(["PASSCODE", DEFAULT_PASSCODE]);
   configSheet.appendRow(["USERNAME", DEFAULT_USERNAME]);
   configSheet.appendRow(["PASSWORD", DEFAULT_PASSWORD]);
 

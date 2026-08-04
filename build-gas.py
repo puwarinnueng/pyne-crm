@@ -22,12 +22,12 @@ JS_ORDER = [
     "js/data/techSignature.js",
     "js/state.js",
     "js/router.js",
+    "js/session.js",
     "js/shell.js",
     "js/signaturePad.js",
     "js/fieldHelpers.js",
     "__BRIDGE__",
     "js/visitFlow.js",
-    "js/screens/gate.js",
     "js/screens/login.js",
     "js/screens/home.js",
     "js/screens/newCustomer.js",
@@ -62,25 +62,37 @@ function callServer_(name, ...args) {
       [name](...args);
   });
 }
-function checkPasscode(pin) { return callServer_("checkPasscode", pin); }
-function checkLogin(username, password) { return callServer_("checkLogin", username, password); }
-function changePassword(newPassword) { return callServer_("changePassword", newPassword); }
-function searchCustomers(query) { return callServer_("searchCustomers", query); }
-function listRecentCustomers(limit) { return callServer_("listRecentCustomers", limit); }
-function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
-function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
-function createCustomer(data) { return callServer_("createCustomer", data); }
-function confirmCustomerProfile(customerId) { return callServer_("confirmCustomerProfile", customerId); }
-function saveSkinProfile(customerId, skinProfile) { return callServer_("saveSkinProfile", customerId, skinProfile); }
-function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServer_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
-function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
-function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
-function createVisit(payload) { return callServer_("createVisit", payload); }
-function closeVisitNotServed(visitId, reason) { return callServer_("closeVisitNotServed", visitId, reason); }
-function saveVisit(payload) { return callServer_("saveVisit", payload); }
-function ensureVisitFolder(meta) { return callServer_("ensureVisitFolder", meta); }
-function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }
-function exportConsentPdf(serviceId) { return callServer_("exportConsentPdf", serviceId); }
+// ฟังก์ชันที่ต้อง login ก่อนถึงจะเรียกได้ (เซิร์ฟเวอร์เช็คด้วย requireSession_() ดู gas/Utils.gs) — แนบ
+// session token (จาก cookie ผ่าน getToken() ใน js/session.js) เป็นอาร์กิวเมนต์แรกให้อัตโนมัติทุกครั้ง
+// ถ้าเซิร์ฟเวอร์ตอบ UNAUTHORIZED (session ไม่ valid แล้ว เช่น login เครื่องอื่นทับ/ถูกเปลี่ยนรหัสผ่าน)
+// จะเคลียร์ cookie แล้วเด้งกลับหน้า login ทันทีผ่าน sessionExpired()
+function callServerAuthed_(name, ...args) {
+  return callServer_(name, getToken(), ...args).catch((err) => {
+    const message = (err && err.message) || String(err || "");
+    if (message.indexOf("UNAUTHORIZED") >= 0) sessionExpired();
+    throw err;
+  });
+}
+function login(username, password) { return callServer_("login", username, password); }
+function checkSession(token) { return callServer_("checkSession", token); }
+function logout(token) { return callServer_("logout", token); }
+function changePassword(oldPassword, newPassword) { return callServer_("changePassword", oldPassword, newPassword); }
+function searchCustomers(query) { return callServerAuthed_("searchCustomers", query); }
+function listRecentCustomers(limit) { return callServerAuthed_("listRecentCustomers", limit); }
+function listCustomersWithStats() { return callServerAuthed_("listCustomersWithStats"); }
+function findCustomerByPhone(phone) { return callServerAuthed_("findCustomerByPhone", phone); }
+function createCustomer(data) { return callServerAuthed_("createCustomer", data); }
+function confirmCustomerProfile(customerId) { return callServerAuthed_("confirmCustomerProfile", customerId); }
+function saveSkinProfile(customerId, skinProfile) { return callServerAuthed_("saveSkinProfile", customerId, skinProfile); }
+function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServerAuthed_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
+function getCustomer(customerId) { return callServerAuthed_("getCustomer", customerId); }
+function getHistoryByCustomer(customerId) { return callServerAuthed_("getHistoryByCustomer", customerId); }
+function createVisit(payload) { return callServerAuthed_("createVisit", payload); }
+function closeVisitNotServed(visitId, reason) { return callServerAuthed_("closeVisitNotServed", visitId, reason); }
+function saveVisit(payload) { return callServerAuthed_("saveVisit", payload); }
+function ensureVisitFolder(meta) { return callServerAuthed_("ensureVisitFolder", meta); }
+function uploadImage(dataUrl, meta) { return callServerAuthed_("uploadImage", dataUrl, meta); }
+function exportConsentPdf(serviceId) { return callServerAuthed_("exportConsentPdf", serviceId); }
 '''
 
 

@@ -56,7 +56,8 @@ function rowToVisit_(row) {
   };
 }
 
-function getHistoryByCustomer(customerId) {
+function getHistoryByCustomer(token, customerId) {
+  requireSession_(token);
   const rows = sheetToObjects_(getServiceHistorySheet_());
   return rows
     .filter((r) => r.CustomerID === customerId)
@@ -67,7 +68,8 @@ function getHistoryByCustomer(customerId) {
 // สร้าง Visit ใหม่ตอน Step 3 (ก่อนเปิดฟอร์ม Consultation ใด ๆ) — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
 // คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
-function createVisit(payload) {
+function createVisit(token, payload) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
@@ -93,7 +95,8 @@ function createVisit(payload) {
 }
 
 // ปิด Visit ด้วยสถานะ "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
-function closeVisitNotServed(visitId, reason) {
+function closeVisitNotServed(token, visitId, reason) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -116,7 +119,8 @@ function closeVisitNotServed(visitId, reason) {
 // ถ้า payload.serviceId ตรงกับ Visit ที่เคยสร้าง/บันทึกแบบร่างไว้แล้ว (สร้างจาก createVisit() เสมอ
 // ก่อนเปิดฟอร์มตามสเปก) จะอัปเดตแถวเดิมแทนการสร้างแถวใหม่ — merge เฉพาะคีย์ที่ payload ส่งมา
 // ทับค่าที่มีอยู่เดิม (คีย์ที่ไม่ได้ส่งมาคงค่าเดิมไว้) ตรงกับพฤติกรรม js/mockApi.js:saveVisit()
-function saveVisit(payload) {
+function saveVisit(token, payload) {
+  requireSession_(token);
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {

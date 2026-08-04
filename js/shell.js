@@ -1,5 +1,5 @@
 import { show } from "./router.js";
-import { showLogin, openReset, setLoggedIn } from "./screens/login.js";
+import { showLogin, openReset, logoutUser } from "./screens/login.js";
 
 export function initShell() {
   const hamburgerBtn = document.getElementById("hamburgerBtn");
@@ -57,9 +57,10 @@ export function initShell() {
       if (action === "reset") {
         openReset();
       } else if (action === "logout") {
-        setLoggedIn(false);
-        show("home");
-        showLogin();
+        logoutUser().finally(() => {
+          show("home");
+          showLogin();
+        });
       }
     });
   });
@@ -112,13 +113,13 @@ function initUserMenu() {
     item.addEventListener("click", () => {
       const action = item.dataset.action;
       closeMenu();
-      // TODO: เชื่อมระบบ auth จริงเมื่อ backend พร้อม (เพื่อนอีกคนทำ)
       if (action === "reset") {
         openReset();
       } else if (action === "logout") {
-        setLoggedIn(false);
-        show("home");
-        showLogin();
+        logoutUser().finally(() => {
+          show("home");
+          showLogin();
+        });
       }
     });
   });

@@ -14,9 +14,6 @@ const SHEET_ID = "1SyENEryBoq8EEbNRDyTZjZOgpopTAG88Uh7HB7-T2Yc";
 
 const DRIVE_ROOT_FOLDER_ID = "1lMxxmJeZFXhgOKV4atsZ6qyvjXJAW4Sh";
 
-// รหัสผ่านหน้าแรกเริ่มต้น — เปลี่ยนได้ทีหลังผ่านแท็บ Config ใน Sheet โดยตรง ไม่ต้องแก้ที่นี่/deploy ใหม่
-const DEFAULT_PASSCODE = "1234";
-
 // username/password สำหรับหน้า Sign In — เปลี่ยนได้ทีหลังผ่านแท็บ Config ใน Sheet โดยตรง (คีย์ USERNAME/PASSWORD)
 // หรือจากหน้า "Reset password" ในแอป (แก้เฉพาะ PASSWORD) ไม่ต้องแก้ที่นี่/deploy ใหม่
 const DEFAULT_USERNAME = "admin@gmail.com";
