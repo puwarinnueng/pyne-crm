@@ -81,7 +81,7 @@ export function initCreateVisit() {
     if (!c) { show("home"); return; }
     profileBox.innerHTML = `
       <div><b>${escapeHtml(c.fullName || c.nickname)}</b> (${escapeHtml(c.nickname || "-")})</div>
-      <div class="muted small">${escapeHtml(c.customerId)} &nbsp;·&nbsp; 📞 ${escapeHtml(c.phoneDisplay || "-")}</div>
+      <div class="muted small">${escapeHtml(c.customerId)} &nbsp;·&nbsp; ☎ ${escapeHtml(c.phoneDisplay || "-")}</div>
     `;
     zervaEl.value = "";
     dateEl.value = todayDateValue();

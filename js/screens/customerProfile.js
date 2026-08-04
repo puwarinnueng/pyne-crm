@@ -102,7 +102,7 @@ export function initCustomerProfile() {
     profileCard.innerHTML = `
       <div class="pname">${escapeHtml(c.fullName || c.nickname)}</div>
       <div class="pmeta">
-        ${c.nickname ? `ชื่อเล่น: ${escapeHtml(c.nickname)} &nbsp;·&nbsp; ` : ""}${c.dob ? `${escapeHtml(c.dob)}${age !== null ? ` (${age} ปี)` : ""} &nbsp;·&nbsp; ` : ""}📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}
+        ${c.nickname ? `ชื่อเล่น: ${escapeHtml(c.nickname)} &nbsp;·&nbsp; ` : ""}${c.dob ? `${escapeHtml(c.dob)}${age !== null ? ` (${age} ปี)` : ""} &nbsp;·&nbsp; ` : ""}☎ ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}
       </div>
       <div class="pmeta">${escapeHtml(c.customerId)}</div>
     `;

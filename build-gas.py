@@ -103,6 +103,12 @@ def strip_module_syntax(src):
 
 
 def build_javascript_html():
+    # แต่ละไฟล์ห่อเป็น <script> ของตัวเอง แทนที่จะรวมเป็น <script> เดียวก้อนใหญ่ก้อนเดียว —
+    # จำเป็นจริงๆ ไม่ใช่แค่จัดระเบียบ: Apps Script IFRAME sandbox mode (การ render จริงบน
+    # googleusercontent.com) พบว่า <script> เดียวที่ใหญ่เกินไป (~145KB+) โดน "ตัดกลางคัน" ระหว่างขั้นตอน
+    # แทรกเนื้อหาเข้า iframe ของ Google เอง (bug/ข้อจำกัดฝั่ง Google ไม่ใช่ syntax error ของเรา — ยืนยันแล้วว่า
+    # แยกเป็น <script> ย่อยตามไฟล์ทำให้ทุกฟังก์ชันถูกโหลดครบ) แต่ละไฟล์ที่ export ฟังก์ชัน/const ระดับบนสุด
+    # (function/const/let ที่ hoist ได้) ทำให้ตัดแบ่งตรงนี้ปลอดภัย ไม่กระทบลำดับการทำงานเลย
     parts = []
     for item in JS_ORDER:
         if item == "__BRIDGE__":
@@ -111,11 +117,11 @@ def build_javascript_html():
         with open(os.path.join(ROOT, item), encoding="utf-8") as f:
             raw = f.read()
         parts.append(f"// ==== {item} ====\n{strip_module_syntax(raw)}")
-    combined = "\n\n".join(parts)
-    out = "<script>\n" + combined + "\n</script>\n"
+    scripts = "\n".join(f"<script>\n{part}\n</script>" for part in parts if part.strip())
+    out = scripts + "\n"
     with open(os.path.join(ROOT, "gas/JavaScript.html"), "w", encoding="utf-8") as f:
         f.write(out)
-    print(f"wrote gas/JavaScript.html ({len(out)} chars)")
+    print(f"wrote gas/JavaScript.html ({len(out)} chars, {len(parts)} script tags)")
 
 
 def build_stylesheet_html():
