@@ -54,7 +54,7 @@ export function initHome() {
     let rows = allCustomers;
     if (q) {
       rows = rows.filter((c) => {
-        const nameHit = c.name.toLowerCase().includes(q);
+        const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
         const lineHit = (c.line || "").toLowerCase().includes(q);
         const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
         return nameHit || lineHit || phoneHit;
@@ -84,9 +84,9 @@ export function initHome() {
       return `
       <tr data-id="${c.customerId}">
         <td class="cell-customer">
-          <span class="avatar">${escapeHtml(initials(c.name))}</span>
+          <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
           <span class="cust-meta">
-            <span class="cust-name">${escapeHtml(c.name)}</span>
+            <span class="cust-name">${escapeHtml(c.nickname || c.fullName)}</span>
             ${sub}
           </span>
         </td>

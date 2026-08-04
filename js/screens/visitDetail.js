@@ -6,19 +6,27 @@ import { formatDate, escapeHtml } from "../utils.js";
 
 const FIELD_LABELS = {
   hadBrowBefore: "เคยสักคิ้วมาก่อนหรือไม่",
-  oldMarkLook: "ลักษณะรอยเก่า",
+  oldMarkLook: "ลักษณะรอยเก่าที่เห็นในปัจจุบัน",
+  oldMarkTone: "โทนสีรอยเดิม",
+  fixPoints: "จุดที่ต้องการแก้ไขจากรอยเดิม",
   browHairLook: "ลักษณะขนคิ้ว",
   browHairDensity: "ความแน่นของขนคิ้ว",
   skinType: "ประเภทผิว",
-  hasScar: "แผลเป็น",
+  hasScar: "ผิวบริเวณคิ้วมีแผลเป็นหรือไม่",
+  scarCause: "สาเหตุแผลเป็น",
   desiredArea: "จุดที่ต้องการ",
   irritation7d: "ผิวระคายเคืองบริเวณคิ้วภายใน 7 วัน",
-  allergy: "อาการแพ้",
-  concerns: "ปัญหาที่ลูกค้ากังวล",
+  irritationDetail: "รายละเอียดความระคายเคือง",
+  allergyInfo: "มีอาการแพ้/ข้อมูลสำคัญที่ต้องแจ้งช่างหรือไม่",
+  allergyDetail: "รายละเอียดอาการแพ้",
+  concerns: "ปัญหาหลักที่กังวล",
+  desiredOverview: "ภาพรวมที่ต้องการ",
   desiredFeel: "ฟีลคิ้วที่ต้องการ",
+  notWanted: "สิ่งที่ไม่อยากได้เด็ดขาด",
   dontWant: "สิ่งที่ไม่อยากได้เด็ดขาด",
   adjustFromLast: "สิ่งที่อยากปรับจากครั้งก่อน",
-  touchupPrice: "ค่าเติมสี (บาท)"
+  touchupPrice: "ค่าเติมสี (บาท)",
+  colorChoice: "สีที่เลือก"
 };
 
 function fmtValue(v) {
@@ -75,6 +83,14 @@ export function initVisitDetail() {
         ${visit.shapeDesign ? row("ทรงที่ออกแบบ", visit.shapeDesign) : ""}
         ${visit.browGuard ? row("การกันคิ้ว", visit.browGuard) : ""}
         ${visit.analysis ? row("ผลการวิเคราะห์จากช่าง", visit.analysis) : ""}
+        ${visit.satisfaction ? row("ความพึงพอใจกับผลลัพธ์หลังลอก", visit.satisfaction) : ""}
+        ${visit.colorRetention ? row("การติดสีโดยรวม", visit.colorRetention) : ""}
+        ${visit.wantsMoreChange ? row("มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่", visit.wantsMoreChange) : ""}
+        ${(visit.changeItems || []).length ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", visit.changeItems.join(", ")) : ""}
+        ${visit.mixRatio ? row("สัดส่วนสีที่ใช้", visit.mixRatio) : ""}
+        ${visit.redness ? row("ความแดงผิว", visit.redness) : ""}
+        ${visit.adherence ? row("ความติดสี", visit.adherence) : ""}
+        ${visit.status === "draft" ? row("สถานะ", "บันทึกแบบร่าง (ยังไม่ปิด Visit)") : ""}
         ${visit.note ? row("หมายเหตุ", visit.note) : ""}
       </div>
 

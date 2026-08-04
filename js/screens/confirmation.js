@@ -23,6 +23,6 @@ export function initConfirmation() {
 
   onEnter("confirmation", () => {
     const c = state.currentCustomer;
-    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? c.name : ""} (ID ${state.lastSavedServiceId})`;
+    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? (c.nickname || c.fullName) : ""} (ID ${state.lastSavedServiceId})`;
   });
 }

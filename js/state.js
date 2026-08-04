@@ -3,7 +3,9 @@
 
 export const state = {
   currentCustomer: null,      // customer object ที่กำลังเปิดดู/เพิ่มประวัติ
-  serviceType: null,          // "สักคิ้ว" | "เติมสี"
+  serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
+  formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
+  visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -18,6 +20,8 @@ export const state = {
   reset() {
     this.currentCustomer = null;
     this.serviceType = null;
+    this.formType = null;
+    this.visitContext = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }

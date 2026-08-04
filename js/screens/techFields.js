@@ -1,15 +1,19 @@
+// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูป After, ลายเซ็นช่าง)
+// เหมือนกันทุกฟอร์มตามสเปก ("กติกากลางของทั้ง 3 ฟอร์ม") จึงมีหน้าเดียวใช้ร่วมกัน แยกแค่ payload ตอนบันทึก
+
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
-import { radioField, chipGroup, textAreaField, bindFieldEvents } from "../fieldHelpers.js";
+import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
+import { visitHeaderHtml } from "../visitFlow.js";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
-  const saveBtn = document.getElementById("techSaveBtn");
-  const backBtn = document.getElementById("techBackBtn");
+  const draftBtn = document.getElementById("tuSaveDraftBtn");
+  const closeBtn = document.getElementById("tuSaveCloseBtn");
 
   function photoSlot(key, label) {
     const url = state.visitDraft[key + "PhotoDataUrl"];
@@ -25,34 +29,27 @@ export function initTechFields() {
   }
 
   function render() {
-    const isTouchup = state.serviceType === "เติมสี";
+    const draft = state.visitDraft;
     body.innerHTML = `
+      ${visitHeaderHtml()}
       <div class="step-group">
-        <div class="step-group-title">รูป Before / After <span class="required-star">*</span></div>
-        <div class="photo-row">
-          ${photoSlot("before", "Before")}
-          ${photoSlot("after", "After")}
-        </div>
-      </div>
-
-      ${!isTouchup ? `
-      <div class="step-group">
-        <div class="step-group-title">กล้ามเนื้อคิ้ว</div>
-        ${chipGroup("muscle", OPTIONS.muscle, state.visitDraft, true)}
-        <div class="step-group-title">ทรงที่ออกแบบ</div>
-        ${chipGroup("shapeDesign", OPTIONS.shapeDesign, state.visitDraft, true)}
-        <div class="step-group-title">การกันคิ้ว</div>
-        ${radioField("browGuard", OPTIONS.browGuard, state.visitDraft)}
-      </div>` : ""}
-
-      <div class="step-group">
-        <div class="step-group-title">สีที่ใช้</div>
-        ${chipGroup("colorUsed", OPTIONS.colorUsed, state.visitDraft, false)}
+        <div class="step-group-title">สัดส่วนสีที่ใช้ <span class="required-star">*</span></div>
+        ${mixRatioField("mixRatioParts", OPTIONS.mixColors, draft)}
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">ผลการวิเคราะห์จากช่าง</div>
-        ${textAreaField("analysis", "บันทึกผลการวิเคราะห์ / หมายเหตุ", state.visitDraft)}
+        <div class="step-group-title">ความแดงผิว</div>
+        ${radioField("redness", OPTIONS.redness, draft)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">ความติดสี</div>
+        ${radioField("adherence", OPTIONS.adherence, draft)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">รูป After <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("after", "After")}</div>
       </div>
 
       <div class="step-group">
@@ -76,72 +73,113 @@ export function initTechFields() {
   }
 
   bindFieldEvents(body, state.visitDraft, () => {});
+  bindMixRatioEvents(body, state.visitDraft);
 
-  backBtn.addEventListener("click", () => show("formBrow"));
+  document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
 
-  saveBtn.addEventListener("click", async () => {
+  function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
-    const beforeEl = !state.visitDraft.beforePhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="before"]') : null;
-    const afterEl = !state.visitDraft.afterPhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="after"]') : null;
-    if (beforeEl) beforeEl.classList.add("field-error");
-    if (afterEl) afterEl.classList.add("field-error");
-    if (beforeEl || afterEl) {
-      (beforeEl || afterEl).scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    saveBtn.disabled = true;
+  }
+  function flagError(selector) {
+    const el = body.querySelector(selector);
+    if (el) el.classList.add("field-error");
+    return el;
+  }
 
+  async function uploadAndBuildFolder() {
     const draft = state.visitDraft;
-
-    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
-    if (!state.currentCustomer) { saveBtn.disabled = false; show("home"); return; }
-
-    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทรของลูกค้าปัจจุบัน
     const folderMeta = {
       customerPhone: state.currentCustomer.phoneNormalized,
-      customerName: state.currentCustomer.name,
+      customerName: state.currentCustomer.fullName || state.currentCustomer.nickname,
       serviceType: state.serviceType,
       visitKey: ensureVisitSessionKey(draft)
     };
-
-    const hasSignature = Boolean(draft.signatureCustomerDataUrl);
-
     const folderRes = await ensureVisitFolder(folderMeta);
-
     const uploadMeta = { folderId: folderRes.folderId };
+    const hasSignature = Boolean(draft.signatureCustomerDataUrl);
     const [beforeUp, afterUp, sigUp] = await Promise.all([
-      uploadImage(draft.beforePhotoDataUrl, { ...uploadMeta, filename: "before.jpg" }),
-      uploadImage(draft.afterPhotoDataUrl, { ...uploadMeta, filename: "after.jpg" }),
+      draft.beforePhotoDataUrl ? uploadImage(draft.beforePhotoDataUrl, { ...uploadMeta, filename: "before.jpg" }) : Promise.resolve(null),
+      draft.afterPhotoDataUrl ? uploadImage(draft.afterPhotoDataUrl, { ...uploadMeta, filename: "after.jpg" }) : Promise.resolve(null),
       hasSignature
         ? uploadImage(draft.signatureCustomerDataUrl, { ...uploadMeta, filename: "signature_customer.png" })
         : Promise.resolve(null)
     ]);
+    return {
+      beforePhotoUrl: beforeUp ? beforeUp.url : null,
+      afterPhotoUrl: afterUp ? afterUp.url : null,
+      signatureCustomerUrl: hasSignature ? sigUp.url : null
+    };
+  }
 
-    const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime
-      ? new Date(`${state.visitDraft.serviceDate}T${state.visitDraft.serviceTime}`).getTime()
-      : Date.now();
-
-    const payload = {
+  // payload ร่วมของทั้งปุ่ม "บันทึกแบบร่าง" และ "บันทึกเสร็จและปิด Visit" — เหมือนกันทั้ง 3 ฟอร์ม
+  // ต่างกันแค่ formType/serviceType และฟิลด์เฉพาะฟอร์มที่ฝังมาใน draft อยู่แล้วจากหน้าก่อนหน้า
+  function buildPayload(status) {
+    const draft = state.visitDraft;
+    return {
+      serviceId: state.visitContext.visitId,
       customerId: state.currentCustomer.customerId,
+      zervaBookingId: state.visitContext.zervaBookingId,
+      timeSlot: state.visitContext.timeSlot,
       serviceType: state.serviceType,
-      visitDate: serviceDateTime,
-      technique: state.visitDraft.technique || null,
-      colorUsed: state.visitDraft.colorUsed || null,
-      intensity: state.visitDraft.intensity || null,
-      muscle: state.visitDraft.muscle || null,
-      shapeDesign: state.visitDraft.shapeDesign || null,
-      browGuard: state.visitDraft.browGuard || null,
-      analysis: state.visitDraft.analysis || null,
-      note: state.visitDraft.adjustFromLast || state.visitDraft.dontWant || null,
-      beforePhotoUrl: beforeUp.url,
-      afterPhotoUrl: afterUp.url,
-      signatureCustomerUrl: hasSignature ? sigUp.url : null,
+      formType: state.formType,
+      status,
+      visitDate: state.visitContext.visitDate || Date.now(),
+      technique: draft.technique || draft.prevTechnique || null,
+      colorUsed: draft.colorChoice || draft.prevColorUsed || null,
+      intensity: draft.intensity || null,
+      muscle: draft.muscle || null,
+      shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || draft.prevShapeDesign || null),
+      browGuard: draft.browGuard || null,
+      satisfaction: draft.satisfaction || null,
+      colorRetention: draft.colorRetention || null,
+      wantsMoreChange: draft.wantsMoreChange || null,
+      changeItems: draft.wantsMoreChange === "มี" ? (draft.changeItems || []) : [],
+      redness: draft.redness || null,
+      adherence: draft.adherence || null,
+      mixRatio: formatMixRatio("mixRatioParts", draft),
+      note: draft.adjustFromLast || draft.dontWant || null
+    };
+  }
+
+  draftBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    draftBtn.disabled = true;
+    const draft = state.visitDraft;
+    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+    const payload = {
+      ...buildPayload("draft"),
+      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
       signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+    };
+    await saveVisit(payload);
+    draftBtn.disabled = false;
+    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+  });
+
+  closeBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    clearFieldErrors();
+    const draft = state.visitDraft;
+
+    const mixRatio = formatMixRatio("mixRatioParts", draft);
+    const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
+    const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
+    const firstError = mixEl || afterEl;
+    if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+
+    closeBtn.disabled = true;
+    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+    const payload = {
+      ...buildPayload("เสร็จสิ้น"),
+      mixRatio,
+      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
     };
 
     const res = await saveVisit(payload);
-    saveBtn.disabled = false;
+    closeBtn.disabled = false;
     state.lastSavedServiceId = res.serviceId;
     show("confirmation");
   });

@@ -9,13 +9,25 @@ export function createSignaturePad(canvas) {
   function resize() {
     const ratio = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
+    const newWidth = Math.round(rect.width * ratio);
+    const newHeight = Math.round(rect.height * ratio);
+    // ตั้ง canvas.width/height ล้างรูปที่วาดไว้เสมอ (พฤติกรรมมาตรฐานของ canvas) — ถ้าขนาดจริงไม่ได้เปลี่ยน
+    // (เช่น resize event หลอกจากแถบเครื่องมือ Safari บน iOS ที่ย่อ/ขยายตอนเลื่อนหน้าจอ) ให้ข้ามไปเลย
+    // กันลายเซ็นลูกค้าหายเงียบ ๆ ทั้งที่ hasInk ยังเป็น true อยู่ (isEmpty() จะโกหกว่ามีลายเซ็น)
+    if (newWidth === canvas.width && newHeight === canvas.height) return;
+    const snapshot = hasInk ? canvas.toDataURL("image/png") : null;
+    canvas.width = newWidth;
+    canvas.height = newHeight;
     ctx.scale(ratio, ratio);
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#0b3d2e";
+    ctx.strokeStyle = "#261F1C"; /* Espresso Ink — token: --espresso-ink */
+    if (snapshot) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      img.src = snapshot;
+    }
   }
   resize();
   window.addEventListener("resize", resize);

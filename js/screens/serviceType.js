@@ -9,12 +9,12 @@ function getModal() {
   return modalEl;
 }
 
-// เปิด modal เลือกประเภทบริการทับหน้าจอปัจจุบัน (home หรือ customerProfile)
+// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
 export function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
-  // "เติมสี" ใช้ได้เฉพาะลูกค้าเก่าที่มีประวัติอยู่แล้ว — ลูกค้าใหม่ต้องทำ "สักคิ้ว" เท่านั้น
-  document.getElementById("chooseTouchupBtn").hidden = !state.currentCustomer;
+  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติสักคิ้วกับร้านมาก่อนเท่านั้น
+  document.getElementById("chooseForm3Btn").hidden = !state.currentCustomer;
   clearTimeout(closeTimer);
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
@@ -43,17 +43,23 @@ export function initServiceType() {
     if (e.key === "Escape" && !modal.hidden) closeServiceTypeModal();
   });
 
-  document.getElementById("chooseBrowBtn").addEventListener("click", () => {
+  document.getElementById("chooseForm1Btn").addEventListener("click", () => {
     state.serviceType = "สักคิ้ว";
-    state.resetVisitDraft();
-    state.browStepIndex = 0;
+    state.formType = "form1";
     closeServiceTypeModal();
-    show("formBrow");
+    show("form1");
   });
 
-  document.getElementById("chooseTouchupBtn").addEventListener("click", () => {
+  document.getElementById("chooseForm2Btn").addEventListener("click", () => {
+    state.serviceType = "สักคิ้ว";
+    state.formType = "form2";
+    closeServiceTypeModal();
+    show("form2");
+  });
+
+  document.getElementById("chooseForm3Btn").addEventListener("click", () => {
     state.serviceType = "เติมสี";
-    state.resetVisitDraft();
+    state.formType = "form3";
     closeServiceTypeModal();
     show("formTouchup");
   });

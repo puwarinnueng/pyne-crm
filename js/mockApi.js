@@ -34,7 +34,7 @@ export async function searchCustomers(query) {
   const qPhone = normalizePhone(query);
   const { customers } = db.get();
   return customers.filter((c) => {
-    const nameHit = c.name.toLowerCase().includes(q);
+    const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
     const lineHit = (c.line || "").toLowerCase().includes(q);
     const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
     return nameHit || lineHit || phoneHit;
@@ -75,6 +75,11 @@ export async function findCustomerByPhone(phone) {
   return customers.find((c) => c.phoneNormalized === normalized) || null;
 }
 
+// รูปแบบ Customer ID ตามสเปก: PYN-000123 (prefix คงที่ + เลขรัน 6 หลัก)
+function formatCustomerId(seq) {
+  return "PYN-" + String(seq).padStart(6, "0");
+}
+
 export async function createCustomer(data) {
   await wait();
   const database = db.get();
@@ -83,17 +88,60 @@ export async function createCustomer(data) {
   if (existing) {
     return { success: false, error: "duplicate", existing };
   }
-  const customerId = "C" + String(database.seq.customer).padStart(4, "0");
+  const customerId = formatCustomerId(database.seq.customer);
   const customer = {
     customerId,
-    name: data.name,
+    fullName: data.fullName,
+    nickname: data.nickname,
+    dob: data.dob || null,
     phoneNormalized: normalized,
     phoneDisplay: data.phone,
     line: data.line || "",
+    profileConfirmedAt: null,
+    skinProfile: {
+      skinType: null, hairLook: null, hairDensity: null,
+      browShape: [], muscle: null, muscleNote: "", muscleEvaluatedAt: null
+    },
     createdAt: Date.now()
   };
   database.customers.push(customer);
   database.seq.customer += 1;
+  db.set(database);
+  return { success: true, customer };
+}
+
+// บันทึกว่าลูกค้ายืนยันข้อมูลส่วนตัวถูกต้องแล้ว พร้อมวันเวลา (ตามสเปก Step 2)
+export async function confirmCustomerProfile(customerId) {
+  await wait(150);
+  const database = db.get();
+  const customer = database.customers.find((c) => c.customerId === customerId);
+  if (!customer) return { success: false };
+  customer.profileConfirmedAt = Date.now();
+  db.set(database);
+  return { success: true, customer };
+}
+
+// บันทึกประวัติผิวและคิ้วของลูกค้า (ข้อมูลระดับลูกค้า แก้ไขได้ ใช้ซ้ำได้ทุก Visit)
+export async function saveSkinProfile(customerId, skinProfile) {
+  await wait(150);
+  const database = db.get();
+  const customer = database.customers.find((c) => c.customerId === customerId);
+  if (!customer) return { success: false };
+  customer.skinProfile = { ...customer.skinProfile, ...skinProfile };
+  db.set(database);
+  return { success: true, customer };
+}
+
+// อัปเดตผลประเมินกล้ามเนื้อคิ้วล่าสุด (กรอกในฟอร์ม 1/2 ตอนวัดทรงจริง) กลับไปแสดงใน Customer Profile
+export async function updateMuscleEvaluation(customerId, muscle, muscleNote) {
+  await wait(150);
+  const database = db.get();
+  const customer = database.customers.find((c) => c.customerId === customerId);
+  if (!customer) return { success: false };
+  customer.skinProfile = {
+    ...customer.skinProfile,
+    muscle, muscleNote: muscleNote || "", muscleEvaluatedAt: Date.now()
+  };
   db.set(database);
   return { success: true, customer };
 }
@@ -112,15 +160,66 @@ export async function getHistoryByCustomer(customerId) {
     .sort((a, b) => b.visitDate - a.visitDate);
 }
 
+// สร้าง Visit ใหม่ตอน Step 3 (ก่อนเปิดฟอร์ม Consultation ใด ๆ) — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
+// คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
+// เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
+export async function createVisit({ customerId, zervaBookingId, visitDate, timeSlot }) {
+  await wait(200);
+  const database = db.get();
+  const visitId = "S" + String(database.seq.service).padStart(4, "0");
+  const visit = {
+    serviceId: visitId,
+    customerId,
+    zervaBookingId: zervaBookingId || null,
+    visitDate: visitDate || Date.now(),
+    timeSlot: timeSlot || null,
+    status: "กำลังดำเนินการ",
+    createdAt: Date.now()
+  };
+  database.serviceHistory.push(visit);
+  database.seq.service += 1;
+  db.set(database);
+  return { success: true, visitId, visit };
+}
+
+// ปิด Visit ด้วยสถานะ "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
+export async function closeVisitNotServed(visitId, reason) {
+  await wait(200);
+  const database = db.get();
+  const idx = database.serviceHistory.findIndex((v) => v.serviceId === visitId);
+  if (idx < 0) return { success: false };
+  database.serviceHistory[idx] = {
+    ...database.serviceHistory[idx],
+    status: "ไม่ได้รับบริการ",
+    notServedReason: reason,
+    updatedAt: Date.now()
+  };
+  db.set(database);
+  return { success: true };
+}
+
+// ถ้า payload.serviceId ตรงกับ Visit ที่เคย "บันทึกแบบร่าง" ไว้แล้ว จะอัปเดตแถวเดิมแทนการสร้างแถวใหม่
+// (กันไม่ให้กด "บันทึกแบบร่าง" ซ้ำหลายครั้งแล้วได้ Visit ซ้อนกันหลายแถว) — ของจริง (gas/) ทำแบบเดียวกันด้วย
+// LockService + หา row เดิมจาก serviceId ก่อนตัดสินใจ update/append
 export async function saveVisit(payload) {
   await wait(400);
   const database = db.get();
+
+  if (payload.serviceId) {
+    const idx = database.serviceHistory.findIndex((v) => v.serviceId === payload.serviceId);
+    if (idx >= 0) {
+      database.serviceHistory[idx] = { ...database.serviceHistory[idx], ...payload, updatedAt: Date.now() };
+      db.set(database);
+      return { success: true, serviceId: payload.serviceId };
+    }
+  }
+
   const serviceId = "S" + String(database.seq.service).padStart(4, "0");
   const visit = {
-    serviceId,
     createdAt: Date.now(),
     visitDate: Date.now(),
-    ...payload
+    ...payload,
+    serviceId
   };
   database.serviceHistory.push(visit);
   database.seq.service += 1;
