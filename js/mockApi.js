@@ -234,10 +234,21 @@ export async function saveVisit(payload) {
   await wait(400);
   const database = db.get();
 
+  // agreedAt ถูกฝังอยู่ใน rawAnswers (ตั้งตอนกด "ยินยอม" ในฟอร์ม) ดึงออกมาเป็นฟิลด์แยก consentAgreedAt
+  // ให้ตรงกับคอลัมน์ ConsentAgreedAt ฝั่ง production (gas/ServiceHistory.gs)
+  const consentAgreedAt = payload.rawAnswers && payload.rawAnswers.agreedAt !== undefined
+    ? payload.rawAnswers.agreedAt
+    : undefined;
+
   if (payload.serviceId) {
     const idx = database.serviceHistory.findIndex((v) => v.serviceId === payload.serviceId);
     if (idx >= 0) {
-      database.serviceHistory[idx] = { ...database.serviceHistory[idx], ...payload, updatedAt: Date.now() };
+      database.serviceHistory[idx] = {
+        ...database.serviceHistory[idx],
+        ...payload,
+        ...(consentAgreedAt !== undefined ? { consentAgreedAt } : {}),
+        updatedAt: Date.now()
+      };
       db.set(database);
       return { success: true, serviceId: payload.serviceId };
     }
@@ -248,6 +259,7 @@ export async function saveVisit(payload) {
     createdAt: Date.now(),
     visitDate: Date.now(),
     ...payload,
+    ...(consentAgreedAt !== undefined ? { consentAgreedAt } : {}),
     serviceId
   };
   database.serviceHistory.push(visit);

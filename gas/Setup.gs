@@ -21,6 +21,7 @@ const SERVICE_HISTORY_HEADERS = [
   "MixRatio", "Redness", "Adherence",
   "Analysis", "Note", "NotServedReason",
   "BeforePhotoUrl", "AfterPhotoUrl", "SignatureCustomerUrl", "SignatureTechUrl",
+  "ConsentAgreedAt",
   "CalendarEventId",
   "RawAnswersJson", "CreatedAt", "UpdatedAt"
 ];

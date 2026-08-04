@@ -50,6 +50,7 @@ function rowToVisit_(row) {
     afterPhotoUrl: row.AfterPhotoUrl,
     signatureCustomerUrl: row.SignatureCustomerUrl,
     signatureTechUrl: row.SignatureTechUrl,
+    consentAgreedAt: row.ConsentAgreedAt || null,
     calendarEventId: row.CalendarEventId,
     createdAt: row.CreatedAt
   };
@@ -149,6 +150,7 @@ function saveVisit(payload) {
       AfterPhotoUrl: payload.afterPhotoUrl,
       SignatureCustomerUrl: payload.signatureCustomerUrl,
       SignatureTechUrl: payload.signatureTechUrl,
+      ConsentAgreedAt: payload.rawAnswers && payload.rawAnswers.agreedAt !== undefined ? payload.rawAnswers.agreedAt : undefined,
       RawAnswersJson: payload.rawAnswers !== undefined ? JSON.stringify(payload.rawAnswers) : undefined,
       UpdatedAt: now
     };
