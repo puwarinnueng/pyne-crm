@@ -1,5 +1,5 @@
 /**
- * Customers.gs — ค้นหา/สร้างลูกค้า ในแท็บ Customers
+ * Customers.gs — ค้นหา/สร้างลูกค้า + ประวัติผิวและคิ้ว ในแท็บ Customers
  */
 
 function normalizePhone(phone) {
@@ -14,13 +14,26 @@ function getCustomersSheet_() {
   return getSpreadsheet_().getSheetByName(SHEET_NAMES.CUSTOMERS);
 }
 
+function parseSkinProfile_(json) {
+  if (!json) return { skinType: null, hairLook: null, hairDensity: null, browShape: [], muscle: null, muscleNote: "", muscleEvaluatedAt: null };
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return { skinType: null, hairLook: null, hairDensity: null, browShape: [], muscle: null, muscleNote: "", muscleEvaluatedAt: null };
+  }
+}
+
 function rowToCustomer_(row) {
   return {
     customerId: row.CustomerID,
-    name: row.Name,
+    fullName: row.FullName,
+    nickname: row.Nickname,
+    dob: row.DOB,
     phoneNormalized: row.PhoneNormalized,
     phoneDisplay: row.PhoneDisplay,
     line: row.Line,
+    skinProfile: parseSkinProfile_(row.SkinProfileJson),
+    profileConfirmedAt: row.ProfileConfirmedAt || null,
     createdAt: row.CreatedAt
   };
 }
@@ -33,7 +46,7 @@ function searchCustomers(query) {
 
   return rows
     .filter((row) => {
-      const nameHit = String(row.Name || "").toLowerCase().indexOf(q) >= 0;
+      const nameHit = (String(row.FullName || "") + " " + String(row.Nickname || "")).toLowerCase().indexOf(q) >= 0;
       const lineHit = String(row.Line || "").toLowerCase().indexOf(q) >= 0;
       const phoneHit = qPhone.length >= 3 && String(row.PhoneNormalized || "").indexOf(qPhone) >= 0;
       return nameHit || lineHit || phoneHit;
@@ -95,14 +108,20 @@ function createCustomer(data) {
       return { success: false, error: "duplicate", existing: rowToCustomer_(existing) };
     }
 
-    const customerId = nextId_(sheet, "C", 4);
+    // รูปแบบ Customer ID ตามสเปก: PYN-000123 (prefix คงที่ + เลขรัน 6 หลัก)
+    const customerId = nextId_(sheet, "PYN-", 6);
     const createdAt = Date.now();
+    const emptySkinProfile = { skinType: null, hairLook: null, hairDensity: null, browShape: [], muscle: null, muscleNote: "", muscleEvaluatedAt: null };
     const record = {
       CustomerID: customerId,
-      Name: data.name,
+      FullName: data.fullName,
+      Nickname: data.nickname,
+      DOB: data.dob || "",
       PhoneNormalized: normalized,
       PhoneDisplay: data.phone,
       Line: data.line || "",
+      SkinProfileJson: JSON.stringify(emptySkinProfile),
+      ProfileConfirmedAt: "",
       CreatedAt: createdAt
     };
 
@@ -121,13 +140,72 @@ function createCustomer(data) {
       success: true,
       customer: {
         customerId,
-        name: data.name,
+        fullName: data.fullName,
+        nickname: data.nickname,
+        dob: data.dob || null,
         phoneNormalized: normalized,
         phoneDisplay: data.phone,
         line: data.line || "",
+        skinProfile: emptySkinProfile,
+        profileConfirmedAt: null,
         createdAt
       }
     };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// บันทึกว่าลูกค้ายืนยันข้อมูลส่วนตัวถูกต้องแล้ว พร้อมวันเวลา (ตามสเปก Step 2)
+function confirmCustomerProfile(customerId) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getCustomersSheet_();
+    const rows = sheetToObjects_(sheet);
+    const row = rows.find((r) => r.CustomerID === customerId);
+    if (!row) return { success: false };
+    const col = CUSTOMERS_HEADERS.indexOf("ProfileConfirmedAt") + 1;
+    const confirmedAt = Date.now();
+    sheet.getRange(row._rowIndex, col).setValue(confirmedAt);
+    return { success: true, customer: rowToCustomer_(Object.assign({}, row, { ProfileConfirmedAt: confirmedAt })) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// บันทึกประวัติผิวและคิ้วของลูกค้า (ข้อมูลระดับลูกค้า แก้ไขได้ ใช้ซ้ำได้ทุก Visit)
+function saveSkinProfile(customerId, skinProfile) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getCustomersSheet_();
+    const rows = sheetToObjects_(sheet);
+    const row = rows.find((r) => r.CustomerID === customerId);
+    if (!row) return { success: false };
+    const merged = Object.assign(parseSkinProfile_(row.SkinProfileJson), skinProfile);
+    const col = CUSTOMERS_HEADERS.indexOf("SkinProfileJson") + 1;
+    sheet.getRange(row._rowIndex, col).setValue(JSON.stringify(merged));
+    return { success: true, customer: rowToCustomer_(Object.assign({}, row, { SkinProfileJson: JSON.stringify(merged) })) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// อัปเดตผลประเมินกล้ามเนื้อคิ้วล่าสุด (กรอกในฟอร์ม 1/2 ตอนวัดทรงจริง) กลับไปแสดงใน Customer Profile
+function updateMuscleEvaluation(customerId, muscle, muscleNote) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getCustomersSheet_();
+    const rows = sheetToObjects_(sheet);
+    const row = rows.find((r) => r.CustomerID === customerId);
+    if (!row) return { success: false };
+    const current = parseSkinProfile_(row.SkinProfileJson);
+    const merged = Object.assign(current, { muscle: muscle, muscleNote: muscleNote || "", muscleEvaluatedAt: Date.now() });
+    const col = CUSTOMERS_HEADERS.indexOf("SkinProfileJson") + 1;
+    sheet.getRange(row._rowIndex, col).setValue(JSON.stringify(merged));
+    return { success: true, customer: rowToCustomer_(Object.assign({}, row, { SkinProfileJson: JSON.stringify(merged) })) };
   } finally {
     lock.releaseLock();
   }

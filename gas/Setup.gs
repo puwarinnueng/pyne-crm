@@ -5,16 +5,20 @@
  */
 
 const CUSTOMERS_HEADERS = [
-  "CustomerID", "Name", "PhoneNormalized", "PhoneDisplay", "Line", "CreatedAt"
+  "CustomerID", "FullName", "Nickname", "DOB", "PhoneNormalized", "PhoneDisplay", "Line",
+  "SkinProfileJson", "ProfileConfirmedAt", "CreatedAt"
 ];
 
 const SERVICE_HISTORY_HEADERS = [
-  "ServiceID", "CustomerID", "VisitDate", "ServiceType",
+  "ServiceID", "CustomerID", "ZervaBookingId", "VisitDate", "TimeSlot", "Status",
+  "ServiceType", "FormType",
   "Technique", "ColorUsed", "Intensity", "Muscle", "ShapeDesign", "BrowGuard",
-  "Analysis", "Note",
+  "Satisfaction", "ColorRetention", "WantsMoreChange", "ChangeItemsJson",
+  "MixRatio", "Redness", "Adherence",
+  "Analysis", "Note", "NotServedReason",
   "BeforePhotoUrl", "AfterPhotoUrl", "SignatureCustomerUrl", "SignatureTechUrl",
-  "ZervaBookingId", "CalendarEventId",
-  "RawAnswersJson", "CreatedAt"
+  "CalendarEventId",
+  "RawAnswersJson", "CreatedAt", "UpdatedAt"
 ];
 
 const CONFIG_HEADERS = ["Key", "Value"];
@@ -34,6 +38,34 @@ function setupSpreadsheet() {
   forceColumnPlainText_(customersSheet, CUSTOMERS_HEADERS, "PhoneDisplay");
 
   Logger.log("ตั้งค่า Sheet เรียบร้อย: " + ss.getUrl());
+}
+
+/**
+ * migrateToV2Schema_ClearsAllData — รันครั้งเดียวจาก Apps Script editor (เลือกฟังก์ชันนี้แล้วกด Run)
+ * เมื่ออัปเกรดจาก schema เดิม (Name/Line เดี่ยว ๆ) มาเป็น schema ใหม่ (FullName/Nickname/DOB/
+ * ประวัติผิวคิ้ว/Visit มี Zerva+เวลานัด+สถานะ+ฟิลด์ Form 1/2/3 ครบ) — ตัวคอลัมน์ (CUSTOMERS_HEADERS /
+ * SERVICE_HISTORY_HEADERS) เปลี่ยนไปเยอะจนต่อคอลัมน์เดิมไม่ได้ตรง ๆ
+ *
+ * !! ฟังก์ชันนี้ล้างข้อมูลทุกแถวในแท็บ Customers และ ServiceHistory ทิ้งทั้งหมด (เก็บแท็บ Config ไว้
+ * เหมือนเดิม ไม่แตะรหัสผ่าน) แล้วเขียนหัวคอลัมน์ชุดใหม่ทับ !!
+ * ใช้เฉพาะตอน Sheet ยังเป็นข้อมูลทดสอบ/ว่างอยู่เท่านั้น ถ้ามีข้อมูลลูกค้าจริงแล้วห้ามรันฟังก์ชันนี้
+ * (ต้องเขียนสคริปต์ย้ายข้อมูลคอลัมน์ต่อคอลัมน์แทน)
+ */
+function migrateToV2Schema_ClearsAllData() {
+  const ss = getSpreadsheet_();
+
+  [SHEET_NAMES.CUSTOMERS, SHEET_NAMES.SERVICE_HISTORY].forEach((name) => {
+    const sheet = ss.getSheetByName(name);
+    if (sheet) sheet.clear();
+  });
+
+  const customersSheet = ensureSheetWithHeaders_(ss, SHEET_NAMES.CUSTOMERS, CUSTOMERS_HEADERS);
+  ensureSheetWithHeaders_(ss, SHEET_NAMES.SERVICE_HISTORY, SERVICE_HISTORY_HEADERS);
+
+  forceColumnPlainText_(customersSheet, CUSTOMERS_HEADERS, "PhoneNormalized");
+  forceColumnPlainText_(customersSheet, CUSTOMERS_HEADERS, "PhoneDisplay");
+
+  Logger.log("ล้างข้อมูลเดิมและตั้งหัวคอลัมน์ schema ใหม่เรียบร้อย: " + ss.getUrl());
 }
 
 /**

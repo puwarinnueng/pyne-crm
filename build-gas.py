@@ -26,14 +26,17 @@ JS_ORDER = [
     "js/signaturePad.js",
     "js/fieldHelpers.js",
     "__BRIDGE__",
+    "js/visitFlow.js",
     "js/screens/gate.js",
     "js/screens/login.js",
     "js/screens/home.js",
     "js/screens/newCustomer.js",
     "js/screens/customerProfile.js",
     "js/screens/visitDetail.js",
+    "js/screens/createVisit.js",
     "js/screens/serviceType.js",
-    "js/screens/formBrow.js",
+    "js/screens/formOne.js",
+    "js/screens/formTwo.js",
     "js/screens/formTouchup.js",
     "js/screens/techFields.js",
     "js/screens/confirmation.js",
@@ -65,8 +68,13 @@ function listRecentCustomers(limit) { return callServer_("listRecentCustomers", 
 function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
 function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
+function confirmCustomerProfile(customerId) { return callServer_("confirmCustomerProfile", customerId); }
+function saveSkinProfile(customerId, skinProfile) { return callServer_("saveSkinProfile", customerId, skinProfile); }
+function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServer_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
+function createVisit(payload) { return callServer_("createVisit", payload); }
+function closeVisitNotServed(visitId, reason) { return callServer_("closeVisitNotServed", visitId, reason); }
 function saveVisit(payload) { return callServer_("saveVisit", payload); }
 function ensureVisitFolder(meta) { return callServer_("ensureVisitFolder", meta); }
 function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }

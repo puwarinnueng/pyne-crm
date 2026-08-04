@@ -43,85 +43,150 @@ function readFileAsDataUrl(file) {
 }
 
 // ==== js/data/options.js ====
-// รายการตัวเลือกทั้งหมด — ตรงตาม Jotform "Pyne brow consultation" คำต่อคำ
+// รายการตัวเลือกทั้งหมด — ตรงตามสเปกร้านคำต่อคำ
 // ในระบบจริง (Apps Script) รายการนี้จะย้ายไปเก็บใน Sheet "Config" เพื่อแก้ไขได้โดยไม่ต้อง deploy ใหม่
 
 const OPTIONS = {
-  oldMarkLook: ["เทา", "เขียว", "แดง", "มีลายเส้น", "มีคีรอยด์", "มีหลายรอย", "จางมาก", "Other"],
-  browHairLook: ["ปกติ", "เส้นเล็ก", "เส้นหนา"],
-  browHairDensity: ["บาง", "ปานกลาง", "หนา"],
-  skinType: ["ปกติ", "แห้ง", "มัน", "ผสม"],
-  concerns: ["หางคิ้วสั้น", "หางคิ้วตก", "คิ้วไม่เท่ากัน", "ไม่มีหัวคิ้ว", "คิ้วแหว่ง", "คิ้วบางมาก", "คิ้วหนามาก", "มีคีรอยด์", "Other"],
-  desiredFeel: [
-    "เบาบาง มีโครงเบาๆ", "ฟุ้งๆ สไตล์เกาหลี", "เน้นน่าสดรอด", "เน้นธรรมชาติ",
-    "เขียนคิ้วง่ายขึ้น", "เปลี่ยนทรงคิ้ว", "ทับทรงเดิม", "ต่อหางคิ้วให้ยาวขึ้น",
-    "เป๊ะ แน่น", "เฉี่ยวคม", "กลบรอยเก่า", "กลบคีรอยด์", "Other"
+  // ===== ใช้ร่วมกันหลายฟอร์ม/หน้าจอ =====
+  technique: ["Shading Brow", "Fluffy Brow", "Hairstroke", "Premium Line"],
+  browGuard: ["ไม่กันคิ้ว", "กันตามทรง", "ตัดสินใจภายหลัง"],
+  intensity: [
+    "อ่อนธรรมชาติ (1-2 รอบ)",
+    "เข้มระดับกลาง / ตามที่ช่างเห็นเหมาะสม (2-4 รอบ)",
+    "เข้ม แน่น เป๊ะ (4-6 รอบ)"
   ],
-  technique: ["Shading brow", "Fluffy brow", "Hairstroke", "Premium line"],
-  muscle: ["ซ้ายสูงกว่า", "ขวาสูงกว่า", "ยกขึ้นสูงทั้งสองฝั่ง", "ไม่ขยับ", "Other"],
-  shapeDesign: ["ตามทรงคิ้วจริง", "ลดโก่งลง", "ทรงตรง", "ทรงโก่ง", "เพิ่มความโค้งมน", "เพิ่มเหลี่ยมมุม", "Other"],
-  browGuard: ["กันตามทรง", "ไม่กันคิ้ว"],
-  colorUsed: ["น้ำตาลธรรมชาติ", "น้ำตาลเข้ม", "น้ำตาลอ่อน", "น้ำตาลแดง", "น้ำตาลหม่นเทา", "เทาอ่อน", "ดำเทา"]
+  muscleOptions: ["ใกล้เคียงกัน", "คิ้วซ้ายยกสูงกว่า", "คิ้วขวายกสูงกว่า", "ยกขึ้นสูงทั้งสองข้าง", "ไม่ขยับชัดเจน", "Other"],
+  mixColors: ["น้ำตาลส้ม", "น้ำตาลอ่อน", "น้ำตาลกลาง", "น้ำตาลเข้ม", "ดำเทา"],
+  redness: ["ไม่แดง", "แดงปานกลาง", "แดงมาก"],
+  adherence: ["ติดง่าย", "ติดปานกลาง", "ติดยาก"],
+  colorChoice8: ["น้ำตาลอ่อน", "น้ำตาลกลาง", "น้ำตาลเข้ม", "น้ำตาลส้ม", "น้ำตาลแดง", "น้ำตาลหม่นเทา", "เทาอ่อน", "ดำเทา"],
+  timeSlots: ["10:30", "13:30", "16:00", "18:30"],
+
+  // ===== ข้อมูลความพร้อมก่อนรับบริการ — ใช้ร่วมกันทุกฟอร์ม (Form 1/2/3) =====
+  scarCause: ["จากรอยเก่า", "จุดอื่นๆ"],
+
+  // ===== Step 2 — ประวัติผิวและคิ้ว (ระดับ Customer Profile แก้ไขได้ ใช้ซ้ำทุก Visit) =====
+  skinType: ["ปกติ", "แห้ง", "มัน", "ผิวผสม", "ผิวมันขาดน้ำ", "ไม่แน่ใจ"],
+  hairLook: ["เส้นเล็ก", "ปานกลาง", "เส้นหนา", "มีหลายขนาดปนกัน"],
+  hairDensity: ["บางมาก", "บาง", "ปานกลาง", "หนา", "หนามาก"],
+  browShape: [
+    "คิ้วไม่เป็นทรง", "หัวคิ้วบาง", "กลางคิ้วบาง", "หางคิ้วบาง", "ไม่มีหางคิ้ว",
+    "หางคิ้วตก", "ขนคิ้วแหว่ง", "ขนคิ้วชี้ขึ้น", "ไม่มีขนคิ้ว", "ขนคิ้วเต็มทรง",
+    "คิ้วหนาเป็นกระจุก", "คิ้วสามเหลี่ยม", "Other"
+  ],
+
+  // ===== Form 1 — สักคิ้วครั้งแรก =====
+  form1Concerns: [
+    "คิ้วขึ้นไม่เป็นทรง", "คิ้วไม่เท่ากัน", "เขียนคิ้วไม่เป็น", "ต้องการกลบแผลเป็น",
+    "อยากประหยัดเวลาเขียนคิ้ว", "อยากเพิ่มหางคิ้ว", "อยากเพิ่มหัวคิ้ว", "คิ้วโก่งเกินไป", "คิ้วตรงเกินไป", "Other"
+  ],
+  desiredOverview: [
+    "อ่อนธรรมชาติ", "ฟุ้ง ๆ สไตล์เกาหลี", "มีโครงเบา ๆ แต่ยังเป็นธรรมชาติ",
+    "คมชัดและเป็นทรง", "ยังไม่แน่ใจ ขอให้ช่างแนะนำ", "Other"
+  ],
+  form1NotWanted: [
+    "ไม่อยากได้เข้ม", "ไม่อยากได้หนา", "ไม่อยากได้ตรง", "ไม่อยากได้โก่ง",
+    "ไม่อยากได้หัวคิ้วชัด", "ไม่อยากได้หางตก", "ไม่มี", "Other"
+  ],
+  form1Color: ["น้ำตาลอ่อน", "น้ำตาลกลาง", "น้ำตาลเข้ม", "น้ำตาลแดง", "น้ำตาลหม่นเทา", "เทาอ่อน", "ดำเทา"],
+  form1Shape: ["ตามทรงคิ้วจริง", "ทรงตรง", "ทรงเบสิค", "ทรงโก่ง", "เพิ่มโค้งมน", "เพิ่มเหลี่ยมมุม", "Other"],
+
+  // ===== Form 2 — สักทับรอยเก่า =====
+  oldMarkLook: ["รอยจาง", "รอยชัด", "สีไม่สม่ำเสมอ", "มีมากกว่า 1 รอย", "มีลายเส้น", "มีคีลอยด์", "Other"],
+  oldMarkTone: ["น้ำตาล", "แดง / ส้ม", "เทา / ดำ", "เขียว / น้ำเงิน", "หลายโทนปนกัน", "ประเมินไม่ได้", "Other"],
+  fixPoints: [
+    "ปรับทรง", "ปรับความหนา", "ปรับความสมดุลสองข้าง", "ปรับหางคิ้ว",
+    "ปรับโทนสี", "เติมส่วนที่จางตามทรงเดิม", "ยังไม่แน่ใจ ขอให้ช่างแนะนำ", "Other"
+  ],
+  form2NotWanted: [
+    "ไม่มี", "ไม่อยากได้เข้ม", "ไม่อยากได้หนา", "ไม่อยากได้โก่ง",
+    "ไม่อยากได้หัวคิ้วชัด", "ไม่อยากได้หางตก", "ไม่ต้องการกันคิ้ว", "Other"
+  ],
+  form2Shape: ["ตามทรงคิ้วเก่า", "ปรับให้ตรงขึ้น", "ปรับให้โก่งขึ้น", "ยกหางคิ้ว", "เพิ่มโค้งมน", "เพิ่มเหลี่ยมมุม", "Other"],
+
+  // ===== Form 3 — เติมสีคิ้ว — ตรงตามสเปกที่ร้านส่งมา คำต่อคำ =====
+  touchupSatisfaction: ["พอใจมาก", "พอใจ", "พอใจบางส่วนและอยากปรับเพิ่ม", "ไม่พอใจ"],
+  touchupColorRetention: [
+    "ติดสีดีและสม่ำเสมอ", "ปกติ/จางลงเล็กน้อย", "สีติดน้อย",
+    "สีติดไม่สม่ำเสมอ", "ติดสีไม่สม่ำเสมอจากปัจจัยก่อนสัก", "ประเมินไม่ได้"
+  ],
+  touchupWantsMoreChange: ["ไม่มี เติมตามทรงเดิม แค่เพิ่มความติดทน", "มี"],
+  touchupChangeItems: [
+    "เปลี่ยนเทคนิค", "เปลี่ยนทรงคิ้ว", "เพิ่มความเข้ม", "เพิ่มเส้นหัวคิ้ว",
+    "เพิ่มความหนา", "ปรับความสมดุลสองข้าง", "ปรับโทนสี", "Other"
+  ],
+  touchupShape: ["ปรับให้ตรงขึ้น", "ปรับให้โก่งขึ้น", "ยกหางคิ้ว", "เพิ่มโค้งมน", "เพิ่มเหลี่ยมมุม", "Other"]
 };
 
 // ==== js/data/consentText.js ====
-// คัดลอกจาก Jotform "Pyne brow consultation" แบบคำต่อคำ — ห้ามแก้ถ้อยคำ ปรับได้เฉพาะไฟล์นี้
+// คัดลอกจากสเปกร้านแบบคำต่อคำ — ห้ามแก้ถ้อยคำ ปรับได้เฉพาะไฟล์นี้
+
+// ===== บล็อกเงื่อนไข 4 บล็อก ใช้ร่วมกัน Form 1 และ Form 2 =====
 const CONSENT_BLOCKS = [
   {
-    title: "1. เทคนิคการสักคิ้วของ pyne.studio",
-    body: `เทคนิคของช่างมายเป็นการใช้เครื่องสักคิ้ว "เกลาเข็มเบา ๆ" บนผิวหนังชั้นตื้นที่สุดเท่านั้น
-การสักคิ้วของทางร้าน สามารถโดนน้ำได้ทันที ไม่ทำให้สีเพี้ยน
-สีที่อยู่บนผิวจะค่อย ๆ จางลงและผลัดไปตามวงจรผิวตามธรรมชาติ
-หากไม่กลับมาเติม สีจะค่อย ๆ หายไปจนหมด ไม่ต้องเลเซอร์ลบ และ ไม่ทิ้งร่องรอย`
+    title: "เทคนิคการสักคิ้วของ pyne.studio",
+    body: `ช่างใช้เครื่องสักคิ้วและลงน้ำหนักมืออย่างเบาบาง โดยนำสีเข้าสู่ผิวชั้นตื้น
+หลังทำสามารถโดนน้ำ อาบน้ำ ล้างหน้า และสระผมได้ตามปกติ โดยหลีกเลี่ยงการถูหรือขยี้บริเวณคิ้วโดยตรง
+สีจะค่อย ๆ จางลงตามวงจรผิวและการใช้ชีวิตของแต่ละบุคคล
+หากไม่กลับมาเติม สีสามารถค่อย ๆ จางลงได้เอง`
   },
   {
-    title: "2. ความคงทนของสีและการเติมสี",
-    body: `จากน้ำหนักมือที่บางเบา ทำให้สีจะติดทนประมาณ 6–12 เดือนในการทำครั้งแรก
-หากต้องการเพิ่มความติดทน สามารถกลับมาเติมสีภายใน 3 เดือนแรก
-ค่าเติมสี: 1,000–1,500 บาท (ขึ้นอยู่กับเทคนิคที่เลือก)
-การกลับมาเติมสีเป็นโอกาสที่ดีในการ ประเมินผลลัพธ์จริงหลังใช้ชีวิต เช่น อยากให้หางยาวขึ้น อยากให้เข้มขึ้น อยากปรับทรง
-การปรับแก้เล็กน้อยในรอบเติมสี ไม่มีค่าใช้จ่ายเพิ่มเติมนอกจากค่าเติมสี`
+    title: "ความคงทนของสีและการเติมสี",
+    body: `การทำครั้งแรกสีจะติดอยู่โดยเฉลี่ยประมาณ 1 ปี ทั้งนี้ขึ้นอยู่กับสภาพผิว การใช้ชีวิต และการดูแลหลังทำ
+หากต้องการให้สีชัดและติดทนขึ้น แนะนำให้กลับมาเติมสีภายใน 3 เดือนแรก
+ค่าบริการเติมสีภายใน 2 ปี คือ 2,000 บาท
+การเติมสีไม่ใช่ข้อบังคับ แต่เป็นโอกาสให้ช่างประเมินผลหลังผิวบริเวณคิ้วฟื้นตัวดี และสามารถปรับรายละเอียดได้เล็กน้อย`
   },
   {
-    title: "3. ขั้นตอนการลอกและผลลัพธ์ตามธรรมชาติ",
-    body: `ข้าพเจ้าเข้าใจว่าอาการหลังการสักคิ้วเป็นปกติและอาจมีดังนี้:
-1. หลังทำเสร็จทันที: อาจมีแดง/บวมเล็กน้อยในบางคน และจะหายภายใน 1–2 ชั่วโมง
-2. หลังทำเสร็จจะ ดูเหมือนเขียนคิ้วปกติ และเป๊ะขึ้นเพราะมีการวัดทรง
-3. ภายใน 1-2 วันแรก สีอาจ เข้ม–อ่อนสลับกัน เป็นเรื่องปกติ
-4. วันที่ 3–4 จะเริ่มลอก สีจะค่อย ๆ จางลง
-5. ในคนผิวแห้งอาจมีอาการคันหรือขุยได้บ้าง
-6. ระยะเวลาลอกประมาณ 5–7 วัน
-7. เมื่อคิ้วลอกหมดใหม่ๆ สีจะอ่อนลงก่อนประมาณ 70% ซึ่งเป็นเรื่องปกติ
-8. สีจะค่อย ๆ ดันขึ้นเข้มขึ้นเล็กน้อยภายใน 1 เดือน
-9. ผลลัพธ์เมื่อครบ 1 เดือน สีจะจางลง "จากหลังทำเสร็จทันที" ประมาณ 40–50%`
+    title: "การลอกและการเปลี่ยนแปลงของสี",
+    body: `หลังทำทันที คิ้วจะดูคล้ายเขียนคิ้วตามปกติและเป็นทรงชัดขึ้นจากการวัดออกแบบ
+บางคนอาจมีอาการแดงหรือบวมเล็กน้อย ซึ่งโดยทั่วไปจะค่อย ๆ ลดลงภายในประมาณ 1–2 ชั่วโมง
+ในช่วง 1–2 วันแรก สีอาจดูเข้มและอ่อนสลับกันได้
+ประมาณวันที่ 3–4 คิ้วจะเริ่มลอกและสีจะค่อย ๆ อ่อนลง ผู้ที่มีผิวแห้งอาจรู้สึกคันหรือมีขุยเล็กน้อย
+ระยะเวลาลอกโดยทั่วไปประมาณ 5–7 วัน แต่อาจเร็วหรือช้ากว่านี้ตามสภาพผิว
+หลังลอกใหม่ ๆ สีอาจดูอ่อนลงได้ประมาณ 70% และจะค่อย ๆ ชัดขึ้นอีกเล็กน้อยเมื่อครบ 1 เดือน
+ควรประเมินผลลัพธ์จริงเมื่อครบประมาณ 1 เดือน โดยส่วนมากแล้วจะอ่อนกว่าสีหลังทำทันทีประมาณ 40–50%
+อาการและระยะเวลาข้างต้นเป็นการเปลี่ยนแปลงที่พบได้โดยทั่วไป และอาจแตกต่างกันในแต่ละบุคคล`
   },
   {
-    title: "4. การดูแลหลังทำ (Aftercare)",
-    body: `ข้าพเจ้าเข้าใจว่าสามารถใช้ชีวิตประจำวันได้ปกติ เช่น อาบน้ำ, ล้างหน้า, สระผม เพียงหลีกเลี่ยงการถู/ขยี้บริเวณคิ้วโดยตรง ใน 7 วันแรก
-ข้าพเจ้าเข้าใจและยอมรับว่าผลลัพธ์จะขึ้นอยู่กับพฤติกรรมการใช้ชีวิตและสภาพผิวของข้าพเจ้าเองด้วย`
+    title: "การดูแลหลังทำและปัจจัยที่มีผลต่อสี",
+    body: `สามารถใช้ชีวิตประจำวัน อาบน้ำ ล้างหน้า และสระผมได้ตามปกติ
+ควรหลีกเลี่ยงการถู ขยี้ แกะ หรือเกาบริเวณคิ้วโดยตรง และการปัดมาสคาร่าคิ้วจนกว่าจะลอกหมด
+ความติดทนและผลลัพธ์ของสีแตกต่างกันได้ตามสภาพผิว การฟื้นตัวของผิว พฤติกรรมการใช้ชีวิต และการดูแลหลังทำของแต่ละบุคคล`
   }
 ];
+
+// ===== บล็อกเสริมเฉพาะ Form 2 — สักทับรอยเก่า (ต่อจาก CONSENT_BLOCKS บล็อกแรก) =====
+const FORM2_EXTRA_CONSENT_BLOCK = {
+  title: "การประเมินและข้อจำกัดของการสักทับรอยเดิม",
+  body: `การสักทับเป็นการออกแบบและปรับสีบนพื้นฐานของรอยเดิม ไม่ใช่การลบรอยเดิมออก จึงอาจยังมองเห็นสีเดิมผ่านสีใหม่ได้เล็กน้อย
+รูปทรง สี ความเข้ม ความลึก ตำแหน่ง และความสมมาตรของรอยเดิม มีผลต่อเทคนิค สี และทรงคิ้วที่สามารถออกแบบได้
+ผิวที่เคยผ่านการสัก แก้สี หรือลบรอยสัก อาจรับสีและฟื้นตัวไม่เท่ากับผิวปกติ ทำให้สีติดหรือจางไม่สม่ำเสมอ จึงไม่สามารถการันตีการติดสีได้ 100% ในครั้งแรก
+ไม่สามารถรับประกันว่าจะปกปิดรอยเดิม เปลี่ยนทรง หรือแก้ความไม่สมมาตรได้ทั้งหมด ผลลัพธ์ขึ้นอยู่กับข้อจำกัดของรอยเดิมและสภาพผิวของแต่ละบุคคล`
+};
 
 const INTENSITY_OPTIONS = [
-  {
-    value: "อ่อนธรรมชาติ",
-    label: "อ่อนธรรมชาติ",
-    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "อ่อนธรรมชาติ" และเข้าใจว่า "หลังลอกสีอาจจะเท่าเดิมหรือจางลงจากวันนี้มากถึง 50%"`
-  },
-  {
-    value: "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม",
-    label: "เข้มระดับกลาง / ตามที่ช่างเห็นเหมาะสม",
-    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม" เพื่อลดความเสี่ยงที่จะคิ้วเข้มเกินไป และเข้าใจว่าหลังทำเสร็จสีจะเข้มกว่าปกติเล็กน้อย "หลังลอกสีอาจจะเท่าเดิมหรือจางลงมากถึง 50%"`
-  },
-  {
-    value: "เข้ม แน่น เป๊ะ",
-    label: "เข้ม แน่น เป๊ะ",
-    text: `ข้าพเจ้าเลือกผลลัพธ์หลังทำเสร็จวันนี้ แบบ "เข้ม แน่น เป๊ะ" เผื่อสีลอก/กลบรอยเก่า และเข้าใจว่าหลังทำเสร็จทันทีสีจะเข้มมาก "หลังลอกสีอาจจะเท่าเดิมหรือจางลงมากถึง 50%"`
-  }
+  { value: "อ่อนธรรมชาติ", label: "อ่อนธรรมชาติ", text: "" },
+  { value: "เข้มระดับกลาง/ตามที่ช่างเห็นเหมาะสม", label: "เข้มระดับกลาง / ตามที่ช่างเห็นเหมาะสม", text: "" },
+  { value: "เข้ม แน่น เป๊ะ", label: "เข้ม แน่น เป๊ะ", text: "" }
 ];
 
-const AGREEMENT_TEXT =
-  `ข้าพเจ้าได้อ่าน ได้รับคำแนะนำ และเข้าใจข้อมูลเกี่ยวกับเทคนิคการสักคิ้วของทางร้าน pyne.studio ตามรายละเอียดด้านล่างนี้ และยินยอมเข้ารับบริการโดยสมัครใจ`;
+// ข้อความรับทราบหลังเลือกระดับความเข้ม — ใช้ร่วมกันทั้ง 3 ฟอร์ม
+const INTENSITY_DISCLAIMER =
+  `ข้าพเจ้าเลือกระดับความเข้มตามตัวเลือกข้างต้น และเข้าใจว่าหลังลอกสีอาจเท่าเดิมหรือจางลงได้มาก โดยผลลัพธ์แตกต่างกันในแต่ละบุคคล`;
+
+// ปุ่ม/checkbox เปิดอ่านเงื่อนไขก่อนเริ่มบริการ — Form 1 และ Form 2 (ส่วนที่ 1 ข้อสุดท้าย)
+const PRE_SERVICE_AGREE_TEXT =
+  `ข้าพเจ้าได้รับฟังคำอธิบาย อ่าน และเข้าใจข้อมูลก่อนรับบริการข้างต้นแล้ว และต้องการรับบริการสักคิ้ว`;
+
+// ข้อตกลงและความยินยอมฉบับเต็ม + ลายเซ็น — ใช้ร่วมกันทั้ง 3 ฟอร์ม (Form 1/2 ส่วนที่ 3, Form 3 ส่วนที่ 4)
+const FINAL_AGREEMENT_TEXT =
+  `ข้าพเจ้าได้อ่าน ได้รับคำแนะนำ และเข้าใจข้อมูลเกี่ยวกับเทคนิคการสักคิ้วของทางร้าน pyne.studio รวมถึงข้อจำกัดของผลลัพธ์ การเปลี่ยนแปลงของสีหลังลอก และปัจจัยเฉพาะบุคคลที่อาจส่งผลต่อการติดสี ข้าพเจ้าได้แจ้งข้อมูลที่เกี่ยวข้องตามความเป็นจริง และยินยอมเข้ารับบริการโดยสมัครใจ`;
+
+// alias เก่าไว้กันโค้ดจุดอื่นพัง เผื่อยังมีการ import ชื่อเดิมหลงเหลืออยู่
+const AGREEMENT_TEXT = PRE_SERVICE_AGREE_TEXT;
+const TOUCHUP_INTENSITY_DISCLAIMER = INTENSITY_DISCLAIMER;
+const TOUCHUP_AGREEMENT_TEXT = FINAL_AGREEMENT_TEXT;
 
 // ==== js/data/techSignature.js ====
 const TECH_SIGNATURE_DATA_URL = "data:image/png;base64,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AAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAcITAAAAAAAABHCAwAAAAAAMARAgMAAAAAAHCEwAAAAAAAABwhMAAAAAAAAEcIDAAAAAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAcITAAAAAAAABHCAwAAAAAAMARAgMAAAAAAHCEwAAAAAAAABwhMAAAAAAAAEcIDAAAAAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAcITAAAAAAAABHCAwAAAAAAMARAgMAAAAAAHCEwAAAAAAAABwhMAAAAAAAAEcIDAAAAAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAcITAAAAAAAABHCAwAAAAAAMARAgMAAAAAAHCEwAAAAAAAABwhMAAAAAAAAEcIDAAAAAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAcITAAAAAAAABHCAwAAAAAAMARAgMAAAAAAHCEwAAAAAAAABwhMAAAAAAAAEcIDAAAAAAAwBECAwAAAAAAcITAAAAAAAAAHCEwAAAAAAAARwgMAAAAAADAEQIDAAAAAABwhMAAAAAAAAAc+X9c6tzdjvX0lAAAAABJRU5ErkJggg==";
@@ -132,7 +197,9 @@ const TECH_SIGNATURE_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB
 
 const state = {
   currentCustomer: null,      // customer object ที่กำลังเปิดดู/เพิ่มประวัติ
-  serviceType: null,          // "สักคิ้ว" | "เติมสี"
+  serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
+  formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
+  visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -147,6 +214,8 @@ const state = {
   reset() {
     this.currentCustomer = null;
     this.serviceType = null;
+    this.formType = null;
+    this.visitContext = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }
@@ -333,13 +402,25 @@ function createSignaturePad(canvas) {
   function resize() {
     const ratio = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
+    const newWidth = Math.round(rect.width * ratio);
+    const newHeight = Math.round(rect.height * ratio);
+    // ตั้ง canvas.width/height ล้างรูปที่วาดไว้เสมอ (พฤติกรรมมาตรฐานของ canvas) — ถ้าขนาดจริงไม่ได้เปลี่ยน
+    // (เช่น resize event หลอกจากแถบเครื่องมือ Safari บน iOS ที่ย่อ/ขยายตอนเลื่อนหน้าจอ) ให้ข้ามไปเลย
+    // กันลายเซ็นลูกค้าหายเงียบ ๆ ทั้งที่ hasInk ยังเป็น true อยู่ (isEmpty() จะโกหกว่ามีลายเซ็น)
+    if (newWidth === canvas.width && newHeight === canvas.height) return;
+    const snapshot = hasInk ? canvas.toDataURL("image/png") : null;
+    canvas.width = newWidth;
+    canvas.height = newHeight;
     ctx.scale(ratio, ratio);
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#0b3d2e";
+    ctx.strokeStyle = "#261F1C"; /* Espresso Ink — token: --espresso-ink */
+    if (snapshot) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      img.src = snapshot;
+    }
   }
   resize();
   window.addEventListener("resize", resize);
@@ -432,6 +513,107 @@ function textAreaField(key, placeholder, draft) {
   return `<textarea class="input textarea" data-text-key="${key}">${escapeHtml(draft[key] || "")}</textarea><!-- placeholder="${escapeHtml(placeholder || "")}" -->`;
 }
 
+// ===== สัดส่วนสีที่ใช้ (mix ratio) — Form 3 เติมสีคิ้ว =====
+// เก็บค่าไว้ที่ draft[key] = { [ชื่อสี]: จำนวนหยด, __other__: จำนวนหยด, Solution: จำนวนหยด }
+// และ draft[`${key}OtherLabel`] = ป้ายชื่อสีที่กรอกเองในช่อง "อื่นๆ"
+// รูปแบบต่างจาก text/chip/radio ทั่วไป (ตัวเลขต่อแถวสี ไม่ใช่ 1 ค่าเดียว) จึงมี bind event แยกของตัวเอง
+function mixRatioField(key, colorNames, draft) {
+  const parts = draft[key] || (draft[key] = {});
+  const otherLabel = draft[`${key}OtherLabel`] || "";
+  const row = (label, colorKey, value) => `
+    <div class="mix-row">
+      <span class="mix-label">${escapeHtml(label)}</span>
+      <input type="number" min="0" inputmode="numeric" class="input mix-input" data-mix-key="${key}" data-mix-color="${escapeHtml(colorKey)}" value="${value === undefined || value === null || value === "" ? "" : escapeHtml(String(value))}" placeholder="0">
+      <span class="mix-unit">หยด</span>
+    </div>`;
+  return `
+    <div class="mix-ratio-grid" data-mix-group="${key}">
+      ${colorNames.map((name) => row(name, name, parts[name])).join("")}
+      <div class="mix-row">
+        <input type="text" class="input mix-other-label" data-mix-other-label="${key}" placeholder="อื่นๆ ระบุ..." value="${escapeHtml(otherLabel)}">
+        <input type="number" min="0" inputmode="numeric" class="input mix-input" data-mix-key="${key}" data-mix-color="__other__" value="${parts.__other__ === undefined || parts.__other__ === null || parts.__other__ === "" ? "" : escapeHtml(String(parts.__other__))}" placeholder="0">
+        <span class="mix-unit">หยด</span>
+      </div>
+      ${row("Solution", "Solution", parts.Solution === undefined ? 1 : parts.Solution)}
+    </div>`;
+}
+
+// รวมค่าที่กรอกใน mixRatioField เป็น string บันทึกผล เช่น "น้ำตาลส้ม 3 : น้ำตาลเข้ม 1 : Solution 1"
+// คืนค่า "" ถ้ายังไม่ได้กรอกสีไหนเลย (ใช้เช็ก required ตอนบันทึกปิด Visit ได้)
+function formatMixRatio(key, draft) {
+  const parts = draft[key] || {};
+  const otherLabel = (draft[`${key}OtherLabel`] || "").trim();
+  const segs = [];
+  Object.keys(parts).forEach((name) => {
+    if (name === "Solution" || name === "__other__") return;
+    const v = Number(parts[name]);
+    if (v > 0) segs.push(`${name} ${v}`);
+  });
+  const otherV = Number(parts.__other__);
+  if (otherV > 0 && otherLabel) segs.push(`${otherLabel} ${otherV}`);
+  if (!segs.length) return "";
+  const solutionV = parts.Solution === undefined || parts.Solution === "" ? 1 : Number(parts.Solution);
+  segs.push(`Solution ${solutionV}`);
+  return segs.join(" : ");
+}
+
+function bindMixRatioEvents(container, draft) {
+  container.addEventListener("input", (e) => {
+    const groupKey = e.target.dataset.mixKey;
+    if (groupKey) {
+      const parts = draft[groupKey] || (draft[groupKey] = {});
+      parts[e.target.dataset.mixColor] = e.target.value;
+    }
+    const otherLabelKey = e.target.dataset.mixOtherLabel;
+    if (otherLabelKey) {
+      draft[`${otherLabelKey}OtherLabel`] = e.target.value;
+    }
+  });
+}
+
+// ===== ข้อมูลความพร้อมก่อนรับบริการ — ใช้ร่วมกันทุกฟอร์ม (Form 1/2/3) =====
+function readinessBlockHtml(draft) {
+  return `
+    <div class="form-section-title">ข้อมูลความพร้อมก่อนรับบริการ</div>
+    <div class="step-group">
+      <div class="step-group-title">ผิวบริเวณคิ้วมีแผลเป็นหรือไม่ <span class="required-star">*</span></div>
+      ${radioField("hasScar", ["ไม่มี", "มี"], draft)}
+      <div id="scarCauseBlock" ${draft.hasScar === "มี" ? "" : "hidden"}>
+        ${chipGroup("scarCause", ["จากรอยเก่า", "Other"], draft, true)}
+      </div>
+    </div>
+    <div class="step-group">
+      <div class="step-group-title">ผิวบริเวณคิ้วมีความระคายเคืองภายใน 7 วันที่ผ่านมาหรือไม่ <span class="required-star">*</span></div>
+      ${radioField("irritation7d", ["ไม่มี", "มี"], draft)}
+      <div id="irritationDetailBlock" ${draft.irritation7d === "มี" ? "" : "hidden"}>
+        ${textField("irritationDetail", "ระบุรายละเอียด", draft)}
+      </div>
+    </div>
+    <div class="step-group">
+      <div class="step-group-title">มีอาการแพ้หรือข้อมูลสำคัญที่ต้องแจ้งช่างหรือไม่ <span class="required-star">*</span></div>
+      ${radioField("allergyInfo", ["ไม่มี", "มี"], draft)}
+      <div id="allergyDetailBlock" ${draft.allergyInfo === "มี" ? "" : "hidden"}>
+        ${textField("allergyDetail", "ระบุรายละเอียด", draft)}
+      </div>
+    </div>`;
+}
+
+// ผูกกับ callback ของ bindFieldEvents(container, draft, onChange) — เรียกจาก onChange(changedRadioName)
+function bindReadinessToggle(container, draft, changedRadioName) {
+  if (changedRadioName === "hasScar") {
+    const el = container.querySelector("#scarCauseBlock");
+    if (el) el.hidden = draft.hasScar !== "มี";
+  }
+  if (changedRadioName === "irritation7d") {
+    const el = container.querySelector("#irritationDetailBlock");
+    if (el) el.hidden = draft.irritation7d !== "มี";
+  }
+  if (changedRadioName === "allergyInfo") {
+    const el = container.querySelector("#allergyDetailBlock");
+    if (el) el.hidden = draft.allergyInfo !== "มี";
+  }
+}
+
 // ผูก event delegation ให้ container ที่มี chip/radio/text field จาก helper ข้างบน
 // เรียกครั้งเดียวตอน init แล้ว renderStep() ใหม่ได้เรื่อย ๆ โดยไม่ต้องผูกซ้ำ
 function bindFieldEvents(container, draft, onChange) {
@@ -499,12 +681,81 @@ function listRecentCustomers(limit) { return callServer_("listRecentCustomers", 
 function listCustomersWithStats() { return callServer_("listCustomersWithStats"); }
 function findCustomerByPhone(phone) { return callServer_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServer_("createCustomer", data); }
+function confirmCustomerProfile(customerId) { return callServer_("confirmCustomerProfile", customerId); }
+function saveSkinProfile(customerId, skinProfile) { return callServer_("saveSkinProfile", customerId, skinProfile); }
+function updateMuscleEvaluation(customerId, muscle, muscleNote) { return callServer_("updateMuscleEvaluation", customerId, muscle, muscleNote); }
 function getCustomer(customerId) { return callServer_("getCustomer", customerId); }
 function getHistoryByCustomer(customerId) { return callServer_("getHistoryByCustomer", customerId); }
+function createVisit(payload) { return callServer_("createVisit", payload); }
+function closeVisitNotServed(visitId, reason) { return callServer_("closeVisitNotServed", visitId, reason); }
 function saveVisit(payload) { return callServer_("saveVisit", payload); }
 function ensureVisitFolder(meta) { return callServer_("ensureVisitFolder", meta); }
 function uploadImage(dataUrl, meta) { return callServer_("uploadImage", dataUrl, meta); }
 function exportConsentPdf(serviceId) { return callServer_("exportConsentPdf", serviceId); }
+
+// ==== js/visitFlow.js ====
+// visitFlow.js — ส่วนที่ใช้ร่วมกันทุกฟอร์ม Consultation (Form 1/2/3 + หน้าบันทึกหลังทำ)
+// ตาม "กติกากลางของทั้ง 3 ฟอร์ม": แสดง Customer ID/Visit ID/Zerva Booking ID/ชื่อ/ชื่อเล่น/วันเวลานัด
+// ที่ดึงจากขั้นตอนก่อนหน้า + ปุ่ม "ไม่ได้รับบริการ" ที่กดได้ทุกจุดของฟอร์ม
+
+
+
+
+
+function visitHeaderHtml() {
+  const c = state.currentCustomer;
+  const v = state.visitContext;
+  if (!c || !v) return "";
+  return `
+    <div class="box-quiet visit-header">
+      <div><b>${escapeHtml(c.fullName || c.nickname || c.name || "")}</b> (${escapeHtml(c.nickname || "-")}) &nbsp;·&nbsp; ${escapeHtml(c.customerId)}</div>
+      <div class="muted small">Visit ${escapeHtml(v.visitId)} &nbsp;·&nbsp; Zerva ${escapeHtml(v.zervaBookingId || "-")} &nbsp;·&nbsp; ${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}</div>
+    </div>`;
+}
+
+// ปุ่ม "บันทึกแบบร่าง" มุมขวาบน — กดได้ตลอดทุกจุดของฟอร์ม โดยไม่ต้องรอข้อมูลบังคับครบ
+// เก็บ rawAnswers ดิบทั้งหมดไว้ก่อน ไม่ normalize เป็นฟิลด์ทีละอันเหมือนตอนปิด Visit จริง
+function wireDraftSaveButton(buttonEl) {
+  if (!buttonEl) return;
+  buttonEl.addEventListener("click", async () => {
+    const c = state.currentCustomer;
+    const v = state.visitContext;
+    if (!c || !v) return;
+    buttonEl.disabled = true;
+    const draft = state.visitDraft;
+    await saveVisit({
+      serviceId: v.visitId,
+      customerId: c.customerId,
+      zervaBookingId: v.zervaBookingId,
+      timeSlot: v.timeSlot,
+      serviceType: state.serviceType,
+      formType: state.formType,
+      status: "draft",
+      visitDate: v.visitDate || Date.now(),
+      technique: draft.technique || null,
+      colorUsed: draft.colorChoice || null,
+      intensity: draft.intensity || null,
+      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
+    });
+    buttonEl.disabled = false;
+    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+  });
+}
+
+// ปุ่ม "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล แล้วปิด Visit ทันทีโดยไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
+function wireNotServedButton(buttonEl) {
+  if (!buttonEl) return;
+  buttonEl.addEventListener("click", async () => {
+    const v = state.visitContext;
+    if (!v) return;
+    const reason = prompt("เหตุผลที่ไม่ได้รับบริการ (บังคับกรอก):", "");
+    if (reason === null) return; // กดยกเลิก
+    if (!reason.trim()) { alert("กรุณาระบุเหตุผล"); return; }
+    await closeVisitNotServed(v.visitId, reason.trim());
+    state.reset();
+    show("home");
+  });
+}
 
 // ==== js/screens/gate.js ====
 function initGate() {
@@ -709,7 +960,7 @@ function initHome() {
     let rows = allCustomers;
     if (q) {
       rows = rows.filter((c) => {
-        const nameHit = c.name.toLowerCase().includes(q);
+        const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
         const lineHit = (c.line || "").toLowerCase().includes(q);
         const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
         return nameHit || lineHit || phoneHit;
@@ -739,9 +990,9 @@ function initHome() {
       return `
       <tr data-id="${c.customerId}">
         <td class="cell-customer">
-          <span class="avatar">${escapeHtml(initials(c.name))}</span>
+          <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
           <span class="cust-meta">
-            <span class="cust-name">${escapeHtml(c.name)}</span>
+            <span class="cust-name">${escapeHtml(c.nickname || c.fullName)}</span>
             ${sub}
           </span>
         </td>
@@ -865,53 +1116,145 @@ function initHome() {
 }
 
 // ==== js/screens/newCustomer.js ====
-// newCustomer.js — หน้าสร้างลูกค้าใหม่ (แยกออกจากฟอร์มบริการ)
-// flow: home > "+ New Customer" > หน้านี้ > สร้างลูกค้าเข้า DB > เปิด modal เลือกบริการ
+// newCustomer.js — Step 2 (ลูกค้าใหม่): กรอกข้อมูลส่วนตัว 5 ฟิลด์ > ยืนยันข้อมูล > กรอกประวัติผิวและคิ้ว > สร้าง Customer Profile
+// flow: home > "+ New Customer" > หน้านี้ > สร้างลูกค้าเข้า DB > ไปหน้าสร้าง Visit (Step 3)
 
 
 
 
 
+
+
+// state ชั่วคราวของหน้านี้เท่านั้น (ยังไม่ได้สร้าง customer จริงจนกว่าจะกด Continue) — ไม่ใช้ state.visitDraft
+// เพราะฟิลด์นี้เป็นของ Customer Profile ไม่ใช่ของ Visit
+const draft = {};
+
+function ageFromDob(dobStr) {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
 
 function initNewCustomer() {
-  const nameEl = document.getElementById("ncName");
-  const phoneEl = document.getElementById("ncPhone");
-  const lineEl = document.getElementById("ncLine");
-  const warnEl = document.getElementById("ncWarning");
-  const createBtn = document.getElementById("ncCreateBtn");
+  const container = document.getElementById("newCustomerBody");
   const backBtn = document.getElementById("newCustomerBackBtn");
+
+  function summaryHtml() {
+    const age = ageFromDob(draft.dob);
+    return `
+      <div class="detail-row"><div class="detail-label">ชื่อ–นามสกุล</div><div class="detail-value">${escapeHtml(draft.fullName || "-")}</div></div>
+      <div class="detail-row"><div class="detail-label">ชื่อเล่น</div><div class="detail-value">${escapeHtml(draft.nickname || "-")}</div></div>
+      <div class="detail-row"><div class="detail-label">วันเดือนปีเกิด</div><div class="detail-value">${escapeHtml(draft.dob || "-")}${age !== null ? ` (อายุ ${age} ปี)` : ""}</div></div>
+      <div class="detail-row"><div class="detail-label">เบอร์โทรศัพท์</div><div class="detail-value">${escapeHtml(draft.phone || "-")}</div></div>
+    `;
+  }
+
+  function render() {
+    container.innerHTML = `
+      <p class="choose-lead">กรอกข้อมูลลูกค้าใหม่เพื่อสร้าง Customer Profile</p>
+
+      <label class="field-label">ชื่อ–นามสกุลจริง <span class="required-star">*</span></label>
+      <input type="text" id="ncFullName" class="input" placeholder="เช่น มาลี ใจดี" autocomplete="off">
+      <label class="field-label">ชื่อเล่น <span class="required-star">*</span></label>
+      <input type="text" id="ncNickname" class="input" placeholder="เช่น มายด์" autocomplete="off">
+      <label class="field-label">วันเดือนปีเกิด <span class="required-star">*</span></label>
+      <input type="date" id="ncDob" class="input">
+      <label class="field-label">เบอร์โทรศัพท์ <span class="required-star">*</span></label>
+      <input type="tel" id="ncPhone" class="input" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="off">
+      <label class="field-label">LINE ID (ถ้ามี)</label>
+      <input type="text" id="ncLine" class="input" placeholder="Optional" autocomplete="off">
+      <div id="ncWarning"></div>
+
+      <div class="form-section-title">ยืนยันข้อมูลส่วนตัว</div>
+      <div class="box-quiet" id="ncSummaryBox">${summaryHtml()}</div>
+      <div class="step-group">
+        <div class="step-group-title">ข้อมูลส่วนตัวถูกต้องหรือไม่ <span class="required-star">*</span></div>
+        ${radioField("confirmOk", ["ถูกต้อง", "แก้ไข"], draft)}
+      </div>
+
+      <div class="form-section-title">ประวัติผิวและคิ้ว</div>
+      <div class="step-group">
+        <div class="step-group-title">ลักษณะผิวโดยรวม</div>
+        ${radioField("skinType", OPTIONS.skinType, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ลักษณะเส้นขน</div>
+        ${radioField("hairLook", OPTIONS.hairLook, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ความหนาแน่นเส้นขน</div>
+        ${radioField("hairDensity", OPTIONS.hairDensity, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ทรงคิ้ว</div>
+        ${chipGroup("browShape", OPTIONS.browShape, draft, true)}
+      </div>
+      <p class="muted small">กล้ามเนื้อคิ้ว: ยังไม่ได้ประเมิน (จะประเมินหลังเช็ดคิ้ว/วัดทรงจริงในฟอร์ม 1 หรือ 2 ครั้งแรก)</p>
+
+      <button class="btn btn-primary btn-block" id="ncCreateBtn2" style="margin-top:14px">Create Customer &amp; Continue</button>
+    `;
+
+    ["ncFullName", "ncNickname", "ncDob", "ncPhone", "ncLine"].forEach((id) => {
+      const el = document.getElementById(id);
+      const key = { ncFullName: "fullName", ncNickname: "nickname", ncDob: "dob", ncPhone: "phone", ncLine: "line" }[id];
+      el.value = draft[key] || "";
+      el.addEventListener("input", () => {
+        draft[key] = el.value;
+        el.classList.remove("field-error");
+        document.getElementById("ncSummaryBox").innerHTML = summaryHtml();
+      });
+    });
+
+    document.getElementById("ncCreateBtn2").addEventListener("click", onCreate);
+  }
+
+  bindFieldEvents(container, draft, () => {});
+
+  container.addEventListener("input", (e) => {
+    const errEl = e.target.closest(".field-error");
+    if (errEl) errEl.classList.remove("field-error");
+  });
+  container.addEventListener("click", (e) => {
+    const errEl = e.target.closest(".field-error");
+    if (errEl) errEl.classList.remove("field-error");
+  });
+
+  function clearErrors() {
+    container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+    document.getElementById("ncWarning").innerHTML = "";
+  }
+  function flagError(selector) {
+    const el = container.querySelector(selector);
+    if (el) el.classList.add("field-error");
+    return el;
+  }
 
   backBtn.addEventListener("click", () => show("home"));
 
-  function clearErrors() {
-    [nameEl, phoneEl].forEach((el) => el.classList.remove("field-error"));
-    warnEl.innerHTML = "";
-  }
-
-  [nameEl, phoneEl].forEach((el) => {
-    el.addEventListener("input", () => el.classList.remove("field-error"));
-  });
-
-  createBtn.addEventListener("click", async () => {
+  async function onCreate() {
     clearErrors();
-    const name = nameEl.value.trim();
-    const phone = phoneEl.value.trim();
-    const line = lineEl.value.trim();
-
-    let firstErr = null;
-    if (!name) { nameEl.classList.add("field-error"); firstErr = firstErr || nameEl; }
-    if (!phone) { phoneEl.classList.add("field-error"); firstErr = firstErr || phoneEl; }
+    const nameEl = !draft.fullName?.trim() ? flagError("#ncFullName") : null;
+    const nickEl = !draft.nickname?.trim() ? flagError("#ncNickname") : null;
+    const dobEl = !draft.dob ? flagError("#ncDob") : null;
+    const phoneEl = !draft.phone?.trim() ? flagError("#ncPhone") : null;
+    const confirmEl = draft.confirmOk !== "ถูกต้อง" ? flagError('[data-radio-key="confirmOk"]') : null;
+    const firstErr = nameEl || nickEl || dobEl || phoneEl || confirmEl;
     if (firstErr) { firstErr.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
-    createBtn.disabled = true;
+    const createBtn2 = document.getElementById("ncCreateBtn2");
+    createBtn2.disabled = true;
 
-    // กันเบอร์ซ้ำ: ถ้ามีลูกค้าเบอร์นี้แล้ว เสนอให้เปิดประวัติคนเดิมแทนการสร้างซ้ำ
-    const existing = await findCustomerByPhone(phone);
+    const existing = await findCustomerByPhone(draft.phone);
     if (existing) {
-      createBtn.disabled = false;
-      warnEl.innerHTML = `
+      createBtn2.disabled = false;
+      document.getElementById("ncWarning").innerHTML = `
         <div class="dup-warning">
-          ⚠ This phone number already exists: <b>${escapeHtml(existing.name)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
+          ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
           Please use the existing customer instead of creating a duplicate.
           <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">Open this customer</button>
         </div>`;
@@ -922,50 +1265,141 @@ function initNewCustomer() {
       return;
     }
 
-    const res = await createCustomer({ name, phone, line });
-    createBtn.disabled = false;
+    const res = await createCustomer({
+      fullName: draft.fullName.trim(), nickname: draft.nickname.trim(),
+      dob: draft.dob, phone: draft.phone.trim(), line: (draft.line || "").trim()
+    });
+    createBtn2.disabled = false;
     if (!res.success) {
-      warnEl.innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
       return;
     }
 
-    // สร้างลูกค้าสำเร็จ → ตั้งเป็นลูกค้าปัจจุบัน แล้วพาไปหน้าประวัติพร้อมเปิด modal เลือกบริการทับ
-    state.currentCustomer = res.customer;
-    state.serviceType = null;
-    state.resetVisitDraft();
-    show("customerProfile");
-    openServiceTypeModal();
-  });
+    const skinRes = await saveSkinProfile(res.customer.customerId, {
+      skinType: draft.skinType || null,
+      hairLook: draft.hairLook || null,
+      hairDensity: draft.hairDensity || null,
+      browShape: draft.browShape || []
+    });
+    const confirmRes = await confirmCustomerProfile(res.customer.customerId);
+
+    // ใช้ผลลัพธ์ล่าสุดหลังอัปเดต skinProfile/profileConfirmedAt แล้ว ไม่ใช่ res.customer ตอน createCustomer()
+    // ตอนนั้น (ก่อน saveSkinProfile/confirmCustomerProfile เขียนทับ) เพราะจะทำให้หน้าถัดไปเห็น skinProfile ว่างเปล่า
+    state.currentCustomer = confirmRes.customer || skinRes.customer || res.customer;
+    Object.keys(draft).forEach((k) => delete draft[k]);
+    show("createVisit");
+  }
 
   onEnter("newCustomer", () => {
-    nameEl.value = "";
-    phoneEl.value = "";
-    lineEl.value = "";
-    clearErrors();
-    createBtn.disabled = false;
+    Object.keys(draft).forEach((k) => delete draft[k]);
+    render();
   });
 }
 
 // ==== js/screens/customerProfile.js ====
+function ageFromDob(dobStr) {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
 function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
+  const skinCard = document.getElementById("skinProfileCard");
   const historyList = document.getElementById("historyList");
   const addVisitBtn = document.getElementById("addVisitBtn");
 
-  addVisitBtn.addEventListener("click", () => {
-    state.resetVisitDraft();
-    state.serviceType = null;
-    openServiceTypeModal();
-  });
+  // object เดียวคงที่ตลอดอายุโมดูล (mutate ด้วย key เอา ห้าม reassign เป็น {} ใหม่) เพราะ bindFieldEvents
+  // ผูก event delegation ไว้กับ reference นี้ตอน init ครั้งเดียว — ดูคำเตือนแบบเดียวกันใน state.js
+  const skinEditDraft = {};
+  let isEditingSkin = false;
+
+  addVisitBtn.addEventListener("click", () => show("createVisit"));
+
+  function skinSummaryHtml(sp) {
+    sp = sp || {};
+    return `
+      <div class="detail-row"><div class="detail-label">ลักษณะผิวโดยรวม</div><div class="detail-value">${escapeHtml(sp.skinType || "-")}</div></div>
+      <div class="detail-row"><div class="detail-label">ลักษณะเส้นขน</div><div class="detail-value">${escapeHtml(sp.hairLook || "-")}</div></div>
+      <div class="detail-row"><div class="detail-label">ความหนาแน่นเส้นขน</div><div class="detail-value">${escapeHtml(sp.hairDensity || "-")}</div></div>
+      <div class="detail-row"><div class="detail-label">ทรงคิ้ว</div><div class="detail-value">${(sp.browShape || []).join(", ") || "-"}</div></div>
+      <div class="detail-row">
+        <div class="detail-label">กล้ามเนื้อคิ้ว</div>
+        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}</div>
+      </div>
+      <button type="button" class="icon-btn" id="skinEditBtn" style="padding-left:0">แก้ไขประวัติผิวและคิ้ว</button>
+    `;
+  }
+
+  function skinEditHtml() {
+    return `
+      <div class="step-group">
+        <div class="step-group-title">ลักษณะผิวโดยรวม</div>
+        ${radioField("skinType", OPTIONS.skinType, skinEditDraft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ลักษณะเส้นขน</div>
+        ${radioField("hairLook", OPTIONS.hairLook, skinEditDraft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ความหนาแน่นเส้นขน</div>
+        ${radioField("hairDensity", OPTIONS.hairDensity, skinEditDraft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ทรงคิ้ว</div>
+        ${chipGroup("browShape", OPTIONS.browShape, skinEditDraft, true)}
+      </div>
+      <div style="display:flex; gap:10px; margin-top:10px">
+        <button type="button" class="btn btn-outline" id="skinCancelBtn" style="flex:1">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" id="skinSaveBtn" style="flex:1">บันทึก</button>
+      </div>
+    `;
+  }
+
+  function renderSkinCard(c) {
+    skinCard.innerHTML = isEditingSkin ? skinEditHtml() : skinSummaryHtml(c.skinProfile);
+    if (isEditingSkin) {
+      document.getElementById("skinCancelBtn").addEventListener("click", () => { isEditingSkin = false; renderSkinCard(c); });
+      document.getElementById("skinSaveBtn").addEventListener("click", async () => {
+        const payload = { ...skinEditDraft };
+        await saveSkinProfile(c.customerId, payload);
+        c.skinProfile = { ...c.skinProfile, ...payload };
+        isEditingSkin = false;
+        renderSkinCard(c);
+      });
+    } else {
+      document.getElementById("skinEditBtn").addEventListener("click", () => {
+        Object.keys(skinEditDraft).forEach((k) => delete skinEditDraft[k]);
+        Object.assign(skinEditDraft, c.skinProfile || {});
+        skinEditDraft.browShape = [...(c.skinProfile?.browShape || [])];
+        isEditingSkin = true;
+        renderSkinCard(c);
+      });
+    }
+  }
+
+  bindFieldEvents(skinCard, skinEditDraft, () => {});
 
   onEnter("customerProfile", async () => {
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
+    isEditingSkin = false;
 
+    const age = ageFromDob(c.dob);
     profileCard.innerHTML = `
-      <div class="pname">${escapeHtml(c.name)}</div>
-      <div class="pmeta">📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}</div>
+      <div class="pname">${escapeHtml(c.fullName || c.nickname)}</div>
+      <div class="pmeta">
+        ${c.nickname ? `ชื่อเล่น: ${escapeHtml(c.nickname)} &nbsp;·&nbsp; ` : ""}${c.dob ? `${escapeHtml(c.dob)}${age !== null ? ` (${age} ปี)` : ""} &nbsp;·&nbsp; ` : ""}📞 ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}
+      </div>
+      <div class="pmeta">${escapeHtml(c.customerId)}</div>
     `;
+
+    renderSkinCard(c);
 
     historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     const history = await getHistoryByCustomer(c.customerId);
@@ -979,6 +1413,8 @@ function initCustomerProfile() {
       <div class="history-item" data-id="${v.serviceId}">
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
+        ${v.status === "draft" ? `<span class="draft-badge" style="margin:0 0 0 6px">Draft</span>` : ""}
+        ${v.status === "ไม่ได้รับบริการ" ? `<span class="draft-badge" style="margin:0 0 0 6px; background:var(--error-bg); color:var(--error-text)">Not served</span>` : ""}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
@@ -1004,19 +1440,27 @@ function initCustomerProfile() {
 
 const FIELD_LABELS = {
   hadBrowBefore: "เคยสักคิ้วมาก่อนหรือไม่",
-  oldMarkLook: "ลักษณะรอยเก่า",
+  oldMarkLook: "ลักษณะรอยเก่าที่เห็นในปัจจุบัน",
+  oldMarkTone: "โทนสีรอยเดิม",
+  fixPoints: "จุดที่ต้องการแก้ไขจากรอยเดิม",
   browHairLook: "ลักษณะขนคิ้ว",
   browHairDensity: "ความแน่นของขนคิ้ว",
   skinType: "ประเภทผิว",
-  hasScar: "แผลเป็น",
+  hasScar: "ผิวบริเวณคิ้วมีแผลเป็นหรือไม่",
+  scarCause: "สาเหตุแผลเป็น",
   desiredArea: "จุดที่ต้องการ",
   irritation7d: "ผิวระคายเคืองบริเวณคิ้วภายใน 7 วัน",
-  allergy: "อาการแพ้",
-  concerns: "ปัญหาที่ลูกค้ากังวล",
+  irritationDetail: "รายละเอียดความระคายเคือง",
+  allergyInfo: "มีอาการแพ้/ข้อมูลสำคัญที่ต้องแจ้งช่างหรือไม่",
+  allergyDetail: "รายละเอียดอาการแพ้",
+  concerns: "ปัญหาหลักที่กังวล",
+  desiredOverview: "ภาพรวมที่ต้องการ",
   desiredFeel: "ฟีลคิ้วที่ต้องการ",
+  notWanted: "สิ่งที่ไม่อยากได้เด็ดขาด",
   dontWant: "สิ่งที่ไม่อยากได้เด็ดขาด",
   adjustFromLast: "สิ่งที่อยากปรับจากครั้งก่อน",
-  touchupPrice: "ค่าเติมสี (บาท)"
+  touchupPrice: "ค่าเติมสี (บาท)",
+  colorChoice: "สีที่เลือก"
 };
 
 function fmtValue(v) {
@@ -1073,6 +1517,14 @@ function initVisitDetail() {
         ${visit.shapeDesign ? row("ทรงที่ออกแบบ", visit.shapeDesign) : ""}
         ${visit.browGuard ? row("การกันคิ้ว", visit.browGuard) : ""}
         ${visit.analysis ? row("ผลการวิเคราะห์จากช่าง", visit.analysis) : ""}
+        ${visit.satisfaction ? row("ความพึงพอใจกับผลลัพธ์หลังลอก", visit.satisfaction) : ""}
+        ${visit.colorRetention ? row("การติดสีโดยรวม", visit.colorRetention) : ""}
+        ${visit.wantsMoreChange ? row("มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่", visit.wantsMoreChange) : ""}
+        ${(visit.changeItems || []).length ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", visit.changeItems.join(", ")) : ""}
+        ${visit.mixRatio ? row("สัดส่วนสีที่ใช้", visit.mixRatio) : ""}
+        ${visit.redness ? row("ความแดงผิว", visit.redness) : ""}
+        ${visit.adherence ? row("ความติดสี", visit.adherence) : ""}
+        ${visit.status === "draft" ? row("สถานะ", "บันทึกแบบร่าง (ยังไม่ปิด Visit)") : ""}
         ${visit.note ? row("หมายเหตุ", visit.note) : ""}
       </div>
 
@@ -1093,6 +1545,103 @@ function initVisitDetail() {
   });
 }
 
+// ==== js/screens/createVisit.js ====
+// createVisit.js — Step 3: สร้างประวัติการเข้ารับบริการใหม่ (ทุกคิว ไม่ว่าลูกค้าใหม่/เก่า ต้องผ่านหน้านี้ก่อนเปิดฟอร์ม)
+// เก็บ Zerva Booking ID + วันที่ + เวลานัด แล้วสร้าง Visit สถานะ "กำลังดำเนินการ" ก่อนไปหน้าเลือกฟอร์ม (Step 4)
+
+
+
+
+
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function todayDateValue() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function initCreateVisit() {
+  const profileBox = document.getElementById("cvProfileBox");
+  const zervaEl = document.getElementById("cvZervaId");
+  const dateEl = document.getElementById("cvDate");
+  const slotButtons = document.querySelectorAll("[data-time-slot]");
+  const customSlotBtn = document.getElementById("cvCustomSlotBtn");
+  const customTimeEl = document.getElementById("cvCustomTime");
+  const continueBtn = document.getElementById("cvContinueBtn");
+  const backBtn = document.getElementById("createVisitBackBtn");
+
+  let selectedSlot = null;
+
+  function selectSlot(slot) {
+    selectedSlot = slot;
+    slotButtons.forEach((b) => b.classList.toggle("is-selected", b.dataset.timeSlot === slot));
+    customSlotBtn.classList.toggle("is-selected", slot === "custom");
+    customTimeEl.hidden = slot !== "custom";
+    zervaEl.closest(".page-pad")?.querySelectorAll(".field-error").forEach((el) => {
+      if (el.id === "cvSlotGroup") el.classList.remove("field-error");
+    });
+  }
+
+  slotButtons.forEach((btn) => btn.addEventListener("click", () => selectSlot(btn.dataset.timeSlot)));
+  customSlotBtn.addEventListener("click", () => selectSlot("custom"));
+
+  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
+
+  [zervaEl].forEach((el) => el.addEventListener("input", () => el.classList.remove("field-error")));
+
+  continueBtn.addEventListener("click", async () => {
+    const c = state.currentCustomer;
+    if (!c) { show("home"); return; }
+
+    document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+    let firstErr = null;
+    if (!zervaEl.value.trim()) { zervaEl.classList.add("field-error"); firstErr = firstErr || zervaEl; }
+    const slotGroup = document.getElementById("cvSlotGroup");
+    const timeValue = selectedSlot === "custom" ? customTimeEl.value : selectedSlot;
+    if (!timeValue) { slotGroup.classList.add("field-error"); firstErr = firstErr || slotGroup; }
+    if (firstErr) { firstErr.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+
+    continueBtn.disabled = true;
+    const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
+    const res = await createVisit({
+      customerId: c.customerId,
+      zervaBookingId: zervaEl.value.trim(),
+      visitDate,
+      timeSlot: timeValue
+    });
+    continueBtn.disabled = false;
+
+    state.visitContext = {
+      visitId: res.visitId,
+      zervaBookingId: zervaEl.value.trim(),
+      visitDate,
+      timeSlot: timeValue
+    };
+    state.resetVisitDraft();
+    state.formType = null;
+    state.serviceType = null;
+    openServiceTypeModal();
+  });
+
+  onEnter("createVisit", () => {
+    const c = state.currentCustomer;
+    if (!c) { show("home"); return; }
+    profileBox.innerHTML = `
+      <div><b>${escapeHtml(c.fullName || c.nickname)}</b> (${escapeHtml(c.nickname || "-")})</div>
+      <div class="muted small">${escapeHtml(c.customerId)} &nbsp;·&nbsp; 📞 ${escapeHtml(c.phoneDisplay || "-")}</div>
+    `;
+    zervaEl.value = "";
+    dateEl.value = todayDateValue();
+    customTimeEl.value = "";
+    customTimeEl.hidden = true;
+    selectedSlot = null;
+    slotButtons.forEach((b) => b.classList.remove("is-selected"));
+    customSlotBtn.classList.remove("is-selected");
+    document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+    continueBtn.disabled = false;
+  });
+}
+
 // ==== js/screens/serviceType.js ====
 let modalEl = null;
 let closeTimer = null;
@@ -1102,12 +1651,12 @@ function getModal() {
   return modalEl;
 }
 
-// เปิด modal เลือกประเภทบริการทับหน้าจอปัจจุบัน (home หรือ customerProfile)
+// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
 function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
-  // "เติมสี" ใช้ได้เฉพาะลูกค้าเก่าที่มีประวัติอยู่แล้ว — ลูกค้าใหม่ต้องทำ "สักคิ้ว" เท่านั้น
-  document.getElementById("chooseTouchupBtn").hidden = !state.currentCustomer;
+  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติสักคิ้วกับร้านมาก่อนเท่านั้น
+  document.getElementById("chooseForm3Btn").hidden = !state.currentCustomer;
   clearTimeout(closeTimer);
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
@@ -1136,29 +1685,31 @@ function initServiceType() {
     if (e.key === "Escape" && !modal.hidden) closeServiceTypeModal();
   });
 
-  document.getElementById("chooseBrowBtn").addEventListener("click", () => {
+  document.getElementById("chooseForm1Btn").addEventListener("click", () => {
     state.serviceType = "สักคิ้ว";
-    state.resetVisitDraft();
-    state.browStepIndex = 0;
+    state.formType = "form1";
     closeServiceTypeModal();
-    show("formBrow");
+    show("form1");
   });
 
-  document.getElementById("chooseTouchupBtn").addEventListener("click", () => {
+  document.getElementById("chooseForm2Btn").addEventListener("click", () => {
+    state.serviceType = "สักคิ้ว";
+    state.formType = "form2";
+    closeServiceTypeModal();
+    show("form2");
+  });
+
+  document.getElementById("chooseForm3Btn").addEventListener("click", () => {
     state.serviceType = "เติมสี";
-    state.resetVisitDraft();
+    state.formType = "form3";
     closeServiceTypeModal();
     show("formTouchup");
   });
 }
 
-// ==== js/screens/formBrow.js ====
-// formBrow.js — ฟอร์มคอนเซ้าต์ "สักคิ้ว" หน้าเดียวยาว (Page 1 ตาม Jotform ต้นฉบับ)
-// ทุกฟิลด์ + consent 4 บล็อก + เลือกความเข้ม + ยินยอม (radio ตัวเลือกเดียว) + เซ็นชื่อลูกค้า
-// จบด้วยปุ่ม "ถัดไป" เดียว ไปหน้า techFields (Page 2)
-//
-// flow: ลูกค้า (ทั้งใหม่/เก่า) ถูกสร้าง/เลือกเข้าฐานข้อมูลก่อนเข้าฟอร์มนี้เสมอ
-// (จากหน้า newCustomer หรือ customerProfile) — ฟอร์มนี้จึงแสดงแค่ชื่อลูกค้าปัจจุบัน ไม่ถามชื่อ/เบอร์ซ้ำ
+// ==== js/screens/formOne.js ====
+// formOne.js — Form 1: สักคิ้วครั้งแรก (ใช้กับลูกค้าที่ไม่มีรอยสักคิ้วเดิมที่มีผลต่อการออกแบบ)
+// ส่วนที่ 1 ความต้องการ → ส่วนที่ 2 การออกแบบ → ส่วนที่ 3 สรุป+consent+เซ็น → ต่อที่หน้าบันทึกหลังทำ (screen-techFields)
 
 
 
@@ -1168,144 +1719,625 @@ function initServiceType() {
 
 
 
-function pad2(n) { return String(n).padStart(2, "0"); }
-function todayDateValue() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function nowTimeValue() {
-  const d = new Date();
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+function consentBlocksHtml() {
+  return CONSENT_BLOCKS.map((b) => `
+    <div class="consent-block">
+      <div class="src">${escapeHtml(b.title)}</div>
+      ${escapeHtml(b.body).replace(/\n/g, "<br>")}
+    </div>
+  `).join("");
 }
 
-function initFormBrow() {
-  const container = document.getElementById("browBody");
-  const nextBtn = document.getElementById("browNextBtn");
-  const backBtn = document.getElementById("browBackBtn");
+function initFormOne() {
+  const container = document.getElementById("form1Body");
+  const nextBtn = document.getElementById("form1NextBtn");
+  const backBtn = document.getElementById("form1BackBtn");
   let pad = null;
 
-  function customerInfoHtml() {
-    const c = state.currentCustomer;
-    return c ? `<div class="box-quiet"><b>${escapeHtml(c.name)}</b></div>` : "";
+  function photoSlot(key, label) {
+    const url = state.visitDraft[key + "PhotoDataUrl"];
+    return `
+      <div class="photo-slot" data-photo-key="${key}">
+        ${url ? `<img src="${url}">` : `
+          <label>
+            <span style="font-size:22px">📷</span>
+            <span>${escapeHtml(label)}</span>
+            <input type="file" accept="image/*" data-photo-input="${key}">
+          </label>`}
+      </div>`;
+  }
+
+  function skinProfileReadOnlyHtml() {
+    const sp = (state.currentCustomer && state.currentCustomer.skinProfile) || {};
+    const row = (label, value) => `<div class="detail-row"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value || "-")}</div></div>`;
+    return `
+      <div class="box-quiet">
+        ${row("ลักษณะผิวโดยรวม", sp.skinType)}
+        ${row("ลักษณะเส้นขน", sp.hairLook)}
+        ${row("ความหนาแน่นเส้นขน", sp.hairDensity)}
+        ${row("ลักษณะขนคิ้ว", (sp.browShape || []).join(", "))}
+        ${row("กล้ามเนื้อคิ้ว", sp.muscle || "ยังไม่ได้ประเมิน")}
+      </div>`;
   }
 
   function render() {
     const draft = state.visitDraft;
-    if (!draft.serviceDate) draft.serviceDate = todayDateValue();
-    if (!draft.serviceTime) draft.serviceTime = nowTimeValue();
-
     container.innerHTML = `
-      <div class="step-group" id="customerInfoBlock">
-        ${customerInfoHtml()}
+      ${visitHeaderHtml()}
+      ${readinessBlockHtml(draft)}
+
+      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
+      <div class="step-group">
+        <div class="step-group-title">ปัญหาหลักที่กังวล <span class="required-star">*</span></div>
+        ${chipGroup("concerns", OPTIONS.form1Concerns, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ภาพรวมที่ต้องการ <span class="required-star">*</span></div>
+        ${chipGroup("desiredOverview", OPTIONS.desiredOverview, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">สิ่งที่ไม่อยากได้เด็ดขาด</div>
+        ${chipGroup("notWanted", OPTIONS.form1NotWanted, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">สีที่ต้องการ</div>
+        ${radioField("colorChoice", OPTIONS.form1Color, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
+        ${radioField("intensity", OPTIONS.intensity, draft)}
+        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ยอมรับเงื่อนไขก่อนเริ่มบริการ <span class="required-star">*</span></div>
+        <details class="consent-block" style="cursor:pointer">
+          <summary style="font-weight:600; color:var(--deep-bronze)">เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
+          <div style="margin-top:10px">${consentBlocksHtml()}</div>
+        </details>
+        <label class="agree-row" data-check-key="preServiceAgree">
+          <input type="checkbox" id="f1PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
+          <span>${escapeHtml(PRE_SERVICE_AGREE_TEXT)}</span>
+        </label>
       </div>
 
+      <div class="form-section-title">ส่วนที่ 2 — การออกแบบ</div>
       <div class="step-group">
-        <div class="step-group-title">วัน-เวลาเข้ารับบริการ <span class="required-star">*</span></div>
-        <div style="display:flex; gap:8px;">
-          <input type="date" class="input" style="margin:0" data-text-key="serviceDate" value="${escapeHtml(draft.serviceDate)}">
-          <input type="time" class="input" style="margin:0" data-text-key="serviceTime" value="${escapeHtml(draft.serviceTime)}">
-        </div>
+        <div class="step-group-title">ประวัติผิวและคิ้วจาก Customer Profile</div>
+        ${skinProfileReadOnlyHtml()}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("before", "Before")}</div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">เทคนิคที่เลือก</div>
+        ${radioField("technique", OPTIONS.technique, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">กล้ามเนื้อคิ้ว (กรอกหลังเช็ดคิ้วและวัดตอนออกแบบทรงจริง)</div>
+        ${radioField("muscle", OPTIONS.muscleOptions, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ทรงคิ้ว</div>
+        ${chipGroup("shapeDesign", OPTIONS.form1Shape, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">การกันคิ้ว</div>
+        ${radioField("browGuard", OPTIONS.browGuard, draft)}
       </div>
 
-      <div class="form-section-title">ประวัติการสักคิ้ว</div>
-      <div class="step-group">
-        <div class="step-group-title">เคยสักคิ้วมาก่อนหรือไม่ <span class="required-star">*</span></div>
-        ${radioField("hadBrowBefore", ["เคย", "ไม่เคย"], draft)}
-      </div>
-      <div class="step-group" id="oldMarkBlock" ${draft.hadBrowBefore === "เคย" ? "" : "hidden"}>
-        <div class="step-group-title">ลักษณะรอยเก่า</div>
-        ${chipGroup("oldMarkLook", OPTIONS.oldMarkLook, draft, true)}
-      </div>
-
-      <div class="form-section-title">ลักษณะคิ้วปัจจุบัน</div>
-      <div class="step-group">
-        <div class="step-group-title">ลักษณะขนคิ้ว</div>
-        ${chipGroup("browHairLook", OPTIONS.browHairLook, draft, false)}
-        <div class="step-group-title">ความแน่นของขนคิ้ว</div>
-        ${chipGroup("browHairDensity", OPTIONS.browHairDensity, draft, false)}
+      <div class="form-section-title">ส่วนที่ 3 — สรุปข้อมูลก่อนเริ่มทำ</div>
+      <div class="box-quiet">
+        <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value">${escapeHtml(draft.technique || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value">${escapeHtml(draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">สีที่เลือก</div><div class="detail-value">${escapeHtml(draft.colorChoice || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value">${escapeHtml(draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value">${escapeHtml((draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value">${escapeHtml(draft.intensity || "-")}</div></div>
       </div>
 
-      <div class="form-section-title">ประวัติผิว</div>
-      <div class="step-group">
-        <div class="step-group-title">ประเภทผิว <span class="required-star">*</span></div>
-        ${chipGroup("skinType", OPTIONS.skinType, draft, false)}
-      </div>
-      <div class="step-group">
-        <div class="step-group-title">แผลเป็น</div>
-        ${radioField("hasScar", ["มี", "ไม่มี"], draft)}
-        <div class="step-group-title">จุดที่ต้องการ</div>
-        ${textField("desiredArea", "ระบุจุดที่ต้องการ (ถ้ามี)", draft)}
-      </div>
-      <div class="step-group">
-        <div class="step-group-title">ผิวมีความระคายเคืองบริเวณคิ้วภายใน 7 วันหรือไม่</div>
-        ${radioField("irritation7d", ["มี", "ไม่มี"], draft)}
-        <div class="step-group-title">อาการแพ้</div>
-        ${textField("allergy", "ระบุอาการแพ้ (ถ้ามี)", draft)}
-      </div>
-
-      <div class="form-section-title">เป้าหมายในการสักคิ้วของลูกค้า</div>
-      <div class="step-group">
-        <div class="step-group-title">ปัญหาที่ลูกค้ากังวล</div>
-        ${chipGroup("concerns", OPTIONS.concerns, draft, true)}
-      </div>
-      <div class="step-group">
-        <div class="step-group-title">ฟีลคิ้วที่ต้องการ</div>
-        ${chipGroup("desiredFeel", OPTIONS.desiredFeel, draft, true)}
-      </div>
-      <div class="step-group">
-        <div class="step-group-title">เทคนิคที่เลือก <span class="required-star">*</span></div>
-        ${chipGroup("technique", OPTIONS.technique, draft, false)}
-      </div>
-      <div class="step-group">
-        <div class="step-group-title">สิ่งที่ "ไม่อยากได้เด็ดขาด"</div>
-        ${textField("dontWant", "ระบุ (ถ้ามี)", draft)}
-      </div>
-
-      <div class="form-section-title">Consent / ข้อตกลง / การดูแลหลังทำ</div>
-      ${CONSENT_BLOCKS.map((block) => `
-        <div class="consent-block">
-          <div class="src">${escapeHtml(block.title)}</div>
-          ${escapeHtml(block.body).replace(/\n/g, "<br>")}
-        </div>
-      `).join("")}
-
-      <div class="step-group-title">ลูกค้าเลือกระดับความเข้มที่ต้องการ <span class="required-star">*</span></div>
-      <div id="intensityOptions" data-radio-key="intensity">
-        ${INTENSITY_OPTIONS.map((opt) => `
-          <label class="intensity-option">
-            <input type="radio" name="intensity" value="${escapeHtml(opt.value)}" ${draft.intensity === opt.value ? "checked" : ""}>
-            <span><b>${escapeHtml(opt.label)}</b><br>${escapeHtml(opt.text)}</span>
-          </label>
-        `).join("")}
-      </div>
-
-      <div class="step-group" data-radio-key="agree">
+      <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
+      <div class="step-group" data-radio-key="finalAgree">
         <label class="agree-row">
-          <input type="radio" name="agree" value="agreed" ${draft.agree === "agreed" ? "checked" : ""}>
-          <span>${escapeHtml(AGREEMENT_TEXT)}</span>
+          <input type="radio" name="finalAgree" value="agreed" ${draft.finalAgree === "agreed" ? "checked" : ""}>
+          <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
         </label>
       </div>
 
       <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
-      <div class="sig-wrap"><canvas id="sigCanvas"></canvas></div>
-      <div class="sig-actions"><button id="sigClearBtn" type="button">ล้างลายเซ็น</button></div>
+      <div class="sig-wrap"><canvas id="f1SigCanvas"></canvas></div>
+      <div class="sig-actions"><button id="f1SigClearBtn" type="button">ล้างลายเซ็น</button></div>
     `;
 
-    pad = createSignaturePad(document.getElementById("sigCanvas"));
+    pad = createSignaturePad(document.getElementById("f1SigCanvas"));
+    document.getElementById("f1SigClearBtn").addEventListener("click", () => pad.clear());
 
-    document.getElementById("sigClearBtn").addEventListener("click", () => pad.clear());
+    document.getElementById("f1PreAgree").addEventListener("change", (e) => {
+      draft.preServiceAgree = e.target.checked;
+      e.target.closest(".field-error")?.classList.remove("field-error");
+    });
+
+    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+      inputEl.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await readFileAsDataUrl(file);
+        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
+        render();
+      });
+    });
   }
 
-  // ผูก event ครั้งเดียว (chip/radio/text ใช้ event delegation) — render() เรียกซ้ำได้โดยไม่ต้องผูกใหม่
   bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
-    // ต้อง toggle การแสดงผลแบบ DOM ตรง ๆ ห้าม re-render ทั้ง container เพราะจะล้างลายเซ็นที่วาดไว้
-    if (changedRadioName === "hadBrowBefore") {
-      const block = document.getElementById("oldMarkBlock");
-      if (block) block.hidden = state.visitDraft.hadBrowBefore !== "เคย";
+    bindReadinessToggle(container, state.visitDraft, changedRadioName);
+  });
+
+  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+    container.addEventListener(evt, (e) => {
+      const errEl = e.target.closest(".field-error");
+      if (errEl) errEl.classList.remove("field-error");
+    });
+  });
+
+  function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
+  function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
+  function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
+
+  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
+  wireNotServedButton(document.getElementById("form1NotServedBtn"));
+  wireDraftSaveButton(document.getElementById("form1DraftBtn"));
+
+  nextBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    clearFieldErrors();
+    const draft = state.visitDraft;
+
+    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const concernsEl = !(draft.concerns || []).length ? flagError('[data-chip-key="concerns"]') : null;
+    const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
+    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
+    const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
+    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
+    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
+
+    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    if (!noErrors) return;
+
+    if (!pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
+    draft.agreedAt = Date.now();
+
+    if (draft.muscle) {
+      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, "");
+    }
+
+    show("techFields");
+  });
+
+  onEnter("form1", render);
+}
+
+// ==== js/screens/formTwo.js ====
+// formTwo.js — Form 2: สักทับรอยเก่า (ลูกค้ามีสี/ทรงเดิมที่มีผลต่อการออกแบบ แต่ไม่ใช่การกลับมาเติมสีของ pyne.studio)
+
+
+
+
+
+
+
+
+
+
+function consentBlocksHtml() {
+  const blocks = [CONSENT_BLOCKS[0], FORM2_EXTRA_CONSENT_BLOCK, ...CONSENT_BLOCKS.slice(1)];
+  return blocks.map((b) => `
+    <div class="consent-block">
+      <div class="src">${escapeHtml(b.title)}</div>
+      ${escapeHtml(b.body).replace(/\n/g, "<br>")}
+    </div>
+  `).join("");
+}
+
+function initFormTwo() {
+  const container = document.getElementById("form2Body");
+  const nextBtn = document.getElementById("form2NextBtn");
+  const backBtn = document.getElementById("form2BackBtn");
+  let pad = null;
+
+  function photoSlot(key, label) {
+    const url = state.visitDraft[key + "PhotoDataUrl"];
+    return `
+      <div class="photo-slot" data-photo-key="${key}">
+        ${url ? `<img src="${url}">` : `
+          <label>
+            <span style="font-size:22px">📷</span>
+            <span>${escapeHtml(label)}</span>
+            <input type="file" accept="image/*" data-photo-input="${key}">
+          </label>`}
+      </div>`;
+  }
+
+  function skinProfileReadOnlyHtml() {
+    const sp = (state.currentCustomer && state.currentCustomer.skinProfile) || {};
+    const row = (label, value) => `<div class="detail-row"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value || "-")}</div></div>`;
+    return `
+      <div class="box-quiet">
+        ${row("ลักษณะผิวโดยรวม", sp.skinType)}
+        ${row("ลักษณะเส้นขน", sp.hairLook)}
+        ${row("ความหนาแน่นเส้นขน", sp.hairDensity)}
+        ${row("ลักษณะขนคิ้ว", (sp.browShape || []).join(", "))}
+        ${row("กล้ามเนื้อคิ้ว", sp.muscle || "ยังไม่ได้ประเมิน")}
+      </div>`;
+  }
+
+  function render() {
+    const draft = state.visitDraft;
+    container.innerHTML = `
+      ${visitHeaderHtml()}
+      ${readinessBlockHtml(draft)}
+
+      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ประเมินรอยเดิมและความต้องการ</div>
+      <div class="step-group">
+        <div class="step-group-title">ลักษณะรอยเก่าที่เห็นในปัจจุบัน <span class="required-star">*</span></div>
+        ${chipGroup("oldMarkLook", OPTIONS.oldMarkLook, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">โทนสีรอยเดิม</div>
+        ${chipGroup("oldMarkTone", OPTIONS.oldMarkTone, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">จุดที่ต้องการแก้ไขจากรอยเดิม <span class="required-star">*</span></div>
+        ${chipGroup("fixPoints", OPTIONS.fixPoints, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ภาพรวมที่ต้องการ <span class="required-star">*</span></div>
+        ${chipGroup("desiredOverview", OPTIONS.desiredOverview, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">สิ่งที่ไม่อยากได้เด็ดขาด</div>
+        ${chipGroup("notWanted", OPTIONS.form2NotWanted, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">สีที่ต้องการ</div>
+        ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
+        ${radioField("intensity", OPTIONS.intensity, draft)}
+        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ยอมรับเงื่อนไขก่อนเริ่มบริการ <span class="required-star">*</span></div>
+        <details class="consent-block" style="cursor:pointer">
+          <summary style="font-weight:600; color:var(--deep-bronze)">เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
+          <div style="margin-top:10px">${consentBlocksHtml()}</div>
+        </details>
+        <label class="agree-row" data-check-key="preServiceAgree">
+          <input type="checkbox" id="f2PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
+          <span>${escapeHtml(PRE_SERVICE_AGREE_TEXT)}</span>
+        </label>
+      </div>
+
+      <div class="form-section-title">ส่วนที่ 2 — การออกแบบ</div>
+      <div class="step-group">
+        <div class="step-group-title">ประวัติผิวและคิ้วจาก Customer Profile</div>
+        ${skinProfileReadOnlyHtml()}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("before", "Before")}</div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">เทคนิคที่เลือก</div>
+        ${radioField("technique", OPTIONS.technique, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">กล้ามเนื้อคิ้ว (กรอกหลังเช็ดคิ้วและวัดตอนออกแบบทรงจริง)</div>
+        ${radioField("muscle", OPTIONS.muscleOptions, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ทรงที่ออกแบบ</div>
+        ${chipGroup("shapeDesign", OPTIONS.form2Shape, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">การกันคิ้ว</div>
+        ${radioField("browGuard", OPTIONS.browGuard, draft)}
+      </div>
+
+      <div class="form-section-title">ส่วนที่ 3 — สรุปข้อมูลก่อนเริ่มทำ</div>
+      <div class="box-quiet">
+        <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value">${escapeHtml(draft.technique || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ลักษณะรอยเก่า</div><div class="detail-value">${escapeHtml((draft.oldMarkLook || []).map((v) => (v === "Other" ? (draft.oldMarkLookOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">สีรอยเก่า</div><div class="detail-value">${escapeHtml(draft.oldMarkTone === "Other" ? (draft.oldMarkToneOther || "อื่นๆ") : (draft.oldMarkTone || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">จุดที่ต้องการแก้ไข</div><div class="detail-value">${escapeHtml((draft.fixPoints || []).map((v) => (v === "Other" ? (draft.fixPointsOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value">${escapeHtml(draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value">${escapeHtml((draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value">${escapeHtml(draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">สีที่เลือก</div><div class="detail-value">${escapeHtml(draft.colorChoice || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value">${escapeHtml(draft.intensity || "-")}</div></div>
+      </div>
+
+      <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
+      <div class="step-group" data-radio-key="finalAgree">
+        <label class="agree-row">
+          <input type="radio" name="finalAgree" value="agreed" ${draft.finalAgree === "agreed" ? "checked" : ""}>
+          <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
+        </label>
+      </div>
+
+      <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
+      <div class="sig-wrap"><canvas id="f2SigCanvas"></canvas></div>
+      <div class="sig-actions"><button id="f2SigClearBtn" type="button">ล้างลายเซ็น</button></div>
+    `;
+
+    pad = createSignaturePad(document.getElementById("f2SigCanvas"));
+    document.getElementById("f2SigClearBtn").addEventListener("click", () => pad.clear());
+
+    document.getElementById("f2PreAgree").addEventListener("change", (e) => {
+      draft.preServiceAgree = e.target.checked;
+      e.target.closest(".field-error")?.classList.remove("field-error");
+    });
+
+    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+      inputEl.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await readFileAsDataUrl(file);
+        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
+        render();
+      });
+    });
+  }
+
+  bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
+    bindReadinessToggle(container, state.visitDraft, changedRadioName);
+  });
+
+  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+    container.addEventListener(evt, (e) => {
+      const errEl = e.target.closest(".field-error");
+      if (errEl) errEl.classList.remove("field-error");
+    });
+  });
+
+  function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
+  function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
+  function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
+
+  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
+  wireNotServedButton(document.getElementById("form2NotServedBtn"));
+  wireDraftSaveButton(document.getElementById("form2DraftBtn"));
+
+  nextBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    clearFieldErrors();
+    const draft = state.visitDraft;
+
+    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const oldMarkEl = !(draft.oldMarkLook || []).length ? flagError('[data-chip-key="oldMarkLook"]') : null;
+    const fixPointsEl = !(draft.fixPoints || []).length ? flagError('[data-chip-key="fixPoints"]') : null;
+    const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
+    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
+    const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
+    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
+    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
+
+    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    if (!noErrors) return;
+
+    if (!pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
+    draft.agreedAt = Date.now();
+
+    if (draft.muscle) {
+      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, "");
+    }
+
+    show("techFields");
+  });
+
+  onEnter("form2", render);
+}
+
+// ==== js/screens/formTouchup.js ====
+// formTouchup.js — Form 3 "เติมสีคิ้ว" ส่วนที่ 1-4 (ประวัติเดิม → ติดตามผล → ออกแบบ → สรุป+เซ็น)
+// ส่วนที่ 5 (บันทึกหลังทำ) อยู่ที่ techFields.js (ใช้ร่วมกับ Form 1/2)
+// ใช้กับลูกค้าเก่าที่เคยสักกับ pyne.studio เท่านั้น (Visit ถูกสร้างไว้แล้วตั้งแต่ Step 3 ก่อนเข้าหน้านี้)
+
+
+
+
+
+
+
+
+
+
+// ระยะเวลาจากวันที่สักครั้งแรกถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (คำนวณอัตโนมัติตามสเปก)
+function monthsSince(ts) {
+  if (!ts) return "-";
+  const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
+  return `${months} เดือน`;
+}
+
+function row(label, value) {
+  return `<div class="detail-row"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value || "-")}</div></div>`;
+}
+
+function photoBoxReadOnly(url) {
+  return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
+}
+
+// รอบแรกที่สักจริงกับร้าน = Visit ที่เก่าที่สุดที่ serviceType เป็น "สักคิ้ว" (ไม่ใช่ "เติมสี")
+// ล่าสุด = Visit ล่าสุดไม่ว่าประเภทไหน (ใช้แสดงเทคนิค/สี/กล้ามเนื้อคิ้วปัจจุบัน)
+async function loadHistoryCtx(customerId) {
+  const history = await getHistoryByCustomer(customerId);
+  if (!history.length) return null;
+  const browVisits = history.filter((h) => h.serviceType === "สักคิ้ว");
+  const first = browVisits.length ? browVisits[browVisits.length - 1] : history[history.length - 1];
+  const last = history[0];
+  return { first, last };
+}
+
+function initFormTouchup() {
+  const container = document.getElementById("touchupBody");
+  const nextBtn = document.getElementById("tuNextBtn");
+  const backBtn = document.getElementById("touchupBackBtn");
+  let pad = null;
+  let historyCtx = null;
+
+  function photoSlot(key, label) {
+    const url = state.visitDraft[key + "PhotoDataUrl"];
+    return `
+      <div class="photo-slot" data-photo-key="${key}">
+        ${url ? `<img src="${url}">` : `
+          <label>
+            <span style="font-size:22px">📷</span>
+            <span>${escapeHtml(label)}</span>
+            <input type="file" accept="image/*" data-photo-input="${key}">
+          </label>`}
+      </div>`;
+  }
+
+  function historyBlockHtml() {
+    if (!historyCtx) {
+      return `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
+    }
+    const { first, last } = historyCtx;
+    return `
+      <div class="box-quiet">
+        ${row("วันที่สักครั้งแรก", formatDate(first.visitDate))}
+        ${row("ระยะเวลาจากครั้งแรกถึงวันนี้", monthsSince(first.visitDate))}
+        ${row("เทคนิคเดิม", last.technique)}
+        ${row("สีเดิม", last.colorUsed)}
+        ${row("กล้ามเนื้อคิ้วล่าสุด", (state.currentCustomer && state.currentCustomer.skinProfile && state.currentCustomer.skinProfile.muscle) || "ยังไม่ได้ประเมิน")}
+        <div class="photo-row" style="margin-top:10px">
+          ${photoBoxReadOnly(first.beforePhotoUrl)}
+          ${photoBoxReadOnly(first.afterPhotoUrl)}
+        </div>
+        <button type="button" class="icon-btn" id="tuViewLastBtn" style="padding-left:0; margin-top:6px">ดูรายละเอียด ›</button>
+      </div>`;
+  }
+
+  function render() {
+    const draft = state.visitDraft;
+
+    container.innerHTML = `
+      ${visitHeaderHtml()}
+      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ประวัติเดิม</div>
+      ${historyBlockHtml()}
+
+      ${readinessBlockHtml(draft)}
+
+      <div class="form-section-title">ส่วนที่ 2 — ติดตามผลหลังลอก</div>
+      <div class="step-group">
+        <div class="step-group-title">ความพึงพอใจกับผลลัพธ์หลังลอก <span class="required-star">*</span></div>
+        ${radioField("satisfaction", OPTIONS.touchupSatisfaction, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">การติดสีโดยรวม <span class="required-star">*</span></div>
+        ${radioField("colorRetention", OPTIONS.touchupColorRetention, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่ <span class="required-star">*</span></div>
+        ${radioField("wantsMoreChange", OPTIONS.touchupWantsMoreChange, draft)}
+      </div>
+      <div class="step-group" id="changeItemsBlock" ${draft.wantsMoreChange === "มี" ? "" : "hidden"}>
+        <div class="step-group-title">สิ่งที่ต้องการแก้ไขเพิ่มเติม</div>
+        ${chipGroup("changeItems", OPTIONS.touchupChangeItems, draft, true)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
+        ${radioField("intensity", OPTIONS.intensity, draft)}
+        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("before", "Before")}</div>
+      </div>
+
+      <div class="form-section-title">ส่วนที่ 3 — การออกแบบ</div>
+      <div class="step-group">
+        <div class="step-group-title">เทคนิคที่เลือกใช้ครั้งนี้</div>
+        <p class="muted small">เทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
+        ${radioField("technique", OPTIONS.technique, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">ทรงที่ออกแบบ</div>
+        <p class="muted small">ทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
+        ${chipGroup("shapeDesign", OPTIONS.touchupShape, draft, false)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">สีที่ต้องการ</div>
+        <p class="muted small">สีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
+        ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">การกันคิ้ว</div>
+        ${radioField("browGuard", OPTIONS.browGuard, draft)}
+      </div>
+
+      <div class="form-section-title">ส่วนที่ 4 — สรุปข้อมูลก่อนเริ่มทำ</div>
+      <div class="box-quiet">
+        ${row("การติดสีโดยรวม", draft.colorRetention)}
+        ${draft.wantsMoreChange === "มี" && (draft.changeItems || []).length
+          ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", (draft.changeItems || []).map((v) => (v === "Other" ? (draft.changeItemsOther || "อื่นๆ") : v)).join(", "))
+          : ""}
+        ${row("เทคนิคที่เลือก", draft.technique || (historyCtx && historyCtx.last.technique))}
+        ${row("ทรงที่ออกแบบ", draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || (historyCtx && historyCtx.last.shapeDesign)))}
+        ${row("สีที่เลือก", draft.colorChoice || (historyCtx && historyCtx.last.colorUsed))}
+        ${row("ระดับความเข้มหลังทำเสร็จวันนี้", draft.intensity)}
+      </div>
+
+      <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
+      <div class="step-group" data-radio-key="finalAgree">
+        <label class="agree-row">
+          <input type="radio" name="finalAgree" value="agreed" ${draft.finalAgree === "agreed" ? "checked" : ""}>
+          <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
+        </label>
+      </div>
+
+      <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
+      <div class="sig-wrap"><canvas id="tuSigCanvas"></canvas></div>
+      <div class="sig-actions"><button id="tuSigClearBtn" type="button">ล้างลายเซ็น</button></div>
+    `;
+
+    pad = createSignaturePad(document.getElementById("tuSigCanvas"));
+    document.getElementById("tuSigClearBtn").addEventListener("click", () => pad.clear());
+
+    const viewLastBtn = document.getElementById("tuViewLastBtn");
+    if (viewLastBtn) {
+      viewLastBtn.addEventListener("click", () => show("visitDetail", { data: historyCtx.last }));
+    }
+
+    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+      inputEl.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await readFileAsDataUrl(file);
+        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
+        render();
+      });
+    });
+  }
+
+  bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
+    bindReadinessToggle(container, state.visitDraft, changedRadioName);
+    // ต้อง toggle DOM ตรง ๆ ห้าม re-render ทั้ง container เพราะจะล้างลายเซ็น/รูปที่เพิ่งใส่
+    if (changedRadioName === "wantsMoreChange") {
+      const block = document.getElementById("changeItemsBlock");
+      if (block) block.hidden = state.visitDraft.wantsMoreChange !== "มี";
     }
   });
 
-  // เอากรอบแดงออกทันทีที่ผู้ใช้แก้ฟิลด์นั้น (คลิก chip/radio, พิมพ์, หรือเริ่มเซ็นลายเซ็น)
   ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
     container.addEventListener(evt, (e) => {
       const errEl = e.target.closest(".field-error");
@@ -1316,111 +2348,81 @@ function initFormBrow() {
   function clearFieldErrors() {
     container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
   }
-
   function flagError(selector) {
     const el = container.querySelector(selector);
     if (el) el.classList.add("field-error");
     return el;
   }
-
   function scrollToFirstError(...els) {
     const first = els.find(Boolean);
     if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
     return !first;
   }
 
-  nextBtn.addEventListener("click", async () => {
-    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
-    if (!state.currentCustomer) { show("home"); return; }
+  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
+  wireNotServedButton(document.getElementById("touchupNotServedBtn"));
+  wireDraftSaveButton(document.getElementById("touchupDraftBtn"));
+
+  nextBtn.addEventListener("click", () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
 
     clearFieldErrors();
     const draft = state.visitDraft;
-    const dateEl = !draft.serviceDate ? flagError('[data-text-key="serviceDate"]') : null;
-    const timeEl = !draft.serviceTime ? flagError('[data-text-key="serviceTime"]') : null;
-    const hadBrowEl = !draft.hadBrowBefore ? flagError('[data-radio-key="hadBrowBefore"]') : null;
-    const skinTypeEl = !draft.skinType ? flagError('[data-chip-key="skinType"]') : null;
-    const techniqueEl = !draft.technique ? flagError('[data-chip-key="technique"]') : null;
-    const intensityEl = !draft.intensity ? flagError("#intensityOptions") : null;
-    const agreeEl = !draft.agree ? flagError('[data-radio-key="agree"]') : null;
-    // ถ้าเคยเซ็นแล้วตอนกดถัดไปครั้งก่อน (draft.signatureCustomerDataUrl มีค่า) แล้วย้อนกลับมาดูหน้านี้อีกที
-    // แคนวาสจะว่างเปล่าเพราะสร้างใหม่ทุกครั้ง — ไม่บังคับให้เซ็นซ้ำถ้ามีลายเซ็นเดิมอยู่แล้ว
+    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const satisfactionEl = !draft.satisfaction ? flagError('[data-radio-key="satisfaction"]') : null;
+    const retentionEl = !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null;
+    const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
+    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
+    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(dateEl || timeEl, hadBrowEl, skinTypeEl, techniqueEl, intensityEl, agreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, agreeEl, sigEl);
     if (!noErrors) return;
 
-    // เก็บลายเซ็นเป็น dataURL ดิบไว้ใน draft ก่อน แล้วค่อย upload รวมกับรูป before/after
-    // ที่หน้า techFields (page 2) ทีเดียว เพื่อให้ทุกไฟล์ของ visit นี้ลงโฟลเดอร์เดียวกัน
     if (!pad.isEmpty()) {
       draft.signatureCustomerDataUrl = pad.toDataURL();
     }
     draft.agreedAt = Date.now();
-    show("techFields");
-  });
-
-  backBtn.addEventListener("click", () => {
-    show(state.currentCustomer ? "customerProfile" : "home");
-    openServiceTypeModal();
-  });
-
-  onEnter("formBrow", render);
-}
-
-// ==== js/screens/formTouchup.js ====
-// formTouchup.js — ร่างเบื้องต้น (DRAFT) รอฟิลด์ฉบับสมบูรณ์จากร้าน ดู implementation-plan-phase1.md
-
-
-
-
-
-
-function initFormTouchup() {
-  const prevBox = document.getElementById("touchupPrevVisit");
-  const adjustEl = document.getElementById("tuAdjust");
-  const intensityEl = document.getElementById("tuIntensity");
-  const priceEl = document.getElementById("tuPrice");
-  const nextBtn = document.getElementById("tuNextBtn");
-  const backBtn = document.getElementById("touchupBackBtn");
-
-  backBtn.addEventListener("click", () => {
-    show(state.currentCustomer ? "customerProfile" : "home");
-    openServiceTypeModal();
-  });
-
-  nextBtn.addEventListener("click", () => {
-    state.visitDraft.adjustFromLast = adjustEl.value.trim();
-    state.visitDraft.intensity = intensityEl.value;
-    state.visitDraft.touchupPrice = priceEl.value;
+    // เก็บค่าเดิมจากประวัติไว้ใน draft ให้ techFields.js (ส่วนที่ 5) ใช้ fallback ตอนสร้าง payload
+    // โดยไม่ต้อง fetch ประวัติซ้ำอีกรอบ — เผื่อกรณีช่างไม่ได้เลือกค่าใหม่ในส่วนที่ 3 (ไม่บังคับตอบ)
+    if (historyCtx) {
+      draft.prevTechnique = historyCtx.last.technique || null;
+      draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
+      draft.prevColorUsed = historyCtx.last.colorUsed || null;
+    }
     show("techFields");
   });
 
   onEnter("formTouchup", async () => {
-    adjustEl.value = "";
-    priceEl.value = "";
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
-    prevBox.textContent = "กำลังโหลดประวัติล่าสุด...";
-    const history = await getHistoryByCustomer(c.customerId);
-    if (history.length === 0) {
-      prevBox.innerHTML = `<b>ไม่มีประวัติเก่า</b> — ลูกค้าคนนี้ยังไม่เคยมีประวัติในระบบ`;
-      return;
-    }
-    const last = history[0];
-    prevBox.innerHTML = `
-      <b>ครั้งล่าสุด:</b> ${formatDate(last.visitDate)} (${escapeHtml(last.serviceType)})<br>
-      เทคนิค: ${escapeHtml(last.technique || "-")} · สี: ${escapeHtml(last.colorUsed || "-")}<br>
-      ความเข้ม: ${escapeHtml(last.intensity || "-")}
-      ${last.note ? `<br>หมายเหตุ: ${escapeHtml(last.note)}` : ""}
-    `;
+    historyCtx = null;
+    container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
+    historyCtx = await loadHistoryCtx(c.customerId);
+    render();
   });
 }
 
 // ==== js/screens/techFields.js ====
+// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูป After, ลายเซ็นช่าง)
+// เหมือนกันทุกฟอร์มตามสเปก ("กติกากลางของทั้ง 3 ฟอร์ม") จึงมีหน้าเดียวใช้ร่วมกัน แยกแค่ payload ตอนบันทึก
+
+
+
+
+
+
+
+
+
 function initTechFields() {
   const body = document.getElementById("techBody");
-  const saveBtn = document.getElementById("techSaveBtn");
-  const backBtn = document.getElementById("techBackBtn");
+  const draftBtn = document.getElementById("tuSaveDraftBtn");
+  const closeBtn = document.getElementById("tuSaveCloseBtn");
 
   function photoSlot(key, label) {
     const url = state.visitDraft[key + "PhotoDataUrl"];
@@ -1436,34 +2438,27 @@ function initTechFields() {
   }
 
   function render() {
-    const isTouchup = state.serviceType === "เติมสี";
+    const draft = state.visitDraft;
     body.innerHTML = `
+      ${visitHeaderHtml()}
       <div class="step-group">
-        <div class="step-group-title">รูป Before / After <span class="required-star">*</span></div>
-        <div class="photo-row">
-          ${photoSlot("before", "Before")}
-          ${photoSlot("after", "After")}
-        </div>
-      </div>
-
-      ${!isTouchup ? `
-      <div class="step-group">
-        <div class="step-group-title">กล้ามเนื้อคิ้ว</div>
-        ${chipGroup("muscle", OPTIONS.muscle, state.visitDraft, true)}
-        <div class="step-group-title">ทรงที่ออกแบบ</div>
-        ${chipGroup("shapeDesign", OPTIONS.shapeDesign, state.visitDraft, true)}
-        <div class="step-group-title">การกันคิ้ว</div>
-        ${radioField("browGuard", OPTIONS.browGuard, state.visitDraft)}
-      </div>` : ""}
-
-      <div class="step-group">
-        <div class="step-group-title">สีที่ใช้</div>
-        ${chipGroup("colorUsed", OPTIONS.colorUsed, state.visitDraft, false)}
+        <div class="step-group-title">สัดส่วนสีที่ใช้ <span class="required-star">*</span></div>
+        ${mixRatioField("mixRatioParts", OPTIONS.mixColors, draft)}
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">ผลการวิเคราะห์จากช่าง</div>
-        ${textAreaField("analysis", "บันทึกผลการวิเคราะห์ / หมายเหตุ", state.visitDraft)}
+        <div class="step-group-title">ความแดงผิว</div>
+        ${radioField("redness", OPTIONS.redness, draft)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">ความติดสี</div>
+        ${radioField("adherence", OPTIONS.adherence, draft)}
+      </div>
+
+      <div class="step-group">
+        <div class="step-group-title">รูป After <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("after", "After")}</div>
       </div>
 
       <div class="step-group">
@@ -1487,72 +2482,113 @@ function initTechFields() {
   }
 
   bindFieldEvents(body, state.visitDraft, () => {});
+  bindMixRatioEvents(body, state.visitDraft);
 
-  backBtn.addEventListener("click", () => show("formBrow"));
+  document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
 
-  saveBtn.addEventListener("click", async () => {
+  function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
-    const beforeEl = !state.visitDraft.beforePhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="before"]') : null;
-    const afterEl = !state.visitDraft.afterPhotoDataUrl ? body.querySelector('.photo-slot[data-photo-key="after"]') : null;
-    if (beforeEl) beforeEl.classList.add("field-error");
-    if (afterEl) afterEl.classList.add("field-error");
-    if (beforeEl || afterEl) {
-      (beforeEl || afterEl).scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    saveBtn.disabled = true;
+  }
+  function flagError(selector) {
+    const el = body.querySelector(selector);
+    if (el) el.classList.add("field-error");
+    return el;
+  }
 
+  async function uploadAndBuildFolder() {
     const draft = state.visitDraft;
-
-    // ลูกค้าถูกสร้างเข้าฐานข้อมูลตั้งแต่ก่อนเข้าฟอร์มแล้ว (หน้า newCustomer / customerProfile)
-    if (!state.currentCustomer) { saveBtn.disabled = false; show("home"); return; }
-
-    // folder ใน Drive ตั้งชื่อด้วยเบอร์โทรของลูกค้าปัจจุบัน
     const folderMeta = {
       customerPhone: state.currentCustomer.phoneNormalized,
-      customerName: state.currentCustomer.name,
+      customerName: state.currentCustomer.fullName || state.currentCustomer.nickname,
       serviceType: state.serviceType,
       visitKey: ensureVisitSessionKey(draft)
     };
-
-    const hasSignature = Boolean(draft.signatureCustomerDataUrl);
-
     const folderRes = await ensureVisitFolder(folderMeta);
-
     const uploadMeta = { folderId: folderRes.folderId };
+    const hasSignature = Boolean(draft.signatureCustomerDataUrl);
     const [beforeUp, afterUp, sigUp] = await Promise.all([
-      uploadImage(draft.beforePhotoDataUrl, { ...uploadMeta, filename: "before.jpg" }),
-      uploadImage(draft.afterPhotoDataUrl, { ...uploadMeta, filename: "after.jpg" }),
+      draft.beforePhotoDataUrl ? uploadImage(draft.beforePhotoDataUrl, { ...uploadMeta, filename: "before.jpg" }) : Promise.resolve(null),
+      draft.afterPhotoDataUrl ? uploadImage(draft.afterPhotoDataUrl, { ...uploadMeta, filename: "after.jpg" }) : Promise.resolve(null),
       hasSignature
         ? uploadImage(draft.signatureCustomerDataUrl, { ...uploadMeta, filename: "signature_customer.png" })
         : Promise.resolve(null)
     ]);
+    return {
+      beforePhotoUrl: beforeUp ? beforeUp.url : null,
+      afterPhotoUrl: afterUp ? afterUp.url : null,
+      signatureCustomerUrl: hasSignature ? sigUp.url : null
+    };
+  }
 
-    const serviceDateTime = state.visitDraft.serviceDate && state.visitDraft.serviceTime
-      ? new Date(`${state.visitDraft.serviceDate}T${state.visitDraft.serviceTime}`).getTime()
-      : Date.now();
-
-    const payload = {
+  // payload ร่วมของทั้งปุ่ม "บันทึกแบบร่าง" และ "บันทึกเสร็จและปิด Visit" — เหมือนกันทั้ง 3 ฟอร์ม
+  // ต่างกันแค่ formType/serviceType และฟิลด์เฉพาะฟอร์มที่ฝังมาใน draft อยู่แล้วจากหน้าก่อนหน้า
+  function buildPayload(status) {
+    const draft = state.visitDraft;
+    return {
+      serviceId: state.visitContext.visitId,
       customerId: state.currentCustomer.customerId,
+      zervaBookingId: state.visitContext.zervaBookingId,
+      timeSlot: state.visitContext.timeSlot,
       serviceType: state.serviceType,
-      visitDate: serviceDateTime,
-      technique: state.visitDraft.technique || null,
-      colorUsed: state.visitDraft.colorUsed || null,
-      intensity: state.visitDraft.intensity || null,
-      muscle: state.visitDraft.muscle || null,
-      shapeDesign: state.visitDraft.shapeDesign || null,
-      browGuard: state.visitDraft.browGuard || null,
-      analysis: state.visitDraft.analysis || null,
-      note: state.visitDraft.adjustFromLast || state.visitDraft.dontWant || null,
-      beforePhotoUrl: beforeUp.url,
-      afterPhotoUrl: afterUp.url,
-      signatureCustomerUrl: hasSignature ? sigUp.url : null,
+      formType: state.formType,
+      status,
+      visitDate: state.visitContext.visitDate || Date.now(),
+      technique: draft.technique || draft.prevTechnique || null,
+      colorUsed: draft.colorChoice || draft.prevColorUsed || null,
+      intensity: draft.intensity || null,
+      muscle: draft.muscle || null,
+      shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || draft.prevShapeDesign || null),
+      browGuard: draft.browGuard || null,
+      satisfaction: draft.satisfaction || null,
+      colorRetention: draft.colorRetention || null,
+      wantsMoreChange: draft.wantsMoreChange || null,
+      changeItems: draft.wantsMoreChange === "มี" ? (draft.changeItems || []) : [],
+      redness: draft.redness || null,
+      adherence: draft.adherence || null,
+      mixRatio: formatMixRatio("mixRatioParts", draft),
+      note: draft.adjustFromLast || draft.dontWant || null
+    };
+  }
+
+  draftBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    draftBtn.disabled = true;
+    const draft = state.visitDraft;
+    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+    const payload = {
+      ...buildPayload("draft"),
+      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
       signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...state.visitDraft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+    };
+    await saveVisit(payload);
+    draftBtn.disabled = false;
+    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+  });
+
+  closeBtn.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    clearFieldErrors();
+    const draft = state.visitDraft;
+
+    const mixRatio = formatMixRatio("mixRatioParts", draft);
+    const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
+    const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
+    const firstError = mixEl || afterEl;
+    if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+
+    closeBtn.disabled = true;
+    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+    const payload = {
+      ...buildPayload("เสร็จสิ้น"),
+      mixRatio,
+      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
     };
 
     const res = await saveVisit(payload);
-    saveBtn.disabled = false;
+    closeBtn.disabled = false;
     state.lastSavedServiceId = res.serviceId;
     show("confirmation");
   });
@@ -1582,12 +2618,14 @@ function initConfirmation() {
 
   onEnter("confirmation", () => {
     const c = state.currentCustomer;
-    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? c.name : ""} (ID ${state.lastSavedServiceId})`;
+    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? (c.nickname || c.fullName) : ""} (ID ${state.lastSavedServiceId})`;
   });
 }
 
 // ==== js/main.js ====
 // import { initGate } from "./screens/gate.js"; // ปิดใช้งานหน้าถามรหัสผ่านไว้ก่อน เผื่อเปิดใช้ในอนาคต
+
+
 
 
 
@@ -1604,8 +2642,10 @@ initHome();
 initNewCustomer();
 initCustomerProfile();
 initVisitDetail();
+initCreateVisit();
 initServiceType();
-initFormBrow();
+initFormOne();
+initFormTwo();
 initFormTouchup();
 initTechFields();
 initConfirmation();
