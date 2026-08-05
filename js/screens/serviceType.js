@@ -11,6 +11,18 @@ function getModal() {
   return modalEl;
 }
 
+function cachedHistoryForCurrentCustomer() {
+  const customerId = state.currentCustomer && state.currentCustomer.customerId;
+  const history = Array.isArray(state.currentCustomerHistory) ? state.currentCustomerHistory : null;
+  if (!customerId || !history) return null;
+  return history.every((v) => v.customerId === customerId) ? history : null;
+}
+
+function canUseForm3(history) {
+  const currentVisitId = state.visitContext && state.visitContext.visitId;
+  return (history || []).some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
+}
+
 // เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน
 // แถว ServiceHistory จะถูกสร้างหลังเลือก Form สำเร็จเท่านั้น เพื่อไม่ให้มี Visit เปล่าค้างใน history
 export async function openServiceTypeModal() {
@@ -26,15 +38,20 @@ export async function openServiceTypeModal() {
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
 
-  if (state.currentCustomer) {
-    try {
-      const history = await getHistoryByCustomer(state.currentCustomer.customerId);
-      const currentVisitId = state.visitContext && state.visitContext.visitId;
-      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
-      form3Btn.hidden = !hasPriorVisit;
-    } catch (e) {
-      // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
-    }
+  if (!state.currentCustomer || state.customerFlow === "new") return;
+
+  const cached = cachedHistoryForCurrentCustomer();
+  if (cached) {
+    form3Btn.hidden = !canUseForm3(cached);
+    return;
+  }
+
+  try {
+    const history = await getHistoryByCustomer(state.currentCustomer.customerId);
+    state.currentCustomerHistory = history;
+    form3Btn.hidden = !canUseForm3(history);
+  } catch (e) {
+    // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
   }
 }
 

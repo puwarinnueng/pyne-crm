@@ -259,6 +259,7 @@ const TECH_SIGNATURE_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB
 
 const state = {
   currentCustomer: null,      // customer object ที่กำลังเปิดดู/เพิ่มประวัติ
+  customerFlow: null,         // "new" | "old" ใช้แยก flow ลูกค้าใหม่/เก่าให้ไม่ fetch history เกินจำเป็น
   serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
@@ -277,6 +278,7 @@ const state = {
 
   reset() {
     this.currentCustomer = null;
+    this.customerFlow = null;
     this.serviceType = null;
     this.formType = null;
     this.visitContext = null;
@@ -1153,6 +1155,7 @@ function initHome() {
   function openProfile(customer) {
     searchRequestSeq += 1; // cancel any in-flight search render before navigating away
     state.currentCustomer = customer;
+    state.customerFlow = "old";
     state.currentCustomerHistory = null;
     show("customerProfile");
   }
@@ -1162,6 +1165,7 @@ function initHome() {
     // เลือกฟอร์ม (Step 4) ตรง ๆ จากตรงนี้ เพราะ state.visitContext จะไม่ถูกตั้งค่า (ตั้งค่าเฉพาะใน
     // createVisit.js) ทำให้กด Next/บันทึกแบบร่างในฟอร์มแล้วเงียบ ๆ ไม่มีอะไรเกิดขึ้นหรือเด้งกลับ home
     state.currentCustomer = customer;
+    state.customerFlow = "old";
     state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
@@ -1376,6 +1380,7 @@ function initHome() {
   chooseNewCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
+    state.customerFlow = "new";
     state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
@@ -1554,6 +1559,8 @@ function initNewCustomer() {
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
+        state.customerFlow = "old";
+        state.currentCustomerHistory = null;
         show("customerProfile");
       });
       return;
@@ -1581,6 +1588,8 @@ function initNewCustomer() {
     // ลูกค้าถูกสร้างสำเร็จแล้ว ณ จุดนี้ (มี customerId จริงในฐานข้อมูล) — ตั้ง state ทันทีกันไม่ให้ค้าง
     // หน้าเดิมถ้าขั้นตอนถัดไป (บันทึกประวัติผิว/ยืนยันข้อมูล) พังภายหลัง ประวัติผิวแก้ทีหลังได้ใน Customer Profile
     state.currentCustomer = res.customer;
+    state.customerFlow = "new";
+    state.currentCustomerHistory = [];
     try {
       const skinRes = await saveSkinProfile(res.customer.customerId, {
         skinType: draft.skinType || null,
@@ -2091,6 +2100,18 @@ function getModal() {
   return modalEl;
 }
 
+function cachedHistoryForCurrentCustomer() {
+  const customerId = state.currentCustomer && state.currentCustomer.customerId;
+  const history = Array.isArray(state.currentCustomerHistory) ? state.currentCustomerHistory : null;
+  if (!customerId || !history) return null;
+  return history.every((v) => v.customerId === customerId) ? history : null;
+}
+
+function canUseForm3(history) {
+  const currentVisitId = state.visitContext && state.visitContext.visitId;
+  return (history || []).some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
+}
+
 // เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน
 // แถว ServiceHistory จะถูกสร้างหลังเลือก Form สำเร็จเท่านั้น เพื่อไม่ให้มี Visit เปล่าค้างใน history
 async function openServiceTypeModal() {
@@ -2106,15 +2127,20 @@ async function openServiceTypeModal() {
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
 
-  if (state.currentCustomer) {
-    try {
-      const history = await getHistoryByCustomer(state.currentCustomer.customerId);
-      const currentVisitId = state.visitContext && state.visitContext.visitId;
-      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
-      form3Btn.hidden = !hasPriorVisit;
-    } catch (e) {
-      // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
-    }
+  if (!state.currentCustomer || state.customerFlow === "new") return;
+
+  const cached = cachedHistoryForCurrentCustomer();
+  if (cached) {
+    form3Btn.hidden = !canUseForm3(cached);
+    return;
+  }
+
+  try {
+    const history = await getHistoryByCustomer(state.currentCustomer.customerId);
+    state.currentCustomerHistory = history;
+    form3Btn.hidden = !canUseForm3(history);
+  } catch (e) {
+    // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
   }
 }
 

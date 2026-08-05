@@ -156,6 +156,8 @@ export function initNewCustomer() {
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
+        state.customerFlow = "old";
+        state.currentCustomerHistory = null;
         show("customerProfile");
       });
       return;
@@ -183,6 +185,8 @@ export function initNewCustomer() {
     // ลูกค้าถูกสร้างสำเร็จแล้ว ณ จุดนี้ (มี customerId จริงในฐานข้อมูล) — ตั้ง state ทันทีกันไม่ให้ค้าง
     // หน้าเดิมถ้าขั้นตอนถัดไป (บันทึกประวัติผิว/ยืนยันข้อมูล) พังภายหลัง ประวัติผิวแก้ทีหลังได้ใน Customer Profile
     state.currentCustomer = res.customer;
+    state.customerFlow = "new";
+    state.currentCustomerHistory = [];
     try {
       const skinRes = await saveSkinProfile(res.customer.customerId, {
         skinType: draft.skinType || null,

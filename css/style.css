@@ -652,8 +652,15 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
   border-radius: var(--radius-md); cursor: pointer; font-family: inherit;
 }
 .not-served-link {
-  background: none; border: none; color: var(--error-text); font-size: var(--fs-body-sm);
-  font-weight: 600; cursor: pointer; font-family: inherit; padding: var(--sp-8) var(--sp-4);
+  background: var(--error-bg); border: 1px solid #E5A39B;
+  color: var(--error-text); font-size: var(--fs-body-sm); font-weight: 700;
+  cursor: pointer; font-family: inherit; padding: var(--sp-8) var(--sp-12);
+  border-radius: var(--radius-md); box-shadow: 0 1px 0 rgba(88, 58, 42, .08);
+}
+.not-served-link:hover { border-color: var(--error-text); background: #FDEDEA; }
+.not-served-link:active { transform: translateY(1px); }
+.not-served-link:disabled {
+  cursor: not-allowed; opacity: .55; transform: none;
 }
 .visit-header { margin-bottom: var(--sp-16); }
 

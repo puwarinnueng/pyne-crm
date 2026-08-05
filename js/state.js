@@ -3,6 +3,7 @@
 
 export const state = {
   currentCustomer: null,      // customer object ที่กำลังเปิดดู/เพิ่มประวัติ
+  customerFlow: null,         // "new" | "old" ใช้แยก flow ลูกค้าใหม่/เก่าให้ไม่ fetch history เกินจำเป็น
   serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
@@ -21,6 +22,7 @@ export const state = {
 
   reset() {
     this.currentCustomer = null;
+    this.customerFlow = null;
     this.serviceType = null;
     this.formType = null;
     this.visitContext = null;
