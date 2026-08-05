@@ -27,12 +27,17 @@ function setConfigValue_(key, value) {
 // อ่านทั้งชีตเป็น array ของ object (ใช้ header แถวแรกเป็น key) — สะดวกกว่าไล่ index คอลัมน์เอง
 function sheetToObjects_(sheet) {
   const values = sheet.getDataRange().getValues();
-  const headers = values[0];
+  const displayValues = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map((h) => String(h || "").trim());
   const rows = values.slice(1);
   return rows
     .map((row, i) => {
       const obj = { _rowIndex: i + 2 }; // แถวจริงใน sheet (1-based, +1 สำหรับ header)
-      headers.forEach((h, colIdx) => { obj[h] = row[colIdx]; });
+      headers.forEach((h, colIdx) => {
+        const displayValue = displayValues[i + 1] ? displayValues[i + 1][colIdx] : "";
+        const shouldUseDisplay = ["PhoneNormalized", "PhoneNormalize", "PhoneDisplay"].indexOf(h) >= 0;
+        obj[h] = shouldUseDisplay ? String(displayValue || row[colIdx] || "") : row[colIdx];
+      });
       return obj;
     })
     .filter((obj) => obj[headers[0]] !== ""); // ข้ามแถวว่าง

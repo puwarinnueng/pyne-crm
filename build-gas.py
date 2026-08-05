@@ -80,6 +80,7 @@ function changePassword(oldPassword, newPassword) { return callServer_("changePa
 function searchCustomers(query) { return callServerAuthed_("searchCustomers", query); }
 function listRecentCustomers(limit) { return callServerAuthed_("listRecentCustomers", limit); }
 function listCustomersWithStats() { return callServerAuthed_("listCustomersWithStats"); }
+function debugCustomerSearch(query) { return callServerAuthed_("debugCustomerSearch", query); }
 function findCustomerByPhone(phone) { return callServerAuthed_("findCustomerByPhone", phone); }
 function createCustomer(data) { return callServerAuthed_("createCustomer", data); }
 function confirmCustomerProfile(customerId) { return callServerAuthed_("confirmCustomerProfile", customerId); }

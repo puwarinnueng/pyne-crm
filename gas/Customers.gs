@@ -23,15 +23,82 @@ function parseSkinProfile_(json) {
   }
 }
 
+function customerPhoneNormalized_(row) {
+  return String(row.PhoneNormalized || row.PhoneNormalize || "");
+}
+
+function phoneMatches_(storedPhone, queryPhone) {
+  const stored = normalizePhone(storedPhone);
+  const query = normalizePhone(queryPhone);
+  if (!stored || !query || query.length < 3) return false;
+  if (stored.indexOf(query) >= 0) return true;
+
+  // Google Sheets can return phone-looking text as a Number when the cell was not stored as plain text,
+  // which strips the leading 0 from Thai mobile numbers. Compare digit-only variants without leading
+  // zeroes so 850373790 still matches a user search for 0850373790.
+  const storedDigits = String(stored).replace(/\D/g, "");
+  const queryDigits = String(query).replace(/\D/g, "");
+  const storedNoLead = storedDigits.replace(/^0+/, "");
+  const queryNoLead = queryDigits.replace(/^0+/, "");
+  return (
+    storedDigits.indexOf(queryDigits) >= 0 ||
+    queryDigits.indexOf(storedDigits) >= 0 ||
+    storedNoLead.indexOf(queryNoLead) >= 0 ||
+    queryNoLead.indexOf(storedNoLead) >= 0
+  );
+}
+
+function debugCustomerSearch(token, query) {
+  requireSession_(token);
+  const sheet = getCustomersSheet_();
+  const values = sheet.getDataRange().getValues();
+  const displayValues = sheet.getDataRange().getDisplayValues();
+  const headers = (displayValues[0] || values[0] || []).map((h) => String(h || "").trim());
+  const rows = sheetToObjects_(sheet);
+  const qPhone = normalizePhone(query);
+  const sample = rows.slice(0, 3).map((row, idx) => {
+    const displayRow = displayValues[idx + 1] || [];
+    const phoneNormalized = customerPhoneNormalized_(row);
+    const phoneDisplay = row.PhoneDisplay;
+    return {
+      rowIndex: row._rowIndex,
+      customerId: row.CustomerID || "",
+      phoneNormalized: phoneNormalized,
+      phoneDisplay: phoneDisplay || "",
+      displayPhoneNormalized: displayRow[headers.indexOf("PhoneNormalized")] || "",
+      displayPhoneDisplay: displayRow[headers.indexOf("PhoneDisplay")] || "",
+      normalizedMatch: phoneMatches_(phoneNormalized, qPhone),
+      displayMatch: displayRow.some((cell) => phoneMatches_(cell, qPhone))
+    };
+  });
+  return {
+    query: query,
+    qPhone: qPhone,
+    sheetName: sheet.getName(),
+    lastRow: sheet.getLastRow(),
+    headers: headers,
+    rowCount: rows.length,
+    sample: sample
+  };
+}
+
+function customerDobForClient_(value) {
+  if (!value) return null;
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(value);
+}
+
 function rowToCustomer_(row) {
   return {
-    customerId: row.CustomerID,
-    fullName: row.FullName,
-    nickname: row.Nickname,
-    dob: row.DOB,
-    phoneNormalized: row.PhoneNormalized,
-    phoneDisplay: row.PhoneDisplay,
-    line: row.Line,
+    customerId: String(row.CustomerID || ""),
+    fullName: String(row.FullName || ""),
+    nickname: String(row.Nickname || ""),
+    dob: customerDobForClient_(row.DOB),
+    phoneNormalized: customerPhoneNormalized_(row),
+    phoneDisplay: String(row.PhoneDisplay || ""),
+    line: String(row.Line || ""),
     skinProfile: parseSkinProfile_(row.SkinProfileJson),
     profileConfirmedAt: row.ProfileConfirmedAt || null,
     createdAt: row.CreatedAt
@@ -43,14 +110,18 @@ function searchCustomers(token, query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return [];
   const qPhone = normalizePhone(query);
-  const rows = sheetToObjects_(getCustomersSheet_());
+  const sheet = getCustomersSheet_();
+  const rows = sheetToObjects_(sheet);
+  const displayValues = sheet.getDataRange().getDisplayValues();
 
   return rows
-    .filter((row) => {
+    .filter((row, idx) => {
       const nameHit = (String(row.FullName || "") + " " + String(row.Nickname || "")).toLowerCase().indexOf(q) >= 0;
       const lineHit = String(row.Line || "").toLowerCase().indexOf(q) >= 0;
-      const phoneHit = qPhone.length >= 3 && String(row.PhoneNormalized || "").indexOf(qPhone) >= 0;
-      return nameHit || lineHit || phoneHit;
+      const phoneHit = phoneMatches_(customerPhoneNormalized_(row), qPhone) || phoneMatches_(row.PhoneDisplay, qPhone);
+      const displayRow = displayValues[idx + 1] || [];
+      const displayPhoneHit = qPhone.length >= 3 && displayRow.some((cell) => phoneMatches_(cell, qPhone));
+      return nameHit || lineHit || phoneHit || displayPhoneHit;
     })
     .map(rowToCustomer_);
 }
@@ -75,7 +146,7 @@ function findCustomerByPhone(token, phone) {
   requireSession_(token);
   const normalized = normalizePhone(phone);
   const rows = sheetToObjects_(getCustomersSheet_());
-  const existing = rows.find((r) => r.PhoneNormalized === normalized);
+  const existing = rows.find((r) => phoneMatches_(customerPhoneNormalized_(r), normalized) || phoneMatches_(r.PhoneDisplay, normalized));
   return existing ? rowToCustomer_(existing) : null;
 }
 
@@ -109,7 +180,7 @@ function createCustomer(token, data) {
     const sheet = getCustomersSheet_();
     const normalized = normalizePhone(data.phone);
     const rows = sheetToObjects_(sheet);
-    const existing = rows.find((r) => r.PhoneNormalized === normalized);
+    const existing = rows.find((r) => phoneMatches_(customerPhoneNormalized_(r), normalized) || phoneMatches_(r.PhoneDisplay, normalized));
     if (existing) {
       return { success: false, error: "duplicate", existing: rowToCustomer_(existing) };
     }

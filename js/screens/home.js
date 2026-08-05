@@ -1,4 +1,4 @@
-import { listCustomersWithStats, normalizePhone } from "../mockApi.js";
+import { searchCustomers, debugCustomerSearch, normalizePhone } from "../mockApi.js";
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { escapeHtml, formatDateShort } from "../utils.js";
@@ -31,10 +31,11 @@ export function initHome() {
   const searchBackBtn = document.getElementById("homeSearchBackBtn");
   const summary = document.getElementById("customersSummary");
 
-  let allCustomers = [];
+  let visibleCustomers = [];
+  let searchRequestSeq = 0;
 
   function renderSummary() {
-    const total = allCustomers.length;
+    const total = visibleCustomers.length;
     summary.innerHTML = `<strong>${total}</strong> customer${total === 1 ? "" : "s"}`;
   }
 
@@ -53,7 +54,9 @@ export function initHome() {
     show("createVisit");
   }
 
-  function render() {
+  function render(rows) {
+    visibleCustomers = rows || [];
+    renderSummary();
     const qPhone = normalizePhone(searchInput.value);
 
     if (qPhone.length < 3) {
@@ -63,26 +66,23 @@ export function initHome() {
       return;
     }
 
-    const rows = allCustomers.filter((c) => c.phoneNormalized.includes(qPhone));
-
-    if (rows.length === 0) {
+    if (visibleCustomers.length === 0) {
       table.hidden = true;
       emptyState.hidden = false;
-      emptyState.innerHTML = allCustomers.length === 0
-        ? `No customers yet — click "+ New Customer" to add one.`
-        : `ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"`;
+      emptyState.innerHTML = `ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"`;
       return;
     }
     table.hidden = false;
     emptyState.hidden = true;
 
-    tbody.innerHTML = rows.map((c) => {
-      const sub = c.visitsCount > 0 && c.lastTechnique && c.lastTechnique !== "-"
+    tbody.innerHTML = visibleCustomers.map((c) => {
+      const visitsCount = Number(c.visitsCount || 0);
+      const sub = visitsCount > 0 && c.lastTechnique && c.lastTechnique !== "-"
         ? `<span class="cust-sub">${escapeHtml(c.lastTechnique)}</span>` : "";
       const lineCell = c.line
         ? `${ICON_LINE}<span>@${escapeHtml(c.line)}</span>`
         : `<span class="cell-empty">—</span>`;
-      const lastVisit = c.visitsCount === 0
+      const lastVisit = visitsCount === 0
         ? `<span class="cell-empty">New customer</span>`
         : `${ICON_CAL}<span>${escapeHtml(formatDateShort(c.lastVisitDate))}</span>`;
       return `
@@ -97,7 +97,7 @@ export function initHome() {
         <td><span class="cell-ico">${ICON_PHONE}<span>${escapeHtml(c.phoneDisplay)}</span></span></td>
         <td><span class="cell-ico">${lineCell}</span></td>
         <td><span class="cell-ico">${lastVisit}</span></td>
-        <td><span class="cell-visits">${ICON_STAR}<span><strong>${c.visitsCount}</strong> visit${c.visitsCount === 1 ? "" : "s"}</span></span></td>
+        <td><span class="cell-visits">${ICON_STAR}<span><strong>${visitsCount}</strong> visit${visitsCount === 1 ? "" : "s"}</span></span></td>
         <td class="cell-actions">
           <div class="row-menu">
             <button type="button" class="row-menu-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Actions">
@@ -127,7 +127,7 @@ export function initHome() {
     }
 
     tbody.querySelectorAll("tr").forEach((tr) => {
-      const customer = rows.find((c) => c.customerId === tr.dataset.id);
+      const customer = visibleCustomers.find((c) => c.customerId === tr.dataset.id);
       const menu = tr.querySelector(".row-menu");
       const trigger = tr.querySelector(".row-menu-trigger");
       const popover = tr.querySelector(".row-menu-popover");
@@ -188,26 +188,45 @@ export function initHome() {
     if (e.key === "Escape") closeAllOpenMenus();
   });
 
-  async function loadCustomers() {
-    table.hidden = true;
-    emptyState.hidden = false;
-    emptyState.textContent = "Loading...";
-    try {
-      // loadCustomers() ถูกเรียกหลังกด "ลูกค้าเก่า" เท่านั้น (ผ่าน login เสร็จแล้วแน่ ๆ ณ จุดนี้) — ถ้าพัง
-      // แปลว่าเป็น error จริง ต้องโชว์ให้เห็นพร้อมปุ่มลองใหม่ ห้ามปล่อยให้ค้าง "Loading..." เงียบ ๆ ตลอดไป
-      allCustomers = await listCustomersWithStats();
-    } catch (e) {
-      console.warn("listCustomersWithStats failed:", e);
-      emptyState.innerHTML = `โหลดรายชื่อลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
-      const retryBtn = document.getElementById("retryLoadCustomersBtn");
-      if (retryBtn) retryBtn.addEventListener("click", loadCustomers);
+  async function runPhoneSearch() {
+    const qPhone = normalizePhone(searchInput.value);
+    const requestId = ++searchRequestSeq;
+    if (qPhone.length < 3) {
+      render([]);
       return;
     }
-    renderSummary();
-    render();
+    table.hidden = true;
+    emptyState.hidden = false;
+    emptyState.textContent = "กำลังค้นหา...";
+    try {
+      const rows = await searchCustomers(qPhone);
+      if (requestId !== searchRequestSeq) return;
+      render(rows);
+      if (!rows.length) {
+        try {
+          const debug = await debugCustomerSearch(qPhone);
+          if (requestId !== searchRequestSeq) return;
+          emptyState.innerHTML = `
+            ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"
+            <br><span class="muted small">debug: rows=${escapeHtml(debug.rowCount)} lastRow=${escapeHtml(debug.lastRow)} q=${escapeHtml(debug.qPhone)} sample=${escapeHtml(JSON.stringify(debug.sample || []))}</span>
+          `;
+        } catch (debugErr) {
+          console.warn("debugCustomerSearch failed:", debugErr);
+        }
+      }
+    } catch (e) {
+      if (requestId !== searchRequestSeq) return;
+      console.warn("searchCustomers failed:", e);
+      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      const retryBtn = document.getElementById("retryLoadCustomersBtn");
+      if (retryBtn) retryBtn.addEventListener("click", runPhoneSearch);
+      return;
+    }
   }
 
-  searchInput.addEventListener("input", render);
+  ["input", "keyup", "change", "paste"].forEach((evt) => {
+    searchInput.addEventListener(evt, () => setTimeout(runPhoneSearch, 0));
+  });
 
   function showStartChoice() {
     startChoice.hidden = false;
@@ -218,8 +237,9 @@ export function initHome() {
     startChoice.hidden = true;
     searchPanel.hidden = false;
     searchInput.value = "";
+    visibleCustomers = [];
+    render([]);
     searchInput.focus();
-    loadCustomers();
   }
 
   chooseNewCustomerBtn.addEventListener("click", () => {
@@ -238,5 +258,7 @@ export function initHome() {
   onEnter("home", () => {
     showStartChoice();
     searchInput.value = "";
+    visibleCustomers = [];
+    renderSummary();
   });
 }

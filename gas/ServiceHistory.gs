@@ -20,12 +20,20 @@ function parseJsonArray_(json) {
   }
 }
 
+function dateValueForClient_(value) {
+  if (!value) return null;
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return value.getTime();
+  }
+  return value;
+}
+
 function rowToVisit_(row) {
   return {
     serviceId: row.ServiceID,
     customerId: row.CustomerID,
     zervaBookingId: row.ZervaBookingId,
-    visitDate: row.VisitDate,
+    visitDate: dateValueForClient_(row.VisitDate),
     timeSlot: row.TimeSlot,
     status: row.Status,
     serviceType: row.ServiceType,
@@ -50,9 +58,9 @@ function rowToVisit_(row) {
     afterPhotoUrl: row.AfterPhotoUrl,
     signatureCustomerUrl: row.SignatureCustomerUrl,
     signatureTechUrl: row.SignatureTechUrl,
-    consentAgreedAt: row.ConsentAgreedAt || null,
+    consentAgreedAt: dateValueForClient_(row.ConsentAgreedAt) || null,
     calendarEventId: row.CalendarEventId,
-    createdAt: row.CreatedAt
+    createdAt: dateValueForClient_(row.CreatedAt)
   };
 }
 

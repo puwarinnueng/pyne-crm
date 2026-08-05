@@ -117,6 +117,29 @@ export async function listRecentCustomers(limit) {
   return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
 }
 
+export async function debugCustomerSearch(query) {
+  await wait(100);
+  requireSession(getToken());
+  const { customers } = db.get();
+  const qPhone = normalizePhone(query);
+  return {
+    query,
+    qPhone,
+    sheetName: "mock",
+    lastRow: customers.length + 1,
+    headers: ["CustomerID", "PhoneNormalized", "PhoneDisplay"],
+    rowCount: customers.length,
+    sample: customers.slice(0, 3).map((c, idx) => ({
+      rowIndex: idx + 2,
+      customerId: c.customerId,
+      phoneNormalized: c.phoneNormalized,
+      phoneDisplay: c.phoneDisplay,
+      normalizedMatch: c.phoneNormalized.includes(qPhone),
+      displayMatch: c.phoneDisplay.includes(qPhone)
+    }))
+  };
+}
+
 // รายชื่อลูกค้าทั้งหมด พร้อมสถิติที่คำนวณจาก serviceHistory (จำนวนครั้ง, วันที่ล่าสุด, เทคนิคล่าสุด)
 // ใช้แสดงในตาราง Customers — ของจริง (gas/) จะ join ฝั่งเซิร์ฟเวอร์แบบเดียวกันแล้วคืนรูปแบบนี้เหมือนกัน
 export async function listCustomersWithStats() {
