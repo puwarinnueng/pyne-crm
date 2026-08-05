@@ -54,25 +54,23 @@ export function initHome() {
   }
 
   function render() {
-    const q = searchInput.value.trim().toLowerCase();
     const qPhone = normalizePhone(searchInput.value);
 
-    let rows = allCustomers;
-    if (q) {
-      rows = rows.filter((c) => {
-        const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
-        const lineHit = (c.line || "").toLowerCase().includes(q);
-        const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
-        return nameHit || lineHit || phoneHit;
-      });
+    if (qPhone.length < 3) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = `กรอกเบอร์โทรศัพท์อย่างน้อย 3 หลักเพื่อค้นหา Customer Profile`;
+      return;
     }
+
+    const rows = allCustomers.filter((c) => c.phoneNormalized.includes(qPhone));
 
     if (rows.length === 0) {
       table.hidden = true;
       emptyState.hidden = false;
       emptyState.innerHTML = allCustomers.length === 0
         ? `No customers yet — click "+ New Customer" to add one.`
-        : `No customers match "${escapeHtml(searchInput.value.trim())}".`;
+        : `ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"`;
       return;
     }
     table.hidden = false;

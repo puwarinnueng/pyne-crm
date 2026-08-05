@@ -9,7 +9,7 @@ import { OPTIONS } from "../data/options.js";
 import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js";
 import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { formatDate, escapeHtml, readFileAsDataUrl } from "../utils.js";
+import { formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit } from "../utils.js";
 import { visitHeaderHtml, wireNotServedButton, wireDraftSaveButton } from "../visitFlow.js";
 
 // ระยะเวลาจากวันที่สักครั้งแรกถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (คำนวณอัตโนมัติตามสเปก)
@@ -27,14 +27,14 @@ function photoBoxReadOnly(url) {
   return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
 }
 
-// รอบแรกที่สักจริงกับร้าน = Visit ที่เก่าที่สุดที่ serviceType เป็น "สักคิ้ว" (ไม่ใช่ "เติมสี")
-// ล่าสุด = Visit ล่าสุดไม่ว่าประเภทไหน (ใช้แสดงเทคนิค/สี/กล้ามเนื้อคิ้วปัจจุบัน)
+// รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
+// ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
 async function loadHistoryCtx(customerId) {
   const history = await getHistoryByCustomer(customerId);
-  if (!history.length) return null;
-  const browVisits = history.filter((h) => h.serviceType === "สักคิ้ว");
-  const first = browVisits.length ? browVisits[browVisits.length - 1] : history[history.length - 1];
-  const last = history[0];
+  const browVisits = history.filter(isCompletedBrowVisit);
+  if (!browVisits.length) return null;
+  const first = browVisits[browVisits.length - 1];
+  const last = browVisits[0];
   return { first, last };
 }
 
@@ -118,17 +118,17 @@ export function initFormTouchup() {
       <div class="form-section-title">ส่วนที่ 3 — การออกแบบ</div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือกใช้ครั้งนี้</div>
-        <p class="muted small">เทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นเทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
         ${radioField("technique", OPTIONS.technique, draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
-        <p class="muted small">ทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
         ${chipGroup("shapeDesign", OPTIONS.touchupShape, draft, false)}
       </div>
       <div class="step-group">
         <div class="step-group-title">สีที่ต้องการ</div>
-        <p class="muted small">สีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นสีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
         ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
       </div>
       <div class="step-group">
@@ -227,11 +227,12 @@ export function initFormTouchup() {
     const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
     const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
     const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, agreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, changeItemsEl, agreeEl, sigEl);
     if (!noErrors) return;
 
     if (!pad.isEmpty()) {
@@ -244,6 +245,11 @@ export function initFormTouchup() {
       draft.prevTechnique = historyCtx.last.technique || null;
       draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
       draft.prevColorUsed = historyCtx.last.colorUsed || null;
+      if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
+      if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
+        draft.shapeDesign = historyCtx.last.shapeDesign;
+      }
+      if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     }
     show("techFields");
   });
@@ -253,7 +259,26 @@ export function initFormTouchup() {
     if (!c) { show("home"); return; }
     historyCtx = null;
     container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
-    historyCtx = await loadHistoryCtx(c.customerId);
+    try {
+      historyCtx = await loadHistoryCtx(c.customerId);
+    } catch (e) {
+      historyCtx = null;
+      container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;
+      return;
+    }
+    if (!historyCtx) {
+      container.innerHTML = `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
+      return;
+    }
+    const draft = state.visitDraft;
+    if (!draft.prevTechnique) draft.prevTechnique = historyCtx.last.technique || null;
+    if (!draft.prevShapeDesign) draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
+    if (!draft.prevColorUsed) draft.prevColorUsed = historyCtx.last.colorUsed || null;
+    if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
+    if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
+      draft.shapeDesign = historyCtx.last.shapeDesign;
+    }
+    if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     render();
   });
 }

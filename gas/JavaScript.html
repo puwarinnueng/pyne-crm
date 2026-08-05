@@ -22,6 +22,19 @@ function escapeHtml(str) {
   }[c]));
 }
 
+function isCompletedVisitStatus(status) {
+  return ["เสร็จสิ้น", "completed"].includes(String(status || "").trim());
+}
+
+function isCompletedBrowVisit(visit) {
+  return Boolean(
+    visit &&
+    visit.serviceType === "สักคิ้ว" &&
+    isCompletedVisitStatus(visit.status) &&
+    (visit.technique || visit.colorUsed || visit.beforePhotoUrl || visit.afterPhotoUrl)
+  );
+}
+
 // unique key ต่อ visit หนึ่งครั้ง ใช้กันชื่อ Drive folder ชนกันเมื่อลูกค้าคนเดียวกันมีหลาย visit วันเดียวกัน
 // สร้างครั้งแรกที่เรียกแล้ว cache ไว้ใน draft — เรียกซ้ำได้ค่าเดิมตลอดวงจรชีวิตของ visit นั้น
 function ensureVisitSessionKey(draft) {
@@ -1070,25 +1083,23 @@ function initHome() {
   }
 
   function render() {
-    const q = searchInput.value.trim().toLowerCase();
     const qPhone = normalizePhone(searchInput.value);
 
-    let rows = allCustomers;
-    if (q) {
-      rows = rows.filter((c) => {
-        const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
-        const lineHit = (c.line || "").toLowerCase().includes(q);
-        const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
-        return nameHit || lineHit || phoneHit;
-      });
+    if (qPhone.length < 3) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = `กรอกเบอร์โทรศัพท์อย่างน้อย 3 หลักเพื่อค้นหา Customer Profile`;
+      return;
     }
+
+    const rows = allCustomers.filter((c) => c.phoneNormalized.includes(qPhone));
 
     if (rows.length === 0) {
       table.hidden = true;
       emptyState.hidden = false;
       emptyState.innerHTML = allCustomers.length === 0
         ? `No customers yet — click "+ New Customer" to add one.`
-        : `No customers match "${escapeHtml(searchInput.value.trim())}".`;
+        : `ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"`;
       return;
     }
     table.hidden = false;
@@ -1883,7 +1894,7 @@ async function openServiceTypeModal() {
     try {
       const history = await getHistoryByCustomer(state.currentCustomer.customerId);
       const currentVisitId = state.visitContext && state.visitContext.visitId;
-      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId);
+      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
       form3Btn.hidden = !hasPriorVisit;
     } catch (e) {
       // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
@@ -2126,8 +2137,12 @@ function initFormOne() {
     const draft = state.visitDraft;
 
     const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
+    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
     const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
     const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
     const concernsEl = !(draft.concerns || []).length ? flagError('[data-chip-key="concerns"]') : null;
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
@@ -2137,7 +2152,7 @@ function initFormOne() {
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
     if (!noErrors) return;
 
     nextBtn.disabled = true;
@@ -2360,8 +2375,12 @@ function initFormTwo() {
     const draft = state.visitDraft;
 
     const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
+    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
     const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
     const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
     const oldMarkEl = !(draft.oldMarkLook || []).length ? flagError('[data-chip-key="oldMarkLook"]') : null;
     const fixPointsEl = !(draft.fixPoints || []).length ? flagError('[data-chip-key="fixPoints"]') : null;
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
@@ -2372,7 +2391,7 @@ function initFormTwo() {
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
     if (!noErrors) return;
 
     nextBtn.disabled = true;
@@ -2424,14 +2443,14 @@ function photoBoxReadOnly(url) {
   return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
 }
 
-// รอบแรกที่สักจริงกับร้าน = Visit ที่เก่าที่สุดที่ serviceType เป็น "สักคิ้ว" (ไม่ใช่ "เติมสี")
-// ล่าสุด = Visit ล่าสุดไม่ว่าประเภทไหน (ใช้แสดงเทคนิค/สี/กล้ามเนื้อคิ้วปัจจุบัน)
+// รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
+// ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
 async function loadHistoryCtx(customerId) {
   const history = await getHistoryByCustomer(customerId);
-  if (!history.length) return null;
-  const browVisits = history.filter((h) => h.serviceType === "สักคิ้ว");
-  const first = browVisits.length ? browVisits[browVisits.length - 1] : history[history.length - 1];
-  const last = history[0];
+  const browVisits = history.filter(isCompletedBrowVisit);
+  if (!browVisits.length) return null;
+  const first = browVisits[browVisits.length - 1];
+  const last = browVisits[0];
   return { first, last };
 }
 
@@ -2515,17 +2534,17 @@ function initFormTouchup() {
       <div class="form-section-title">ส่วนที่ 3 — การออกแบบ</div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือกใช้ครั้งนี้</div>
-        <p class="muted small">เทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นเทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
         ${radioField("technique", OPTIONS.technique, draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
-        <p class="muted small">ทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
         ${chipGroup("shapeDesign", OPTIONS.touchupShape, draft, false)}
       </div>
       <div class="step-group">
         <div class="step-group-title">สีที่ต้องการ</div>
-        <p class="muted small">สีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
+        <p class="muted small">ค่าเริ่มต้นเป็นสีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
         ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
       </div>
       <div class="step-group">
@@ -2624,11 +2643,12 @@ function initFormTouchup() {
     const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
     const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
     const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, agreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, changeItemsEl, agreeEl, sigEl);
     if (!noErrors) return;
 
     if (!pad.isEmpty()) {
@@ -2641,6 +2661,11 @@ function initFormTouchup() {
       draft.prevTechnique = historyCtx.last.technique || null;
       draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
       draft.prevColorUsed = historyCtx.last.colorUsed || null;
+      if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
+      if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
+        draft.shapeDesign = historyCtx.last.shapeDesign;
+      }
+      if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     }
     show("techFields");
   });
@@ -2650,7 +2675,26 @@ function initFormTouchup() {
     if (!c) { show("home"); return; }
     historyCtx = null;
     container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
-    historyCtx = await loadHistoryCtx(c.customerId);
+    try {
+      historyCtx = await loadHistoryCtx(c.customerId);
+    } catch (e) {
+      historyCtx = null;
+      container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;
+      return;
+    }
+    if (!historyCtx) {
+      container.innerHTML = `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
+      return;
+    }
+    const draft = state.visitDraft;
+    if (!draft.prevTechnique) draft.prevTechnique = historyCtx.last.technique || null;
+    if (!draft.prevShapeDesign) draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
+    if (!draft.prevColorUsed) draft.prevColorUsed = historyCtx.last.colorUsed || null;
+    if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
+    if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
+      draft.shapeDesign = historyCtx.last.shapeDesign;
+    }
+    if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     render();
   });
 }
@@ -2745,6 +2789,41 @@ function initTechFields() {
     return el;
   }
 
+  function missingRequiredBeforeClose(draft) {
+    if (!draft.beforePhotoDataUrl) return "รูป Before";
+    if (!draft.finalAgree) return "Consent";
+    if (!draft.signatureCustomerDataUrl) return "ลายเซ็นลูกค้า";
+    if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
+    if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
+    if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
+    if (draft.irritation7d === "มี" && !draft.irritationDetail?.trim()) return "รายละเอียดความระคายเคือง";
+    if (draft.allergyInfo === "มี" && !draft.allergyDetail?.trim()) return "รายละเอียดอาการแพ้/ข้อมูลสำคัญ";
+    if (state.formType === "form1") {
+      if (!(draft.concerns || []).length) return "ปัญหาหลักที่กังวล";
+      if (!draft.desiredOverview) return "ภาพรวมที่ต้องการ";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!draft.preServiceAgree) return "ยอมรับเงื่อนไขก่อนเริ่มบริการ";
+    }
+    if (state.formType === "form2") {
+      if (!(draft.oldMarkLook || []).length) return "ลักษณะรอยเก่า";
+      if (!(draft.fixPoints || []).length) return "จุดที่ต้องการแก้ไข";
+      if (!draft.desiredOverview) return "ภาพรวมที่ต้องการ";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!draft.preServiceAgree) return "ยอมรับเงื่อนไขก่อนเริ่มบริการ";
+    }
+    if (state.formType === "form3") {
+      if (!draft.satisfaction) return "ความพึงพอใจหลังลอก";
+      if (!draft.colorRetention) return "การติดสีโดยรวม";
+      if (!draft.wantsMoreChange) return "มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่";
+      if (draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length) return "สิ่งที่ต้องการแก้ไขเพิ่มเติม";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!(draft.technique || draft.prevTechnique)) return "เทคนิคที่เลือก";
+      if (!(draft.colorChoice || draft.prevColorUsed)) return "สีที่เลือก";
+      if (!(draft.shapeDesign || draft.prevShapeDesign)) return "ทรงที่ออกแบบ";
+    }
+    return "";
+  }
+
   async function uploadAndBuildFolder() {
     const draft = state.visitDraft;
     const folderMeta = {
@@ -2828,9 +2907,14 @@ function initTechFields() {
     const draft = state.visitDraft;
 
     const mixRatio = formatMixRatio("mixRatioParts", draft);
+    const missingBeforeClose = missingRequiredBeforeClose(draft);
     const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
     const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
+    if (missingBeforeClose) {
+      alert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`);
+      return;
+    }
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     closeBtn.disabled = true;

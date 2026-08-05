@@ -20,6 +20,19 @@ export function escapeHtml(str) {
   }[c]));
 }
 
+export function isCompletedVisitStatus(status) {
+  return ["เสร็จสิ้น", "completed"].includes(String(status || "").trim());
+}
+
+export function isCompletedBrowVisit(visit) {
+  return Boolean(
+    visit &&
+    visit.serviceType === "สักคิ้ว" &&
+    isCompletedVisitStatus(visit.status) &&
+    (visit.technique || visit.colorUsed || visit.beforePhotoUrl || visit.afterPhotoUrl)
+  );
+}
+
 // unique key ต่อ visit หนึ่งครั้ง ใช้กันชื่อ Drive folder ชนกันเมื่อลูกค้าคนเดียวกันมีหลาย visit วันเดียวกัน
 // สร้างครั้งแรกที่เรียกแล้ว cache ไว้ใน draft — เรียกซ้ำได้ค่าเดิมตลอดวงจรชีวิตของ visit นั้น
 export function ensureVisitSessionKey(draft) {

@@ -187,8 +187,12 @@ export function initFormOne() {
     const draft = state.visitDraft;
 
     const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
+    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
     const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
     const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
     const concernsEl = !(draft.concerns || []).length ? flagError('[data-chip-key="concerns"]') : null;
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
@@ -198,7 +202,7 @@ export function initFormOne() {
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
     if (!noErrors) return;
 
     nextBtn.disabled = true;

@@ -1,6 +1,7 @@
 import { show } from "../router.js";
 import { state } from "../state.js";
 import { getHistoryByCustomer } from "../mockApi.js";
+import { isCompletedBrowVisit } from "../utils.js";
 
 let modalEl = null;
 let closeTimer = null;
@@ -28,7 +29,7 @@ export async function openServiceTypeModal() {
     try {
       const history = await getHistoryByCustomer(state.currentCustomer.customerId);
       const currentVisitId = state.visitContext && state.visitContext.visitId;
-      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId);
+      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId && isCompletedBrowVisit(v));
       form3Btn.hidden = !hasPriorVisit;
     } catch (e) {
       // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด

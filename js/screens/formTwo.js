@@ -198,8 +198,12 @@ export function initFormTwo() {
     const draft = state.visitDraft;
 
     const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
+    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
+    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
     const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
+    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
     const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
+    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
     const oldMarkEl = !(draft.oldMarkLook || []).length ? flagError('[data-chip-key="oldMarkLook"]') : null;
     const fixPointsEl = !(draft.fixPoints || []).length ? flagError('[data-chip-key="fixPoints"]') : null;
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
@@ -210,7 +214,7 @@ export function initFormTwo() {
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
 
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
+    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
     if (!noErrors) return;
 
     nextBtn.disabled = true;

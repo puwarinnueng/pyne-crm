@@ -87,6 +87,41 @@ export function initTechFields() {
     return el;
   }
 
+  function missingRequiredBeforeClose(draft) {
+    if (!draft.beforePhotoDataUrl) return "รูป Before";
+    if (!draft.finalAgree) return "Consent";
+    if (!draft.signatureCustomerDataUrl) return "ลายเซ็นลูกค้า";
+    if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
+    if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
+    if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
+    if (draft.irritation7d === "มี" && !draft.irritationDetail?.trim()) return "รายละเอียดความระคายเคือง";
+    if (draft.allergyInfo === "มี" && !draft.allergyDetail?.trim()) return "รายละเอียดอาการแพ้/ข้อมูลสำคัญ";
+    if (state.formType === "form1") {
+      if (!(draft.concerns || []).length) return "ปัญหาหลักที่กังวล";
+      if (!draft.desiredOverview) return "ภาพรวมที่ต้องการ";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!draft.preServiceAgree) return "ยอมรับเงื่อนไขก่อนเริ่มบริการ";
+    }
+    if (state.formType === "form2") {
+      if (!(draft.oldMarkLook || []).length) return "ลักษณะรอยเก่า";
+      if (!(draft.fixPoints || []).length) return "จุดที่ต้องการแก้ไข";
+      if (!draft.desiredOverview) return "ภาพรวมที่ต้องการ";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!draft.preServiceAgree) return "ยอมรับเงื่อนไขก่อนเริ่มบริการ";
+    }
+    if (state.formType === "form3") {
+      if (!draft.satisfaction) return "ความพึงพอใจหลังลอก";
+      if (!draft.colorRetention) return "การติดสีโดยรวม";
+      if (!draft.wantsMoreChange) return "มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่";
+      if (draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length) return "สิ่งที่ต้องการแก้ไขเพิ่มเติม";
+      if (!draft.intensity) return "ระดับความเข้ม";
+      if (!(draft.technique || draft.prevTechnique)) return "เทคนิคที่เลือก";
+      if (!(draft.colorChoice || draft.prevColorUsed)) return "สีที่เลือก";
+      if (!(draft.shapeDesign || draft.prevShapeDesign)) return "ทรงที่ออกแบบ";
+    }
+    return "";
+  }
+
   async function uploadAndBuildFolder() {
     const draft = state.visitDraft;
     const folderMeta = {
@@ -170,9 +205,14 @@ export function initTechFields() {
     const draft = state.visitDraft;
 
     const mixRatio = formatMixRatio("mixRatioParts", draft);
+    const missingBeforeClose = missingRequiredBeforeClose(draft);
     const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
     const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
+    if (missingBeforeClose) {
+      alert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`);
+      return;
+    }
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     closeBtn.disabled = true;
