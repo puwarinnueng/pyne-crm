@@ -3,9 +3,9 @@
 
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { createVisit } from "../mockApi.js";
+import { createVisit, getHistoryByCustomer } from "../mockApi.js";
 import { openServiceTypeModal } from "./serviceType.js";
-import { escapeHtml } from "../utils.js";
+import { escapeHtml, formatDate } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
 function todayDateValue() {
@@ -55,25 +55,49 @@ export function initCreateVisit() {
     if (firstErr) { firstErr.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     continueBtn.disabled = true;
-    const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
-    const res = await createVisit({
-      customerId: c.customerId,
-      zervaBookingId: zervaEl.value.trim(),
-      visitDate,
-      timeSlot: timeValue
-    });
-    continueBtn.disabled = false;
+    try {
+      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("กำลังดำเนินการ") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
+      // ถ้าหน้าเว็บ reload กลางทางระหว่างกรอกฟอร์ม (visitContext เป็นแค่ state ในหน่วยความจำ ไม่ persist)
+      // แล้วช่างกลับมาเริ่มใหม่ ไม่งั้นจะได้ Visit ซ้อนกัน 2 แถวสำหรับคิวเดียวกันแบบเงียบ ๆ
+      const history = await getHistoryByCustomer(c.customerId);
+      const openVisit = history.find((v) => v.status === "กำลังดำเนินการ");
+      if (openVisit) {
+        const proceed = confirm(
+          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่ (${openVisit.serviceId}, สร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}) ` +
+          `อาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง\n\n` +
+          `กด OK เพื่อสร้าง Visit ใหม่ต่อไป (Visit เก่าจะยังค้างอยู่ ต้องไปปิดเองทีหลัง) หรือ Cancel เพื่อหยุดแล้วไปเช็ค Visit เก่าก่อน`
+        );
+        if (!proceed) { continueBtn.disabled = false; return; }
+      }
+    } catch (e) {
+      // เช็ค Visit ค้างไม่สำเร็จ — ไม่บล็อกการทำงานต่อ แค่ข้ามการเตือนไปเฉย ๆ
+      console.warn("checking for open visit failed:", e);
+    }
 
-    state.visitContext = {
-      visitId: res.visitId,
-      zervaBookingId: zervaEl.value.trim(),
-      visitDate,
-      timeSlot: timeValue
-    };
-    state.resetVisitDraft();
-    state.formType = null;
-    state.serviceType = null;
-    openServiceTypeModal();
+    const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
+    try {
+      const res = await createVisit({
+        customerId: c.customerId,
+        zervaBookingId: zervaEl.value.trim(),
+        visitDate,
+        timeSlot: timeValue
+      });
+      state.visitContext = {
+        visitId: res.visitId,
+        zervaBookingId: zervaEl.value.trim(),
+        visitDate,
+        timeSlot: timeValue
+      };
+      state.resetVisitDraft();
+      state.formType = null;
+      state.serviceType = null;
+      openServiceTypeModal();
+    } catch (e) {
+      console.warn("createVisit failed:", e);
+      alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+    } finally {
+      continueBtn.disabled = false;
+    }
   });
 
   onEnter("createVisit", () => {

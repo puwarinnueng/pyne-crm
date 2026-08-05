@@ -146,16 +146,22 @@ export function initTechFields() {
     if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
     draftBtn.disabled = true;
     const draft = state.visitDraft;
-    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
-    const payload = {
-      ...buildPayload("draft"),
-      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
-      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
-    };
-    await saveVisit(payload);
-    draftBtn.disabled = false;
-    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+    try {
+      const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+      const payload = {
+        ...buildPayload("draft"),
+        beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+        signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      };
+      await saveVisit(payload);
+      alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+    } catch (e) {
+      console.warn("saveVisit (draft) failed:", e);
+      alert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+    } finally {
+      draftBtn.disabled = false;
+    }
   });
 
   closeBtn.addEventListener("click", async () => {
@@ -170,19 +176,30 @@ export function initTechFields() {
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     closeBtn.disabled = true;
-    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
-    const payload = {
-      ...buildPayload("เสร็จสิ้น"),
-      mixRatio,
-      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
-      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
-    };
+    try {
+      const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+      const payload = {
+        ...buildPayload("เสร็จสิ้น"),
+        mixRatio,
+        beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+        signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      };
 
-    const res = await saveVisit(payload);
-    closeBtn.disabled = false;
-    state.lastSavedServiceId = res.serviceId;
-    show("confirmation");
+      // ส่ง serviceId เดิมจาก Step 3 เสมอ (state.visitContext.visitId) เพื่อให้ saveVisit() ฝั่งเซิร์ฟเวอร์
+      // "อัปเดตแถวเดิม" แทนสร้างแถวใหม่ — ถ้า state.visitContext หลุดไปคนละตัวจาก race/reload กลางทาง
+      // (เช่น รีเฟรชหน้าระหว่างกรอกฟอร์ม) payload.serviceId จะไม่ตรงกับแถวเดิมในชีต แล้วได้ Visit ซ้อนกัน
+      // เช็คซ้ำตรงนี้กันเคสที่ visitContext หายไประหว่างทาง
+      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จาก Customer Profile");
+
+      const res = await saveVisit(payload);
+      state.lastSavedServiceId = res.serviceId;
+      show("confirmation");
+    } catch (e) {
+      console.warn("saveVisit (close) failed:", e);
+      alert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)");
+      closeBtn.disabled = false;
+    }
   });
 
   onEnter("techFields", render);

@@ -195,10 +195,14 @@ export function initHome() {
     emptyState.hidden = false;
     emptyState.textContent = "Loading...";
     try {
-      // หน้านี้ mount อยู่ใต้ login overlay ตั้งแต่ตอนเปิดแอปเสมอ (ดู js/main.js) ก่อน login สำเร็จ
-      // เรียกนี้จะยังไม่มี session ที่ valid — ปล่อยให้ล้มเงียบๆ ไปก่อน แล้วรอ login.js สั่งโหลดใหม่หลัง login ผ่าน
+      // loadCustomers() ถูกเรียกหลังกด "ลูกค้าเก่า" เท่านั้น (ผ่าน login เสร็จแล้วแน่ ๆ ณ จุดนี้) — ถ้าพัง
+      // แปลว่าเป็น error จริง ต้องโชว์ให้เห็นพร้อมปุ่มลองใหม่ ห้ามปล่อยให้ค้าง "Loading..." เงียบ ๆ ตลอดไป
       allCustomers = await listCustomersWithStats();
     } catch (e) {
+      console.warn("listCustomersWithStats failed:", e);
+      emptyState.innerHTML = `โหลดรายชื่อลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      const retryBtn = document.getElementById("retryLoadCustomersBtn");
+      if (retryBtn) retryBtn.addEventListener("click", loadCustomers);
       return;
     }
     renderSummary();

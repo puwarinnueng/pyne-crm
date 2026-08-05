@@ -1211,10 +1211,14 @@ function initHome() {
     emptyState.hidden = false;
     emptyState.textContent = "Loading...";
     try {
-      // หน้านี้ mount อยู่ใต้ login overlay ตั้งแต่ตอนเปิดแอปเสมอ (ดู js/main.js) ก่อน login สำเร็จ
-      // เรียกนี้จะยังไม่มี session ที่ valid — ปล่อยให้ล้มเงียบๆ ไปก่อน แล้วรอ login.js สั่งโหลดใหม่หลัง login ผ่าน
+      // loadCustomers() ถูกเรียกหลังกด "ลูกค้าเก่า" เท่านั้น (ผ่าน login เสร็จแล้วแน่ ๆ ณ จุดนี้) — ถ้าพัง
+      // แปลว่าเป็น error จริง ต้องโชว์ให้เห็นพร้อมปุ่มลองใหม่ ห้ามปล่อยให้ค้าง "Loading..." เงียบ ๆ ตลอดไป
       allCustomers = await listCustomersWithStats();
     } catch (e) {
+      console.warn("listCustomersWithStats failed:", e);
+      emptyState.innerHTML = `โหลดรายชื่อลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      const retryBtn = document.getElementById("retryLoadCustomersBtn");
+      if (retryBtn) retryBtn.addEventListener("click", loadCustomers);
       return;
     }
     renderSummary();
@@ -1787,25 +1791,49 @@ function initCreateVisit() {
     if (firstErr) { firstErr.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     continueBtn.disabled = true;
-    const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
-    const res = await createVisit({
-      customerId: c.customerId,
-      zervaBookingId: zervaEl.value.trim(),
-      visitDate,
-      timeSlot: timeValue
-    });
-    continueBtn.disabled = false;
+    try {
+      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("กำลังดำเนินการ") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
+      // ถ้าหน้าเว็บ reload กลางทางระหว่างกรอกฟอร์ม (visitContext เป็นแค่ state ในหน่วยความจำ ไม่ persist)
+      // แล้วช่างกลับมาเริ่มใหม่ ไม่งั้นจะได้ Visit ซ้อนกัน 2 แถวสำหรับคิวเดียวกันแบบเงียบ ๆ
+      const history = await getHistoryByCustomer(c.customerId);
+      const openVisit = history.find((v) => v.status === "กำลังดำเนินการ");
+      if (openVisit) {
+        const proceed = confirm(
+          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่ (${openVisit.serviceId}, สร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}) ` +
+          `อาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง\n\n` +
+          `กด OK เพื่อสร้าง Visit ใหม่ต่อไป (Visit เก่าจะยังค้างอยู่ ต้องไปปิดเองทีหลัง) หรือ Cancel เพื่อหยุดแล้วไปเช็ค Visit เก่าก่อน`
+        );
+        if (!proceed) { continueBtn.disabled = false; return; }
+      }
+    } catch (e) {
+      // เช็ค Visit ค้างไม่สำเร็จ — ไม่บล็อกการทำงานต่อ แค่ข้ามการเตือนไปเฉย ๆ
+      console.warn("checking for open visit failed:", e);
+    }
 
-    state.visitContext = {
-      visitId: res.visitId,
-      zervaBookingId: zervaEl.value.trim(),
-      visitDate,
-      timeSlot: timeValue
-    };
-    state.resetVisitDraft();
-    state.formType = null;
-    state.serviceType = null;
-    openServiceTypeModal();
+    const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
+    try {
+      const res = await createVisit({
+        customerId: c.customerId,
+        zervaBookingId: zervaEl.value.trim(),
+        visitDate,
+        timeSlot: timeValue
+      });
+      state.visitContext = {
+        visitId: res.visitId,
+        zervaBookingId: zervaEl.value.trim(),
+        visitDate,
+        timeSlot: timeValue
+      };
+      state.resetVisitDraft();
+      state.formType = null;
+      state.serviceType = null;
+      openServiceTypeModal();
+    } catch (e) {
+      console.warn("createVisit failed:", e);
+      alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+    } finally {
+      continueBtn.disabled = false;
+    }
   });
 
   onEnter("createVisit", () => {
@@ -2776,16 +2804,22 @@ function initTechFields() {
     if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
     draftBtn.disabled = true;
     const draft = state.visitDraft;
-    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
-    const payload = {
-      ...buildPayload("draft"),
-      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
-      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
-    };
-    await saveVisit(payload);
-    draftBtn.disabled = false;
-    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+    try {
+      const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+      const payload = {
+        ...buildPayload("draft"),
+        beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+        signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      };
+      await saveVisit(payload);
+      alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+    } catch (e) {
+      console.warn("saveVisit (draft) failed:", e);
+      alert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+    } finally {
+      draftBtn.disabled = false;
+    }
   });
 
   closeBtn.addEventListener("click", async () => {
@@ -2800,19 +2834,30 @@ function initTechFields() {
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
     closeBtn.disabled = true;
-    const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
-    const payload = {
-      ...buildPayload("เสร็จสิ้น"),
-      mixRatio,
-      beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
-      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
-    };
+    try {
+      const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
+      const payload = {
+        ...buildPayload("เสร็จสิ้น"),
+        mixRatio,
+        beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
+        signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+      };
 
-    const res = await saveVisit(payload);
-    closeBtn.disabled = false;
-    state.lastSavedServiceId = res.serviceId;
-    show("confirmation");
+      // ส่ง serviceId เดิมจาก Step 3 เสมอ (state.visitContext.visitId) เพื่อให้ saveVisit() ฝั่งเซิร์ฟเวอร์
+      // "อัปเดตแถวเดิม" แทนสร้างแถวใหม่ — ถ้า state.visitContext หลุดไปคนละตัวจาก race/reload กลางทาง
+      // (เช่น รีเฟรชหน้าระหว่างกรอกฟอร์ม) payload.serviceId จะไม่ตรงกับแถวเดิมในชีต แล้วได้ Visit ซ้อนกัน
+      // เช็คซ้ำตรงนี้กันเคสที่ visitContext หายไประหว่างทาง
+      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จาก Customer Profile");
+
+      const res = await saveVisit(payload);
+      state.lastSavedServiceId = res.serviceId;
+      show("confirmation");
+    } catch (e) {
+      console.warn("saveVisit (close) failed:", e);
+      alert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)");
+      closeBtn.disabled = false;
+    }
   });
 
   onEnter("techFields", render);
