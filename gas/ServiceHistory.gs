@@ -25,41 +25,50 @@ function dateValueForClient_(value) {
   if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
     return value.getTime();
   }
-  return value;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function stringForClient_(value) {
+  if (value === undefined || value === null) return "";
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(value);
 }
 
 function rowToVisit_(row) {
   return {
-    serviceId: row.ServiceID,
-    customerId: row.CustomerID,
-    zervaBookingId: row.ZervaBookingId,
+    serviceId: stringForClient_(row.ServiceID),
+    customerId: stringForClient_(row.CustomerID),
+    zervaBookingId: stringForClient_(row.ZervaBookingId),
     visitDate: dateValueForClient_(row.VisitDate),
-    timeSlot: row.TimeSlot,
-    status: row.Status,
-    serviceType: row.ServiceType,
-    formType: row.FormType,
-    technique: row.Technique,
-    colorUsed: row.ColorUsed,
-    intensity: row.Intensity,
-    muscle: row.Muscle,
-    shapeDesign: row.ShapeDesign,
-    browGuard: row.BrowGuard,
-    satisfaction: row.Satisfaction,
-    colorRetention: row.ColorRetention,
-    wantsMoreChange: row.WantsMoreChange,
+    timeSlot: stringForClient_(row.TimeSlot),
+    status: stringForClient_(row.Status),
+    serviceType: stringForClient_(row.ServiceType),
+    formType: stringForClient_(row.FormType),
+    technique: stringForClient_(row.Technique),
+    colorUsed: stringForClient_(row.ColorUsed),
+    intensity: stringForClient_(row.Intensity),
+    muscle: stringForClient_(row.Muscle),
+    shapeDesign: stringForClient_(row.ShapeDesign),
+    browGuard: stringForClient_(row.BrowGuard),
+    satisfaction: stringForClient_(row.Satisfaction),
+    colorRetention: stringForClient_(row.ColorRetention),
+    wantsMoreChange: stringForClient_(row.WantsMoreChange),
     changeItems: parseJsonArray_(row.ChangeItemsJson),
-    mixRatio: row.MixRatio,
-    redness: row.Redness,
-    adherence: row.Adherence,
-    analysis: row.Analysis,
-    note: row.Note,
-    notServedReason: row.NotServedReason,
-    beforePhotoUrl: row.BeforePhotoUrl,
-    afterPhotoUrl: row.AfterPhotoUrl,
-    signatureCustomerUrl: row.SignatureCustomerUrl,
-    signatureTechUrl: row.SignatureTechUrl,
+    mixRatio: stringForClient_(row.MixRatio),
+    redness: stringForClient_(row.Redness),
+    adherence: stringForClient_(row.Adherence),
+    analysis: stringForClient_(row.Analysis),
+    note: stringForClient_(row.Note),
+    notServedReason: stringForClient_(row.NotServedReason),
+    beforePhotoUrl: stringForClient_(row.BeforePhotoUrl),
+    afterPhotoUrl: stringForClient_(row.AfterPhotoUrl),
+    signatureCustomerUrl: stringForClient_(row.SignatureCustomerUrl),
+    signatureTechUrl: stringForClient_(row.SignatureTechUrl),
     consentAgreedAt: dateValueForClient_(row.ConsentAgreedAt) || null,
-    calendarEventId: row.CalendarEventId,
+    calendarEventId: stringForClient_(row.CalendarEventId),
     createdAt: dateValueForClient_(row.CreatedAt)
   };
 }
@@ -68,9 +77,9 @@ function getHistoryByCustomer(token, customerId) {
   requireSession_(token);
   const rows = sheetToObjects_(getServiceHistorySheet_());
   return rows
-    .filter((r) => r.CustomerID === customerId)
+    .filter((r) => stringForClient_(r.CustomerID) === String(customerId || ""))
     .map(rowToVisit_)
-    .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+    .sort((a, b) => (Number(b.visitDate) || 0) - (Number(a.visitDate) || 0));
 }
 
 // สร้าง Visit ใหม่ตอน Step 3 (ก่อนเปิดฟอร์ม Consultation ใด ๆ) — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"

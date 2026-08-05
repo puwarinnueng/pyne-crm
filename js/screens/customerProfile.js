@@ -23,6 +23,14 @@ function monthsSince(ts) {
   return months === 0 ? "เดือนนี้" : `${months} เดือนที่แล้ว`;
 }
 
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
   const skinCard = document.getElementById("skinProfileCard");
@@ -122,10 +130,12 @@ export function initCustomerProfile() {
     historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     let history = [];
     try {
-      history = await getHistoryByCustomer(c.customerId);
+      history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "โหลดประวัตินานเกินไป กรุณาลองเปิดใหม่อีกครั้ง");
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
-      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}</div>`;
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
+      const retryBtn = document.getElementById("retryHistoryBtn");
+      if (retryBtn) retryBtn.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
       return;
     }
 

@@ -131,6 +131,7 @@ export function initNewCustomer() {
 
     const createBtn2 = document.getElementById("ncCreateBtn2");
     createBtn2.disabled = true;
+    createBtn2.textContent = "กำลังสร้าง...";
 
     // ทุก request ข้างล่างนี้ยิงไปเซิร์ฟเวอร์จริง (Apps Script + LockService) พังได้ทั้งจาก network
     // hiccup หรือ lock timeout เวลาช่างหลายคนกดพร้อมกัน — เดิมไม่มี try/catch เลยสักจุด ถ้า request ไหน
@@ -140,11 +141,13 @@ export function initNewCustomer() {
       existing = await findCustomerByPhone(draft.phone);
     } catch (e) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
     if (existing) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `
         <div class="dup-warning">
           ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
@@ -166,11 +169,13 @@ export function initNewCustomer() {
       });
     } catch (e) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้าง Customer Profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
-    createBtn2.disabled = false;
     if (!res.success) {
+      createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
       return;
     }

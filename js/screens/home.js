@@ -40,6 +40,7 @@ export function initHome() {
   }
 
   function openProfile(customer) {
+    searchRequestSeq += 1; // cancel any in-flight search render before navigating away
     state.currentCustomer = customer;
     show("customerProfile");
   }
@@ -133,8 +134,9 @@ export function initHome() {
       const popover = tr.querySelector(".row-menu-popover");
       if (!menu || !trigger || !popover) return;
 
-      tr.addEventListener("click", (e) => {
+      tr.addEventListener("pointerdown", (e) => {
         if (e.target.closest(".row-menu")) return;
+        e.preventDefault(); // keep the search input from firing a blur/change search before navigation
         if (customer) openProfile(customer);
       });
       tr.addEventListener("keydown", (e) => {
@@ -223,9 +225,7 @@ export function initHome() {
     }
   }
 
-  ["input", "keyup", "change", "paste"].forEach((evt) => {
-    searchInput.addEventListener(evt, () => setTimeout(runPhoneSearch, 0));
-  });
+  searchInput.addEventListener("input", () => setTimeout(runPhoneSearch, 0));
 
   function showStartChoice() {
     startChoice.hidden = false;

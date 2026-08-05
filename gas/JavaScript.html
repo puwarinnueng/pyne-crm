@@ -1070,6 +1070,7 @@ function initHome() {
   }
 
   function openProfile(customer) {
+    searchRequestSeq += 1; // cancel any in-flight search render before navigating away
     state.currentCustomer = customer;
     show("customerProfile");
   }
@@ -1163,8 +1164,9 @@ function initHome() {
       const popover = tr.querySelector(".row-menu-popover");
       if (!menu || !trigger || !popover) return;
 
-      tr.addEventListener("click", (e) => {
+      tr.addEventListener("pointerdown", (e) => {
         if (e.target.closest(".row-menu")) return;
+        e.preventDefault(); // keep the search input from firing a blur/change search before navigation
         if (customer) openProfile(customer);
       });
       tr.addEventListener("keydown", (e) => {
@@ -1253,9 +1255,7 @@ function initHome() {
     }
   }
 
-  ["input", "keyup", "change", "paste"].forEach((evt) => {
-    searchInput.addEventListener(evt, () => setTimeout(runPhoneSearch, 0));
-  });
+  searchInput.addEventListener("input", () => setTimeout(runPhoneSearch, 0));
 
   function showStartChoice() {
     startChoice.hidden = false;
@@ -1426,6 +1426,7 @@ function initNewCustomer() {
 
     const createBtn2 = document.getElementById("ncCreateBtn2");
     createBtn2.disabled = true;
+    createBtn2.textContent = "กำลังสร้าง...";
 
     // ทุก request ข้างล่างนี้ยิงไปเซิร์ฟเวอร์จริง (Apps Script + LockService) พังได้ทั้งจาก network
     // hiccup หรือ lock timeout เวลาช่างหลายคนกดพร้อมกัน — เดิมไม่มี try/catch เลยสักจุด ถ้า request ไหน
@@ -1435,11 +1436,13 @@ function initNewCustomer() {
       existing = await findCustomerByPhone(draft.phone);
     } catch (e) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
     if (existing) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `
         <div class="dup-warning">
           ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
@@ -1461,11 +1464,13 @@ function initNewCustomer() {
       });
     } catch (e) {
       createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้าง Customer Profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
-    createBtn2.disabled = false;
     if (!res.success) {
+      createBtn2.disabled = false;
+      createBtn2.textContent = "Create Customer & Continue";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
       return;
     }
@@ -1516,6 +1521,14 @@ function monthsSince(ts) {
   if (!ts) return "-";
   const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
   return months === 0 ? "เดือนนี้" : `${months} เดือนที่แล้ว`;
+}
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function initCustomerProfile() {
@@ -1617,10 +1630,12 @@ function initCustomerProfile() {
     historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     let history = [];
     try {
-      history = await getHistoryByCustomer(c.customerId);
+      history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "โหลดประวัตินานเกินไป กรุณาลองเปิดใหม่อีกครั้ง");
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
-      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}</div>`;
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
+      const retryBtn = document.getElementById("retryHistoryBtn");
+      if (retryBtn) retryBtn.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
       return;
     }
 
