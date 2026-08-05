@@ -1701,6 +1701,17 @@ function visitFormBadge(visit) {
   return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
 }
 
+function visitStatusBadge(visit) {
+  const status = normalizeVisitStatus(visit?.status);
+  if (!status) return "";
+  const className = status === "completed"
+    ? "is-completed"
+    : status === "not_served"
+      ? "is-not-served"
+      : "";
+  return `<span class="draft-badge ${className}" style="margin:0 0 0 6px">${escapeHtml(visitStatusLabel(status))}</span>`;
+}
+
 function resumeDraftVisit(visit) {
   if (!visit) return;
   const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
@@ -1863,7 +1874,7 @@ function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         ${visitFormBadge(v)}
-        ${normalizeVisitStatus(v.status) && normalizeVisitStatus(v.status) !== "completed" ? `<span class="draft-badge" style="margin:0 0 0 6px${normalizeVisitStatus(v.status) === "not_served" ? "; background:var(--error-bg); color:var(--error-text)" : ""}">${escapeHtml(visitStatusLabel(v.status))}</span>` : ""}
+        ${visitStatusBadge(v)}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
@@ -1890,6 +1901,8 @@ function initCustomerProfile() {
 // ==== js/screens/visitDetail.js ====
 // visitDetail.js — หน้าดูรายละเอียดประวัติการเข้ารับบริการแบบอ่านอย่างเดียว (แก้ไขไม่ได้)
 // เปิดจากการกดรายการใน customerProfile.js (ส่ง visit object มาทาง show("visitDetail", { data: visit }))
+
+
 
 
 
@@ -1939,6 +1952,28 @@ function photoBox(url) {
 function initVisitDetail() {
   const body = document.getElementById("visitDetailBody");
 
+  async function handleExportPdf(visit, btn) {
+    btn.disabled = true;
+    btn.textContent = "Generating PDF...";
+    try {
+      const res = await exportConsentPdf(visit.serviceId);
+      if (res && res.success && res.url) {
+        await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
+          title: "Export PDF",
+          okText: "เปิด PDF"
+        });
+        window.open(res.url, "_blank", "noopener");
+        return;
+      }
+      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "Export PDF" });
+    } catch (err) {
+      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "Export PDF" });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Export Consent Form (PDF)";
+    }
+  }
+
   onEnter("visitDetail", (visit) => {
     if (!visit) {
       body.innerHTML = `<div class="empty-hint">ไม่พบข้อมูลประวัตินี้</div>`;
@@ -1954,6 +1989,10 @@ function initVisitDetail() {
       <div class="box-quiet">
         <b>${escapeHtml(visit.serviceType || "-")}</b>${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""} &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
       </div>
+
+      ${isCompletedVisitStatus(visit.status) ? `
+      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">Export Consent Form (PDF)</button>
+      ` : ""}
 
       <div class="step-group">
         <div class="step-group-title">รูป Before / After</div>
@@ -1997,6 +2036,9 @@ function initVisitDetail() {
         </div>
       </div>
     `;
+
+    const exportBtn = document.getElementById("visitExportPdfBtn");
+    if (exportBtn) exportBtn.addEventListener("click", () => handleExportPdf(visit, exportBtn));
   });
 }
 </script>
@@ -3301,10 +3343,23 @@ function initConfirmation() {
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
     exportBtn.textContent = "Generating PDF...";
-    const res = await exportConsentPdf(state.lastSavedServiceId);
-    exportBtn.disabled = false;
-    exportBtn.textContent = "Export Consent Form (PDF) — mock";
-    await appAlert(res.note, { title: "Export PDF" });
+    try {
+      const res = await exportConsentPdf(state.lastSavedServiceId);
+      if (res && res.success && res.url) {
+        await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
+          title: "Export PDF",
+          okText: "เปิด PDF"
+        });
+        window.open(res.url, "_blank", "noopener");
+        return;
+      }
+      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "Export PDF" });
+    } catch (err) {
+      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "Export PDF" });
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.textContent = "Export Consent Form (PDF)";
+    }
   });
 
   backHomeBtn.addEventListener("click", () => {

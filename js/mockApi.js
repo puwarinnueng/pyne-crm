@@ -380,5 +380,10 @@ export async function uploadImage(dataUrl, meta) {
 export async function exportConsentPdf(serviceId) {
   await wait(500);
   requireSession(getToken());
-  return { success: true, note: "mock: ของจริงจะสร้างไฟล์ PDF ใน Google Drive แล้วคืนลิงก์" };
+  return {
+    success: true,
+    note: "mock: สร้าง PDF แล้ว",
+    filename: `Pyne_Consent_${serviceId || "service"}_mock.pdf`,
+    url: "about:blank"
+  };
 }

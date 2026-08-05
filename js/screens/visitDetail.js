@@ -3,6 +3,8 @@
 
 import { onEnter } from "../router.js";
 import { formatDate, escapeHtml, formTypeLabel, isCompletedVisitStatus, visitStatusLabel } from "../utils.js";
+import { exportConsentPdf } from "../mockApi.js";
+import { appAlert } from "../dialogs.js";
 
 const FIELD_LABELS = {
   hadBrowBefore: "เคยสักคิ้วมาก่อนหรือไม่",
@@ -50,6 +52,28 @@ function photoBox(url) {
 export function initVisitDetail() {
   const body = document.getElementById("visitDetailBody");
 
+  async function handleExportPdf(visit, btn) {
+    btn.disabled = true;
+    btn.textContent = "Generating PDF...";
+    try {
+      const res = await exportConsentPdf(visit.serviceId);
+      if (res && res.success && res.url) {
+        await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
+          title: "Export PDF",
+          okText: "เปิด PDF"
+        });
+        window.open(res.url, "_blank", "noopener");
+        return;
+      }
+      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "Export PDF" });
+    } catch (err) {
+      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "Export PDF" });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Export Consent Form (PDF)";
+    }
+  }
+
   onEnter("visitDetail", (visit) => {
     if (!visit) {
       body.innerHTML = `<div class="empty-hint">ไม่พบข้อมูลประวัตินี้</div>`;
@@ -65,6 +89,10 @@ export function initVisitDetail() {
       <div class="box-quiet">
         <b>${escapeHtml(visit.serviceType || "-")}</b>${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""} &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
       </div>
+
+      ${isCompletedVisitStatus(visit.status) ? `
+      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">Export Consent Form (PDF)</button>
+      ` : ""}
 
       <div class="step-group">
         <div class="step-group-title">รูป Before / After</div>
@@ -108,5 +136,8 @@ export function initVisitDetail() {
         </div>
       </div>
     `;
+
+    const exportBtn = document.getElementById("visitExportPdfBtn");
+    if (exportBtn) exportBtn.addEventListener("click", () => handleExportPdf(visit, exportBtn));
   });
 }

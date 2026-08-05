@@ -67,6 +67,17 @@ function visitFormBadge(visit) {
   return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
 }
 
+function visitStatusBadge(visit) {
+  const status = normalizeVisitStatus(visit?.status);
+  if (!status) return "";
+  const className = status === "completed"
+    ? "is-completed"
+    : status === "not_served"
+      ? "is-not-served"
+      : "";
+  return `<span class="draft-badge ${className}" style="margin:0 0 0 6px">${escapeHtml(visitStatusLabel(status))}</span>`;
+}
+
 function resumeDraftVisit(visit) {
   if (!visit) return;
   const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
@@ -229,7 +240,7 @@ export function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         ${visitFormBadge(v)}
-        ${normalizeVisitStatus(v.status) && normalizeVisitStatus(v.status) !== "completed" ? `<span class="draft-badge" style="margin:0 0 0 6px${normalizeVisitStatus(v.status) === "not_served" ? "; background:var(--error-bg); color:var(--error-text)" : ""}">${escapeHtml(visitStatusLabel(v.status))}</span>` : ""}
+        ${visitStatusBadge(v)}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
