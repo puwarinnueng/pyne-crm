@@ -17,6 +17,13 @@ function setLoginLoading(isLoading) {
   submitBtn.textContent = isLoading ? "Signing in..." : submitBtn.dataset.readyText;
 }
 
+function setButtonLoading(button, isLoading, loadingText) {
+  if (!button) return;
+  if (!button.dataset.readyText) button.dataset.readyText = button.textContent;
+  button.disabled = isLoading;
+  button.textContent = isLoading ? loadingText : button.dataset.readyText;
+}
+
 export function showLogin() {
   if (!screen) return;
   closeReset(); // กันไม่ให้ modal reset ค้างทับหน้า login
@@ -93,7 +100,7 @@ export function initLogin() {
         return;
       }
       errorEl.hidden = true;
-      setLoginLoading(true);
+      setButtonLoading(submitBtn, true, "Signing in...");
       try {
         const res = await login(username, password);
         if (res.success) {
@@ -111,7 +118,7 @@ export function initLogin() {
         errorEl.textContent = "Could not sign in. Please try again.";
         errorEl.hidden = false;
       } finally {
-        if (!screen || !screen.hidden) setLoginLoading(false);
+        if (!screen || !screen.hidden) setButtonLoading(submitBtn, false);
       }
     });
 
@@ -140,6 +147,7 @@ function initResetModal() {
 
   resetForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (resetSubmitBtn && resetSubmitBtn.disabled) return;
     const oldPw = resetOldPw.value.trim();
     const pw = resetPw.value.trim();
     const confirm = resetPwConfirm.value.trim();
@@ -154,21 +162,29 @@ function initResetModal() {
       return;
     }
     resetError.hidden = true;
-    if (resetSubmitBtn) resetSubmitBtn.disabled = true;
-    const res = await changePassword(oldPw, pw);
-    if (resetSubmitBtn) resetSubmitBtn.disabled = false;
-    if (res.success) {
-      // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
-      clearToken();
-      closeReset();
-      alert("Password updated. Please sign in again.");
-      showLogin();
-    } else if (res.error === "wrong_password") {
-      resetError.textContent = "Current password is incorrect.";
+    setButtonLoading(resetSubmitBtn, true, "Saving...");
+    try {
+      const res = await changePassword(oldPw, pw);
+      if (res.success) {
+        // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
+        clearToken();
+        closeReset();
+        alert("Password updated. Please sign in again.");
+        showLogin();
+        return;
+      }
+      if (res.error === "wrong_password") {
+        resetError.textContent = "Current password is incorrect.";
+      } else {
+        resetError.textContent = "Could not update password. Please try again.";
+      }
       resetError.hidden = false;
-    } else {
+    } catch (err) {
+      console.warn("changePassword failed:", err);
       resetError.textContent = "Could not update password. Please try again.";
       resetError.hidden = false;
+    } finally {
+      if (!resetOverlay || !resetOverlay.hidden) setButtonLoading(resetSubmitBtn, false);
     }
   });
 
