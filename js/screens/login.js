@@ -10,6 +10,13 @@ import { show } from "../router.js";
 let screen, form, userInput, pwInput, errorEl, submitBtn;
 let resetOverlay, resetForm, resetOldPw, resetPw, resetPwConfirm, resetError;
 
+function setLoginLoading(isLoading) {
+  if (!submitBtn) return;
+  if (!submitBtn.dataset.readyText) submitBtn.dataset.readyText = submitBtn.textContent;
+  submitBtn.disabled = isLoading;
+  submitBtn.textContent = isLoading ? "Signing in..." : submitBtn.dataset.readyText;
+}
+
 export function showLogin() {
   if (!screen) return;
   closeReset(); // กันไม่ให้ modal reset ค้างทับหน้า login
@@ -20,6 +27,7 @@ export function showLogin() {
   if (userInput) userInput.value = "";
   if (pwInput) pwInput.value = "";
   if (errorEl) errorEl.hidden = true;
+  setLoginLoading(false);
   if (userInput) userInput.focus();
 }
 
@@ -76,6 +84,7 @@ export function initLogin() {
   if (form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (submitBtn && submitBtn.disabled) return;
       const username = userInput.value.trim();
       const password = pwInput.value;
       if (!username || !password) {
@@ -84,18 +93,25 @@ export function initLogin() {
         return;
       }
       errorEl.hidden = true;
-      if (submitBtn) submitBtn.disabled = true;
-      const res = await login(username, password);
-      if (submitBtn) submitBtn.disabled = false;
-      if (res.success) {
-        setToken(res.token);
-        hideLogin();
-        // หน้า home ถูก mount ไว้ใต้ overlay login ตั้งแต่ตอนเปิดแอป (ตอนนั้นยังไม่มี session จริง
-        // โหลดข้อมูลลูกค้าไม่สำเร็จ) สั่ง show("home") ซ้ำหลัง login ผ่านเพื่อโหลดข้อมูลใหม่ด้วย session จริง
-        show("home");
-      } else {
+      setLoginLoading(true);
+      try {
+        const res = await login(username, password);
+        if (res.success) {
+          setToken(res.token);
+          hideLogin();
+          // หน้า home ถูก mount ไว้ใต้ overlay login ตั้งแต่ตอนเปิดแอป (ตอนนั้นยังไม่มี session จริง
+          // โหลดข้อมูลลูกค้าไม่สำเร็จ) สั่ง show("home") ซ้ำหลัง login ผ่านเพื่อโหลดข้อมูลใหม่ด้วย session จริง
+          show("home");
+          return;
+        }
         errorEl.textContent = "Invalid username or password.";
         errorEl.hidden = false;
+      } catch (err) {
+        console.warn("login failed:", err);
+        errorEl.textContent = "Could not sign in. Please try again.";
+        errorEl.hidden = false;
+      } finally {
+        if (!screen || !screen.hidden) setLoginLoading(false);
       }
     });
 
