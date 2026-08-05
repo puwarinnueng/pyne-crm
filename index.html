@@ -240,6 +240,7 @@
       <h3 class="section-title">Skin &amp; Brow Profile</h3>
       <div class="profile-card" id="skinProfileCard"></div>
       <h3 class="section-title">Service History</h3>
+      <div class="box-quiet" id="historySummary" hidden></div>
       <div id="historyList" class="history-list"></div>
     </div>
   </section>
@@ -378,14 +379,12 @@
       <h2 class="topbar-title" id="techTitle">บันทึกหลังทำ</h2>
       <div class="topbar-actions">
         <button type="button" class="not-served-link" id="techNotServedBtn">ไม่ได้รับบริการ</button>
+        <button type="button" class="draft-save-btn" id="tuSaveDraftBtn">บันทึกแบบร่าง</button>
       </div>
     </header>
     <div class="page-pad" id="techBody"></div>
     <footer class="footer-actions">
-      <div class="touchup-save-actions">
-        <button class="btn btn-outline" id="tuSaveDraftBtn" type="button">บันทึกแบบร่าง</button>
-        <button class="btn btn-primary" id="tuSaveCloseBtn" type="button">บันทึกเสร็จและปิด Visit</button>
-      </div>
+      <button class="btn btn-primary btn-block" id="tuSaveCloseBtn" type="button">บันทึกเสร็จและปิด Visit</button>
     </footer>
   </section>
 

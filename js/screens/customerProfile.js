@@ -16,9 +16,17 @@ function ageFromDob(dobStr) {
   return age;
 }
 
+// ระยะเวลาจากวันที่มารับบริการล่าสุดถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (ตามสเปก "ครั้งที่มารับบริการล่าสุด (คำนวณเดือน)")
+function monthsSince(ts) {
+  if (!ts) return "-";
+  const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
+  return months === 0 ? "เดือนนี้" : `${months} เดือนที่แล้ว`;
+}
+
 export function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
   const skinCard = document.getElementById("skinProfileCard");
+  const historySummary = document.getElementById("historySummary");
   const historyList = document.getElementById("historyList");
   const addVisitBtn = document.getElementById("addVisitBtn");
 
@@ -110,6 +118,7 @@ export function initCustomerProfile() {
 
     renderSkinCard(c);
 
+    historySummary.hidden = true;
     historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     const history = await getHistoryByCustomer(c.customerId);
 
@@ -117,6 +126,13 @@ export function initCustomerProfile() {
       historyList.innerHTML = `<div class="empty-hint">No service history yet</div>`;
       return;
     }
+
+    // สรุปย่อตามสเปก: "ครั้งที่มารับบริการล่าสุด (คำนวณเดือน)" + "เทคนิคที่ทำ" ก่อนรายการเต็มด้านล่าง
+    historySummary.hidden = false;
+    historySummary.innerHTML = `
+      <div class="detail-row"><div class="detail-label">ครั้งที่มารับบริการล่าสุด</div><div class="detail-value">${escapeHtml(monthsSince(history[0].visitDate))}</div></div>
+      <div class="detail-row"><div class="detail-label">เทคนิคที่ทำ</div><div class="detail-value">${escapeHtml(history[0].technique || "-")}</div></div>
+    `;
 
     historyList.innerHTML = history.map((v) => `
       <div class="history-item" data-id="${v.serviceId}">
