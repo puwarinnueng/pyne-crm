@@ -14,6 +14,9 @@ export function showLogin() {
   if (!screen) return;
   closeReset(); // กันไม่ให้ modal reset ค้างทับหน้า login
   screen.hidden = false;
+  // ฟอร์มซ่อนไว้ตั้งแต่ต้น (ดู index.html) เพื่อให้ตอนโหลดหน้า/รอ checkSession() มีแค่โลโก้บนพื้นแบรนด์
+  // โชว์เป็น splash เฉยๆ ไม่ใช่ฟอร์ม login เต็มที่กระพริบขึ้นมาแล้วหายไปทันทีถ้า session ยัง valid อยู่
+  if (form) form.hidden = false;
   if (userInput) userInput.value = "";
   if (pwInput) pwInput.value = "";
   if (errorEl) errorEl.hidden = true;
