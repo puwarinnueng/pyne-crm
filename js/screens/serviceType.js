@@ -1,5 +1,6 @@
 import { show } from "../router.js";
 import { state } from "../state.js";
+import { getHistoryByCustomer } from "../mockApi.js";
 
 let modalEl = null;
 let closeTimer = null;
@@ -10,14 +11,29 @@ function getModal() {
 }
 
 // เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
-export function openServiceTypeModal() {
+export async function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
-  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติสักคิ้วกับร้านมาก่อนเท่านั้น
-  document.getElementById("chooseForm3Btn").hidden = !state.currentCustomer;
+  const form3Btn = document.getElementById("chooseForm3Btn");
+  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติเข้ารับบริการกับร้านมาก่อนหน้า Visit นี้เท่านั้น
+  // เดิมเช็คแค่ "มี state.currentCustomer อยู่ไหม" ซึ่งจริงอยู่เสมอ (ทั้งลูกค้าใหม่/เก่า) ณ จุดนี้ของ flow
+  // เลยไม่เคยซ่อนปุ่มนี้จริง ๆ เลยสักครั้ง — ต้องเช็คประวัติจริงจากเซิร์ฟเวอร์ ซ่อนไว้ก่อนเป็นค่า default
+  // ระหว่างรอผลเช็ค กันโชว์ผิดช่วง loading
+  form3Btn.hidden = true;
   clearTimeout(closeTimer);
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
+
+  if (state.currentCustomer) {
+    try {
+      const history = await getHistoryByCustomer(state.currentCustomer.customerId);
+      const currentVisitId = state.visitContext && state.visitContext.visitId;
+      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId);
+      form3Btn.hidden = !hasPriorVisit;
+    } catch (e) {
+      // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
+    }
+  }
 }
 
 export function closeServiceTypeModal() {

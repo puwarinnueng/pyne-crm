@@ -93,8 +93,19 @@ export function bindMixRatioEvents(container, draft) {
   container.addEventListener("input", (e) => {
     const groupKey = e.target.dataset.mixKey;
     if (groupKey) {
+      const colorKey = e.target.dataset.mixColor;
       const parts = draft[groupKey] || (draft[groupKey] = {});
-      parts[e.target.dataset.mixColor] = e.target.value;
+      // สเปก: "ใช้ไม่เกิน 3 หลุมสี" — Solution ไม่นับเป็นหลุมสี นับเฉพาะสีจริง + อื่นๆ
+      if (colorKey !== "Solution") {
+        const wellsUsed = new Set(Object.keys(parts).filter((k) => k !== "Solution" && Number(parts[k]) > 0));
+        if (Number(e.target.value) > 0) wellsUsed.add(colorKey); else wellsUsed.delete(colorKey);
+        if (wellsUsed.size > 3) {
+          e.target.value = "";
+          alert("สัดส่วนสีที่ใช้ได้ไม่เกิน 3 หลุม");
+          return;
+        }
+      }
+      parts[colorKey] = e.target.value;
     }
     const otherLabelKey = e.target.dataset.mixOtherLabel;
     if (otherLabelKey) {

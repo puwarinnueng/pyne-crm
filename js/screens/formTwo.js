@@ -4,7 +4,7 @@ import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { OPTIONS } from "../data/options.js";
 import { CONSENT_BLOCKS, FORM2_EXTRA_CONSENT_BLOCK, INTENSITY_DISCLAIMER, PRE_SERVICE_AGREE_TEXT, FINAL_AGREEMENT_TEXT } from "../data/consentText.js";
-import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
+import { radioField, chipGroup, textField, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
 import { escapeHtml, readFileAsDataUrl } from "../utils.js";
 import { visitHeaderHtml, wireNotServedButton, wireDraftSaveButton } from "../visitFlow.js";
@@ -116,10 +116,12 @@ export function initFormTwo() {
       <div class="step-group">
         <div class="step-group-title">กล้ามเนื้อคิ้ว (กรอกหลังเช็ดคิ้วและวัดตอนออกแบบทรงจริง)</div>
         ${radioField("muscle", OPTIONS.muscleOptions, draft)}
+        ${textField("muscleNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
         ${chipGroup("shapeDesign", OPTIONS.form2Shape, draft, false)}
+        ${textField("shapeDesignNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
@@ -215,7 +217,7 @@ export function initFormTwo() {
     draft.agreedAt = Date.now();
 
     if (draft.muscle) {
-      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, "");
+      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
     }
 
     show("techFields");

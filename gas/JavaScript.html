@@ -614,8 +614,19 @@ function bindMixRatioEvents(container, draft) {
   container.addEventListener("input", (e) => {
     const groupKey = e.target.dataset.mixKey;
     if (groupKey) {
+      const colorKey = e.target.dataset.mixColor;
       const parts = draft[groupKey] || (draft[groupKey] = {});
-      parts[e.target.dataset.mixColor] = e.target.value;
+      // สเปก: "ใช้ไม่เกิน 3 หลุมสี" — Solution ไม่นับเป็นหลุมสี นับเฉพาะสีจริง + อื่นๆ
+      if (colorKey !== "Solution") {
+        const wellsUsed = new Set(Object.keys(parts).filter((k) => k !== "Solution" && Number(parts[k]) > 0));
+        if (Number(e.target.value) > 0) wellsUsed.add(colorKey); else wellsUsed.delete(colorKey);
+        if (wellsUsed.size > 3) {
+          e.target.value = "";
+          alert("สัดส่วนสีที่ใช้ได้ไม่เกิน 3 หลุม");
+          return;
+        }
+      }
+      parts[colorKey] = e.target.value;
     }
     const otherLabelKey = e.target.dataset.mixOtherLabel;
     if (otherLabelKey) {
@@ -1048,10 +1059,13 @@ function initHome() {
   }
 
   function openService(customer) {
+    // ทุกคิวต้องผ่าน Step 3 (สร้าง Visit) ก่อนเปิดฟอร์ม Consultation เสมอตามสเปก — ห้ามเปิด modal
+    // เลือกฟอร์ม (Step 4) ตรง ๆ จากตรงนี้ เพราะ state.visitContext จะไม่ถูกตั้งค่า (ตั้งค่าเฉพาะใน
+    // createVisit.js) ทำให้กด Next/บันทึกแบบร่างในฟอร์มแล้วเงียบ ๆ ไม่มีอะไรเกิดขึ้นหรือเด้งกลับ home
     state.currentCustomer = customer;
     state.serviceType = null;
     state.resetVisitDraft();
-    openServiceTypeModal();
+    show("createVisit");
   }
 
   function render() {
@@ -1481,7 +1495,7 @@ function initCustomerProfile() {
       <div class="detail-row"><div class="detail-label">ทรงคิ้ว</div><div class="detail-value">${(sp.browShape || []).join(", ") || "-"}</div></div>
       <div class="detail-row">
         <div class="detail-label">กล้ามเนื้อคิ้ว</div>
-        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}</div>
+        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}${sp.muscleNote ? `<br><span class="muted small">${escapeHtml(sp.muscleNote)}</span>` : ""}</div>
       </div>
       <button type="button" class="icon-btn" id="skinEditBtn" style="padding-left:0">แก้ไขประวัติผิวและคิ้ว</button>
     `;
@@ -1806,14 +1820,29 @@ function getModal() {
 }
 
 // เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
-function openServiceTypeModal() {
+async function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
-  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติสักคิ้วกับร้านมาก่อนเท่านั้น
-  document.getElementById("chooseForm3Btn").hidden = !state.currentCustomer;
+  const form3Btn = document.getElementById("chooseForm3Btn");
+  // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติเข้ารับบริการกับร้านมาก่อนหน้า Visit นี้เท่านั้น
+  // เดิมเช็คแค่ "มี state.currentCustomer อยู่ไหม" ซึ่งจริงอยู่เสมอ (ทั้งลูกค้าใหม่/เก่า) ณ จุดนี้ของ flow
+  // เลยไม่เคยซ่อนปุ่มนี้จริง ๆ เลยสักครั้ง — ต้องเช็คประวัติจริงจากเซิร์ฟเวอร์ ซ่อนไว้ก่อนเป็นค่า default
+  // ระหว่างรอผลเช็ค กันโชว์ผิดช่วง loading
+  form3Btn.hidden = true;
   clearTimeout(closeTimer);
   modal.hidden = false;
   requestAnimationFrame(() => modal.classList.add("is-open"));
+
+  if (state.currentCustomer) {
+    try {
+      const history = await getHistoryByCustomer(state.currentCustomer.customerId);
+      const currentVisitId = state.visitContext && state.visitContext.visitId;
+      const hasPriorVisit = history.some((v) => v.serviceId !== currentVisitId);
+      form3Btn.hidden = !hasPriorVisit;
+    } catch (e) {
+      // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
+    }
+  }
 }
 
 function closeServiceTypeModal() {
@@ -1972,10 +2001,12 @@ function initFormOne() {
       <div class="step-group">
         <div class="step-group-title">กล้ามเนื้อคิ้ว (กรอกหลังเช็ดคิ้วและวัดตอนออกแบบทรงจริง)</div>
         ${radioField("muscle", OPTIONS.muscleOptions, draft)}
+        ${textField("muscleNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงคิ้ว</div>
         ${chipGroup("shapeDesign", OPTIONS.form1Shape, draft, false)}
+        ${textField("shapeDesignNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
@@ -2067,7 +2098,7 @@ function initFormOne() {
     draft.agreedAt = Date.now();
 
     if (draft.muscle) {
-      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, "");
+      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
     }
 
     show("techFields");
@@ -2195,10 +2226,12 @@ function initFormTwo() {
       <div class="step-group">
         <div class="step-group-title">กล้ามเนื้อคิ้ว (กรอกหลังเช็ดคิ้วและวัดตอนออกแบบทรงจริง)</div>
         ${radioField("muscle", OPTIONS.muscleOptions, draft)}
+        ${textField("muscleNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
         ${chipGroup("shapeDesign", OPTIONS.form2Shape, draft, false)}
+        ${textField("shapeDesignNote", "หมายเหตุ (ถ้ามี)", draft)}
       </div>
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
@@ -2294,7 +2327,7 @@ function initFormTwo() {
     draft.agreedAt = Date.now();
 
     if (draft.muscle) {
-      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, "");
+      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
     }
 
     show("techFields");
@@ -2643,6 +2676,7 @@ function initTechFields() {
   bindMixRatioEvents(body, state.visitDraft);
 
   document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
+  wireNotServedButton(document.getElementById("techNotServedBtn"));
 
   function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
@@ -2704,7 +2738,7 @@ function initTechFields() {
       redness: draft.redness || null,
       adherence: draft.adherence || null,
       mixRatio: formatMixRatio("mixRatioParts", draft),
-      note: draft.adjustFromLast || draft.dontWant || null
+      note: [draft.shapeDesignNote, draft.adjustFromLast, draft.dontWant].filter((v) => v && v.trim()).join(" / ") || null
     };
   }
 

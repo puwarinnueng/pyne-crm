@@ -38,7 +38,7 @@ export function initCustomerProfile() {
       <div class="detail-row"><div class="detail-label">ทรงคิ้ว</div><div class="detail-value">${(sp.browShape || []).join(", ") || "-"}</div></div>
       <div class="detail-row">
         <div class="detail-label">กล้ามเนื้อคิ้ว</div>
-        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}</div>
+        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}${sp.muscleNote ? `<br><span class="muted small">${escapeHtml(sp.muscleNote)}</span>` : ""}</div>
       </div>
       <button type="button" class="icon-btn" id="skinEditBtn" style="padding-left:0">แก้ไขประวัติผิวและคิ้ว</button>
     `;

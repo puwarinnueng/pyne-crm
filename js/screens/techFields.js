@@ -8,7 +8,7 @@ import { OPTIONS } from "../data/options.js";
 import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
-import { visitHeaderHtml } from "../visitFlow.js";
+import { visitHeaderHtml, wireNotServedButton } from "../visitFlow.js";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
@@ -76,6 +76,7 @@ export function initTechFields() {
   bindMixRatioEvents(body, state.visitDraft);
 
   document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
+  wireNotServedButton(document.getElementById("techNotServedBtn"));
 
   function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
@@ -137,7 +138,7 @@ export function initTechFields() {
       redness: draft.redness || null,
       adherence: draft.adherence || null,
       mixRatio: formatMixRatio("mixRatioParts", draft),
-      note: draft.adjustFromLast || draft.dontWant || null
+      note: [draft.shapeDesignNote, draft.adjustFromLast, draft.dontWant].filter((v) => v && v.trim()).join(" / ") || null
     };
   }
 
