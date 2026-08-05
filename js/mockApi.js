@@ -111,10 +111,8 @@ export async function searchCustomers(query) {
 }
 
 export async function listRecentCustomers(limit) {
-  await wait();
-  requireSession(getToken());
-  const { customers } = db.get();
-  return [...customers].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit || 10);
+  const rows = await listCustomersWithStats();
+  return rows.slice(0, limit || 10);
 }
 
 export async function debugCustomerSearch(query) {
@@ -252,13 +250,24 @@ export async function getCustomer(customerId) {
   return customers.find((c) => c.customerId === customerId) || null;
 }
 
+function compareVisitsForHistory(a, b) {
+  const resumable = (visit) => ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim()) ? 1 : 0;
+  const activityTime = (visit) => Number(visit?.updatedAt || visit?.createdAt || visit?.visitDate) || 0;
+  const visitTime = (visit) => Number(visit?.visitDate) || 0;
+  return (
+    resumable(b) - resumable(a) ||
+    activityTime(b) - activityTime(a) ||
+    visitTime(b) - visitTime(a)
+  );
+}
+
 export async function getHistoryByCustomer(customerId) {
   await wait();
   requireSession(getToken());
   const { serviceHistory } = db.get();
   return serviceHistory
     .filter((v) => v.customerId === customerId)
-    .sort((a, b) => b.visitDate - a.visitDate);
+    .sort(compareVisitsForHistory);
 }
 
 // สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"

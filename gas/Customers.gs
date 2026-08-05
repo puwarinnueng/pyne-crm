@@ -127,12 +127,7 @@ function searchCustomers(token, query) {
 }
 
 function listRecentCustomers(token, limit) {
-  requireSession_(token);
-  const rows = sheetToObjects_(getCustomersSheet_());
-  return rows
-    .sort((a, b) => (b.CreatedAt || 0) - (a.CreatedAt || 0))
-    .slice(0, limit || 10)
-    .map(rowToCustomer_);
+  return listCustomersWithStats(token).slice(0, limit || 10);
 }
 
 function getCustomer(token, customerId) {

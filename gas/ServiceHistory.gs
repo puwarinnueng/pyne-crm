@@ -80,8 +80,31 @@ function rowToVisit_(row) {
     consentAgreedAt: dateValueForClient_(row.ConsentAgreedAt) || null,
     rawAnswers: parseJsonObject_(row.RawAnswersJson),
     calendarEventId: stringForClient_(row.CalendarEventId),
-    createdAt: dateValueForClient_(row.CreatedAt)
+    createdAt: dateValueForClient_(row.CreatedAt),
+    updatedAt: dateValueForClient_(row.UpdatedAt)
   };
+}
+
+function visitSortScore_(visit) {
+  var status = String(visit.status || "").trim();
+  var resumableRank = (status === "draft" || status === "กำลังดำเนินการ") ? 1 : 0;
+  var activityTime = Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
+  var visitTime = Number(visit.visitDate) || 0;
+  return {
+    resumableRank: resumableRank,
+    activityTime: activityTime,
+    visitTime: visitTime
+  };
+}
+
+function compareVisitsForHistory_(a, b) {
+  var aa = visitSortScore_(a);
+  var bb = visitSortScore_(b);
+  return (
+    bb.resumableRank - aa.resumableRank ||
+    bb.activityTime - aa.activityTime ||
+    bb.visitTime - aa.visitTime
+  );
 }
 
 function getHistoryByCustomer(token, customerId) {
@@ -90,7 +113,7 @@ function getHistoryByCustomer(token, customerId) {
   return rows
     .filter((r) => stringForClient_(r.CustomerID) === String(customerId || ""))
     .map(rowToVisit_)
-    .sort((a, b) => (Number(b.visitDate) || 0) - (Number(a.visitDate) || 0));
+    .sort(compareVisitsForHistory_);
 }
 
 // สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
