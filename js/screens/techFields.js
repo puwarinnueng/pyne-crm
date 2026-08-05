@@ -6,7 +6,7 @@ import { state } from "../state.js";
 import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
-import { readFileAsDataUrl, ensureVisitSessionKey } from "../utils.js";
+import { readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
 import { visitHeaderHtml, wireNotServedButton } from "../visitFlow.js";
 
@@ -16,7 +16,7 @@ export function initTechFields() {
   const closeBtn = document.getElementById("tuSaveCloseBtn");
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -88,9 +88,9 @@ export function initTechFields() {
   }
 
   function missingRequiredBeforeClose(draft) {
-    if (!draft.beforePhotoDataUrl) return "รูป Before";
+    if (!hasDraftPhoto(draft, "before")) return "รูป Before";
     if (!draft.finalAgree) return "Consent";
-    if (!draft.signatureCustomerDataUrl) return "ลายเซ็นลูกค้า";
+    if (!(draft.signatureCustomerDataUrl || draft.existingSignatureCustomerUrl)) return "ลายเซ็นลูกค้า";
     if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
     if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
     if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
@@ -141,9 +141,9 @@ export function initTechFields() {
         : Promise.resolve(null)
     ]);
     return {
-      beforePhotoUrl: beforeUp ? beforeUp.url : null,
-      afterPhotoUrl: afterUp ? afterUp.url : null,
-      signatureCustomerUrl: hasSignature ? sigUp.url : null
+      beforePhotoUrl: beforeUp ? beforeUp.url : (draft.existingBeforePhotoUrl || null),
+      afterPhotoUrl: afterUp ? afterUp.url : (draft.existingAfterPhotoUrl || null),
+      signatureCustomerUrl: hasSignature ? sigUp.url : (draft.existingSignatureCustomerUrl || null)
     };
   }
 
@@ -207,7 +207,7 @@ export function initTechFields() {
     const mixRatio = formatMixRatio("mixRatioParts", draft);
     const missingBeforeClose = missingRequiredBeforeClose(draft);
     const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
-    const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
+    const afterEl = !hasDraftPhoto(draft, "after") ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
     if (missingBeforeClose) {
       alert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`);

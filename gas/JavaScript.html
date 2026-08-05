@@ -54,6 +54,22 @@ function readFileAsDataUrl(file) {
     reader.readAsDataURL(file);
   });
 }
+
+function photoKeyName(key) {
+  return key ? key.charAt(0).toUpperCase() + key.slice(1) : "";
+}
+
+function existingPhotoKey(key) {
+  return `existing${photoKeyName(key)}PhotoUrl`;
+}
+
+function draftPhotoUrl(draft, key) {
+  return draft?.[key + "PhotoDataUrl"] || draft?.[existingPhotoKey(key)] || "";
+}
+
+function hasDraftPhoto(draft, key) {
+  return Boolean(draftPhotoUrl(draft, key));
+}
 </script>
 <script>
 // ==== js/data/options.js ====
@@ -217,6 +233,7 @@ const state = {
   serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
+  pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -233,6 +250,7 @@ const state = {
     this.serviceType = null;
     this.formType = null;
     this.visitContext = null;
+    this.pendingVisitMeta = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }
@@ -1531,6 +1549,73 @@ function withTimeout(promise, ms, message) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function coalesceDraftValue(draft, key, value) {
+  if (draft[key] === undefined || draft[key] === null || draft[key] === "") {
+    if (Array.isArray(value)) {
+      if (value.length) draft[key] = value;
+    } else if (value !== undefined && value !== null && value !== "") {
+      draft[key] = value;
+    }
+  }
+}
+
+function screenForFormType(formType) {
+  if (formType === "form2") return "form2";
+  if (formType === "form3") return "formTouchup";
+  return "form1";
+}
+
+function shouldResumeAtTechFields(visit, draft) {
+  return Boolean(
+    draft.mixRatioParts ||
+    draft.afterPhotoDataUrl ||
+    visit.afterPhotoUrl ||
+    visit.mixRatio ||
+    visit.redness ||
+    visit.adherence
+  );
+}
+
+function isResumableVisit(visit) {
+  return ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim());
+}
+
+function resumeDraftVisit(visit) {
+  if (!visit) return;
+  const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
+  const formType = visit.formType || (visit.serviceType === "เติมสี" ? "form3" : "form1");
+
+  state.visitContext = {
+    visitId: visit.serviceId,
+    zervaBookingId: visit.zervaBookingId || "",
+    visitDate: visit.visitDate || Date.now(),
+    timeSlot: visit.timeSlot || ""
+  };
+  state.serviceType = visit.serviceType || (formType === "form3" ? "เติมสี" : "สักคิ้ว");
+  state.formType = formType;
+  state.resetVisitDraft();
+  Object.assign(state.visitDraft, raw);
+
+  state.visitDraft.existingBeforePhotoUrl = visit.beforePhotoUrl || state.visitDraft.existingBeforePhotoUrl || "";
+  state.visitDraft.existingAfterPhotoUrl = visit.afterPhotoUrl || state.visitDraft.existingAfterPhotoUrl || "";
+  state.visitDraft.existingSignatureCustomerUrl = visit.signatureCustomerUrl || state.visitDraft.existingSignatureCustomerUrl || "";
+
+  coalesceDraftValue(state.visitDraft, "technique", visit.technique);
+  coalesceDraftValue(state.visitDraft, "colorChoice", visit.colorUsed);
+  coalesceDraftValue(state.visitDraft, "intensity", visit.intensity);
+  coalesceDraftValue(state.visitDraft, "muscle", visit.muscle);
+  coalesceDraftValue(state.visitDraft, "shapeDesign", visit.shapeDesign);
+  coalesceDraftValue(state.visitDraft, "browGuard", visit.browGuard);
+  coalesceDraftValue(state.visitDraft, "satisfaction", visit.satisfaction);
+  coalesceDraftValue(state.visitDraft, "colorRetention", visit.colorRetention);
+  coalesceDraftValue(state.visitDraft, "wantsMoreChange", visit.wantsMoreChange);
+  coalesceDraftValue(state.visitDraft, "changeItems", visit.changeItems);
+  coalesceDraftValue(state.visitDraft, "redness", visit.redness);
+  coalesceDraftValue(state.visitDraft, "adherence", visit.adherence);
+
+  show(shouldResumeAtTechFields(visit, state.visitDraft) ? "techFields" : screenForFormType(formType));
+}
+
 function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
   const skinCard = document.getElementById("skinProfileCard");
@@ -1656,11 +1741,13 @@ function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         ${v.status === "draft" ? `<span class="draft-badge" style="margin:0 0 0 6px">Draft</span>` : ""}
+        ${v.status === "กำลังดำเนินการ" ? `<span class="draft-badge" style="margin:0 0 0 6px">In progress</span>` : ""}
         ${v.status === "ไม่ได้รับบริการ" ? `<span class="draft-badge" style="margin:0 0 0 6px; background:var(--error-bg); color:var(--error-text)">Not served</span>` : ""}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
           ${v.note ? `<br>Note: ${escapeHtml(v.note)}` : ""}
+          ${isResumableVisit(v) ? `<br><b>กดเพื่อแก้ไขต่อ</b>` : ""}
         </div>
       </div>
     `).join("");
@@ -1668,7 +1755,11 @@ function initCustomerProfile() {
     historyList.querySelectorAll(".history-item").forEach((el) => {
       el.addEventListener("click", () => {
         const visit = history.find((h) => h.serviceId === el.dataset.id);
-        show("visitDetail", { data: visit });
+        if (isResumableVisit(visit)) {
+          resumeDraftVisit(visit);
+        } else {
+          show("visitDetail", { data: visit });
+        }
       });
     });
   });
@@ -1790,8 +1881,8 @@ function initVisitDetail() {
 </script>
 <script>
 // ==== js/screens/createVisit.js ====
-// createVisit.js — Step 3: สร้างประวัติการเข้ารับบริการใหม่ (ทุกคิว ไม่ว่าลูกค้าใหม่/เก่า ต้องผ่านหน้านี้ก่อนเปิดฟอร์ม)
-// เก็บ Zerva Booking ID + วันที่ + เวลานัด แล้วสร้าง Visit สถานะ "กำลังดำเนินการ" ก่อนไปหน้าเลือกฟอร์ม (Step 4)
+// createVisit.js — Step 3: เก็บข้อมูลนัดก่อนเลือกฟอร์ม
+// ยังไม่สร้างแถว ServiceHistory จนกว่าช่างจะเลือก Form 1/2/3 ใน modal ถัดไปสำเร็จ
 
 
 
@@ -1866,29 +1957,18 @@ function initCreateVisit() {
     }
 
     const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
-    try {
-      const res = await createVisit({
-        customerId: c.customerId,
-        zervaBookingId: zervaEl.value.trim(),
-        visitDate,
-        timeSlot: timeValue
-      });
-      state.visitContext = {
-        visitId: res.visitId,
-        zervaBookingId: zervaEl.value.trim(),
-        visitDate,
-        timeSlot: timeValue
-      };
-      state.resetVisitDraft();
-      state.formType = null;
-      state.serviceType = null;
-      openServiceTypeModal();
-    } catch (e) {
-      console.warn("createVisit failed:", e);
-      alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
-    } finally {
-      continueBtn.disabled = false;
-    }
+    state.pendingVisitMeta = {
+      customerId: c.customerId,
+      zervaBookingId: zervaEl.value.trim(),
+      visitDate,
+      timeSlot: timeValue
+    };
+    state.visitContext = null;
+    state.resetVisitDraft();
+    state.formType = null;
+    state.serviceType = null;
+    continueBtn.disabled = false;
+    openServiceTypeModal();
   });
 
   onEnter("createVisit", () => {
@@ -1905,6 +1985,7 @@ function initCreateVisit() {
     selectedSlot = null;
     slotButtons.forEach((b) => b.classList.remove("is-selected"));
     customSlotBtn.classList.remove("is-selected");
+    state.pendingVisitMeta = null;
     document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
     continueBtn.disabled = false;
   });
@@ -1920,7 +2001,8 @@ function getModal() {
   return modalEl;
 }
 
-// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
+// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน
+// แถว ServiceHistory จะถูกสร้างหลังเลือก Form สำเร็จเท่านั้น เพื่อไม่ให้มี Visit เปล่าค้างใน history
 async function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
@@ -1943,6 +2025,49 @@ async function openServiceTypeModal() {
     } catch (e) {
       // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
     }
+  }
+}
+
+function setChoosingDisabled(disabled) {
+  ["chooseForm1Btn", "chooseForm2Btn", "chooseForm3Btn", "serviceTypeCloseBtn"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+async function chooseForm({ serviceType, formType, screenId }) {
+  const c = state.currentCustomer;
+  const meta = state.pendingVisitMeta;
+  if (!c || !meta) {
+    closeServiceTypeModal();
+    show(c ? "createVisit" : "home");
+    return;
+  }
+
+  state.serviceType = serviceType;
+  state.formType = formType;
+  setChoosingDisabled(true);
+  try {
+    const res = await createVisit({
+      ...meta,
+      serviceType,
+      formType
+    });
+    state.visitContext = {
+      visitId: res.visitId,
+      zervaBookingId: meta.zervaBookingId,
+      visitDate: meta.visitDate,
+      timeSlot: meta.timeSlot
+    };
+    state.pendingVisitMeta = null;
+    state.resetVisitDraft();
+    closeServiceTypeModal();
+    show(screenId);
+  } catch (e) {
+    console.warn("createVisit after form selection failed:", e);
+    alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+  } finally {
+    setChoosingDisabled(false);
   }
 }
 
@@ -1970,24 +2095,15 @@ function initServiceType() {
   });
 
   document.getElementById("chooseForm1Btn").addEventListener("click", () => {
-    state.serviceType = "สักคิ้ว";
-    state.formType = "form1";
-    closeServiceTypeModal();
-    show("form1");
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form1", screenId: "form1" });
   });
 
   document.getElementById("chooseForm2Btn").addEventListener("click", () => {
-    state.serviceType = "สักคิ้ว";
-    state.formType = "form2";
-    closeServiceTypeModal();
-    show("form2");
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form2", screenId: "form2" });
   });
 
   document.getElementById("chooseForm3Btn").addEventListener("click", () => {
-    state.serviceType = "เติมสี";
-    state.formType = "form3";
-    closeServiceTypeModal();
-    show("formTouchup");
+    chooseForm({ serviceType: "เติมสี", formType: "form3", screenId: "formTouchup" });
   });
 }
 </script>
@@ -2021,7 +2137,7 @@ function initFormOne() {
   let pad = null;
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -2191,7 +2307,7 @@ function initFormOne() {
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
     const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
-    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
     const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
@@ -2248,7 +2364,7 @@ function initFormTwo() {
   let pad = null;
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -2430,7 +2546,7 @@ function initFormTwo() {
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
     const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
-    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
     const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
@@ -2506,7 +2622,7 @@ function initFormTouchup() {
   let historyCtx = null;
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -2686,7 +2802,7 @@ function initFormTouchup() {
     const retentionEl = !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null;
     const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
     const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
     const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
@@ -2762,7 +2878,7 @@ function initTechFields() {
   const closeBtn = document.getElementById("tuSaveCloseBtn");
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -2834,9 +2950,9 @@ function initTechFields() {
   }
 
   function missingRequiredBeforeClose(draft) {
-    if (!draft.beforePhotoDataUrl) return "รูป Before";
+    if (!hasDraftPhoto(draft, "before")) return "รูป Before";
     if (!draft.finalAgree) return "Consent";
-    if (!draft.signatureCustomerDataUrl) return "ลายเซ็นลูกค้า";
+    if (!(draft.signatureCustomerDataUrl || draft.existingSignatureCustomerUrl)) return "ลายเซ็นลูกค้า";
     if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
     if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
     if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
@@ -2887,9 +3003,9 @@ function initTechFields() {
         : Promise.resolve(null)
     ]);
     return {
-      beforePhotoUrl: beforeUp ? beforeUp.url : null,
-      afterPhotoUrl: afterUp ? afterUp.url : null,
-      signatureCustomerUrl: hasSignature ? sigUp.url : null
+      beforePhotoUrl: beforeUp ? beforeUp.url : (draft.existingBeforePhotoUrl || null),
+      afterPhotoUrl: afterUp ? afterUp.url : (draft.existingAfterPhotoUrl || null),
+      signatureCustomerUrl: hasSignature ? sigUp.url : (draft.existingSignatureCustomerUrl || null)
     };
   }
 
@@ -2953,7 +3069,7 @@ function initTechFields() {
     const mixRatio = formatMixRatio("mixRatioParts", draft);
     const missingBeforeClose = missingRequiredBeforeClose(draft);
     const mixEl = !mixRatio ? flagError('[data-mix-group="mixRatioParts"]') : null;
-    const afterEl = !draft.afterPhotoDataUrl ? flagError('.photo-slot[data-photo-key="after"]') : null;
+    const afterEl = !hasDraftPhoto(draft, "after") ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
     if (missingBeforeClose) {
       alert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`);

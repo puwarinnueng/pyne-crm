@@ -9,7 +9,7 @@ import { OPTIONS } from "../data/options.js";
 import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js";
 import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit } from "../utils.js";
+import { formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
 import { visitHeaderHtml, wireNotServedButton, wireDraftSaveButton } from "../visitFlow.js";
 
 // ระยะเวลาจากวันที่สักครั้งแรกถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (คำนวณอัตโนมัติตามสเปก)
@@ -46,7 +46,7 @@ export function initFormTouchup() {
   let historyCtx = null;
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -226,7 +226,7 @@ export function initFormTouchup() {
     const retentionEl = !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null;
     const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
     const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
     const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);

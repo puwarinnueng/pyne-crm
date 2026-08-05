@@ -261,10 +261,10 @@ export async function getHistoryByCustomer(customerId) {
     .sort((a, b) => b.visitDate - a.visitDate);
 }
 
-// สร้าง Visit ใหม่ตอน Step 3 (ก่อนเปิดฟอร์ม Consultation ใด ๆ) — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
+// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
 // คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
-export async function createVisit({ customerId, zervaBookingId, visitDate, timeSlot }) {
+export async function createVisit({ customerId, zervaBookingId, visitDate, timeSlot, serviceType, formType }) {
   await wait(200);
   requireSession(getToken());
   const database = db.get();
@@ -276,6 +276,8 @@ export async function createVisit({ customerId, zervaBookingId, visitDate, timeS
     visitDate: visitDate || Date.now(),
     timeSlot: timeSlot || null,
     status: "กำลังดำเนินการ",
+    serviceType: serviceType || null,
+    formType: formType || null,
     createdAt: Date.now()
   };
   database.serviceHistory.push(visit);

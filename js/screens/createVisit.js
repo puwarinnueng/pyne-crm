@@ -1,9 +1,9 @@
-// createVisit.js — Step 3: สร้างประวัติการเข้ารับบริการใหม่ (ทุกคิว ไม่ว่าลูกค้าใหม่/เก่า ต้องผ่านหน้านี้ก่อนเปิดฟอร์ม)
-// เก็บ Zerva Booking ID + วันที่ + เวลานัด แล้วสร้าง Visit สถานะ "กำลังดำเนินการ" ก่อนไปหน้าเลือกฟอร์ม (Step 4)
+// createVisit.js — Step 3: เก็บข้อมูลนัดก่อนเลือกฟอร์ม
+// ยังไม่สร้างแถว ServiceHistory จนกว่าช่างจะเลือก Form 1/2/3 ใน modal ถัดไปสำเร็จ
 
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
-import { createVisit, getHistoryByCustomer } from "../mockApi.js";
+import { getHistoryByCustomer } from "../mockApi.js";
 import { openServiceTypeModal } from "./serviceType.js";
 import { escapeHtml, formatDate } from "../utils.js";
 
@@ -75,29 +75,18 @@ export function initCreateVisit() {
     }
 
     const visitDate = dateEl.value ? new Date(dateEl.value).getTime() : Date.now();
-    try {
-      const res = await createVisit({
-        customerId: c.customerId,
-        zervaBookingId: zervaEl.value.trim(),
-        visitDate,
-        timeSlot: timeValue
-      });
-      state.visitContext = {
-        visitId: res.visitId,
-        zervaBookingId: zervaEl.value.trim(),
-        visitDate,
-        timeSlot: timeValue
-      };
-      state.resetVisitDraft();
-      state.formType = null;
-      state.serviceType = null;
-      openServiceTypeModal();
-    } catch (e) {
-      console.warn("createVisit failed:", e);
-      alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
-    } finally {
-      continueBtn.disabled = false;
-    }
+    state.pendingVisitMeta = {
+      customerId: c.customerId,
+      zervaBookingId: zervaEl.value.trim(),
+      visitDate,
+      timeSlot: timeValue
+    };
+    state.visitContext = null;
+    state.resetVisitDraft();
+    state.formType = null;
+    state.serviceType = null;
+    continueBtn.disabled = false;
+    openServiceTypeModal();
   });
 
   onEnter("createVisit", () => {
@@ -114,6 +103,7 @@ export function initCreateVisit() {
     selectedSlot = null;
     slotButtons.forEach((b) => b.classList.remove("is-selected"));
     customSlotBtn.classList.remove("is-selected");
+    state.pendingVisitMeta = null;
     document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
     continueBtn.disabled = false;
   });

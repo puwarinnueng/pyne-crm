@@ -52,3 +52,19 @@ export function readFileAsDataUrl(file) {
     reader.readAsDataURL(file);
   });
 }
+
+function photoKeyName(key) {
+  return key ? key.charAt(0).toUpperCase() + key.slice(1) : "";
+}
+
+export function existingPhotoKey(key) {
+  return `existing${photoKeyName(key)}PhotoUrl`;
+}
+
+export function draftPhotoUrl(draft, key) {
+  return draft?.[key + "PhotoDataUrl"] || draft?.[existingPhotoKey(key)] || "";
+}
+
+export function hasDraftPhoto(draft, key) {
+  return Boolean(draftPhotoUrl(draft, key));
+}

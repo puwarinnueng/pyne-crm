@@ -31,6 +31,73 @@ function withTimeout(promise, ms, message) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function coalesceDraftValue(draft, key, value) {
+  if (draft[key] === undefined || draft[key] === null || draft[key] === "") {
+    if (Array.isArray(value)) {
+      if (value.length) draft[key] = value;
+    } else if (value !== undefined && value !== null && value !== "") {
+      draft[key] = value;
+    }
+  }
+}
+
+function screenForFormType(formType) {
+  if (formType === "form2") return "form2";
+  if (formType === "form3") return "formTouchup";
+  return "form1";
+}
+
+function shouldResumeAtTechFields(visit, draft) {
+  return Boolean(
+    draft.mixRatioParts ||
+    draft.afterPhotoDataUrl ||
+    visit.afterPhotoUrl ||
+    visit.mixRatio ||
+    visit.redness ||
+    visit.adherence
+  );
+}
+
+function isResumableVisit(visit) {
+  return ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim());
+}
+
+function resumeDraftVisit(visit) {
+  if (!visit) return;
+  const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
+  const formType = visit.formType || (visit.serviceType === "เติมสี" ? "form3" : "form1");
+
+  state.visitContext = {
+    visitId: visit.serviceId,
+    zervaBookingId: visit.zervaBookingId || "",
+    visitDate: visit.visitDate || Date.now(),
+    timeSlot: visit.timeSlot || ""
+  };
+  state.serviceType = visit.serviceType || (formType === "form3" ? "เติมสี" : "สักคิ้ว");
+  state.formType = formType;
+  state.resetVisitDraft();
+  Object.assign(state.visitDraft, raw);
+
+  state.visitDraft.existingBeforePhotoUrl = visit.beforePhotoUrl || state.visitDraft.existingBeforePhotoUrl || "";
+  state.visitDraft.existingAfterPhotoUrl = visit.afterPhotoUrl || state.visitDraft.existingAfterPhotoUrl || "";
+  state.visitDraft.existingSignatureCustomerUrl = visit.signatureCustomerUrl || state.visitDraft.existingSignatureCustomerUrl || "";
+
+  coalesceDraftValue(state.visitDraft, "technique", visit.technique);
+  coalesceDraftValue(state.visitDraft, "colorChoice", visit.colorUsed);
+  coalesceDraftValue(state.visitDraft, "intensity", visit.intensity);
+  coalesceDraftValue(state.visitDraft, "muscle", visit.muscle);
+  coalesceDraftValue(state.visitDraft, "shapeDesign", visit.shapeDesign);
+  coalesceDraftValue(state.visitDraft, "browGuard", visit.browGuard);
+  coalesceDraftValue(state.visitDraft, "satisfaction", visit.satisfaction);
+  coalesceDraftValue(state.visitDraft, "colorRetention", visit.colorRetention);
+  coalesceDraftValue(state.visitDraft, "wantsMoreChange", visit.wantsMoreChange);
+  coalesceDraftValue(state.visitDraft, "changeItems", visit.changeItems);
+  coalesceDraftValue(state.visitDraft, "redness", visit.redness);
+  coalesceDraftValue(state.visitDraft, "adherence", visit.adherence);
+
+  show(shouldResumeAtTechFields(visit, state.visitDraft) ? "techFields" : screenForFormType(formType));
+}
+
 export function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
   const skinCard = document.getElementById("skinProfileCard");
@@ -156,11 +223,13 @@ export function initCustomerProfile() {
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
         ${v.status === "draft" ? `<span class="draft-badge" style="margin:0 0 0 6px">Draft</span>` : ""}
+        ${v.status === "กำลังดำเนินการ" ? `<span class="draft-badge" style="margin:0 0 0 6px">In progress</span>` : ""}
         ${v.status === "ไม่ได้รับบริการ" ? `<span class="draft-badge" style="margin:0 0 0 6px; background:var(--error-bg); color:var(--error-text)">Not served</span>` : ""}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
           ${v.note ? `<br>Note: ${escapeHtml(v.note)}` : ""}
+          ${isResumableVisit(v) ? `<br><b>กดเพื่อแก้ไขต่อ</b>` : ""}
         </div>
       </div>
     `).join("");
@@ -168,7 +237,11 @@ export function initCustomerProfile() {
     historyList.querySelectorAll(".history-item").forEach((el) => {
       el.addEventListener("click", () => {
         const visit = history.find((h) => h.serviceId === el.dataset.id);
-        show("visitDetail", { data: visit });
+        if (isResumableVisit(visit)) {
+          resumeDraftVisit(visit);
+        } else {
+          show("visitDetail", { data: visit });
+        }
       });
     });
   });

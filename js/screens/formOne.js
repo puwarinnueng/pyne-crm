@@ -7,7 +7,7 @@ import { OPTIONS } from "../data/options.js";
 import { CONSENT_BLOCKS, INTENSITY_DISCLAIMER, PRE_SERVICE_AGREE_TEXT, FINAL_AGREEMENT_TEXT } from "../data/consentText.js";
 import { radioField, chipGroup, textField, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
 import { createSignaturePad } from "../signaturePad.js";
-import { escapeHtml, readFileAsDataUrl } from "../utils.js";
+import { escapeHtml, readFileAsDataUrl, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
 import { visitHeaderHtml, wireNotServedButton, wireDraftSaveButton } from "../visitFlow.js";
 import { updateMuscleEvaluation } from "../mockApi.js";
 
@@ -27,7 +27,7 @@ export function initFormOne() {
   let pad = null;
 
   function photoSlot(key, label) {
-    const url = state.visitDraft[key + "PhotoDataUrl"];
+    const url = draftPhotoUrl(state.visitDraft, key);
     return `
       <div class="photo-slot" data-photo-key="${key}">
         ${url ? `<img src="${url}">` : `
@@ -197,7 +197,7 @@ export function initFormOne() {
     const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
     const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
     const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
-    const beforeEl = !draft.beforePhotoDataUrl ? flagError('[data-photo-key="before"]') : null;
+    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
     const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
     const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
     const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;

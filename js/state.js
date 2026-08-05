@@ -6,6 +6,7 @@ export const state = {
   serviceType: null,          // "สักคิ้ว" | "เติมสี" (หมวดกว้าง ใช้แสดงผลจุดเดิมที่มีอยู่)
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
+  pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -22,6 +23,7 @@ export const state = {
     this.serviceType = null;
     this.formType = null;
     this.visitContext = null;
+    this.pendingVisitMeta = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }

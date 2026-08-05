@@ -1,6 +1,6 @@
 import { show } from "../router.js";
 import { state } from "../state.js";
-import { getHistoryByCustomer } from "../mockApi.js";
+import { createVisit, getHistoryByCustomer } from "../mockApi.js";
 import { isCompletedBrowVisit } from "../utils.js";
 
 let modalEl = null;
@@ -11,7 +11,8 @@ function getModal() {
   return modalEl;
 }
 
-// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน — เรียกหลังสร้าง Visit (Step 3) เสร็จเสมอ
+// เปิด modal เลือกฟอร์ม Consultation (Step 4) ทับหน้าจอปัจจุบัน
+// แถว ServiceHistory จะถูกสร้างหลังเลือก Form สำเร็จเท่านั้น เพื่อไม่ให้มี Visit เปล่าค้างใน history
 export async function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
@@ -34,6 +35,49 @@ export async function openServiceTypeModal() {
     } catch (e) {
       // เช็คประวัติไม่สำเร็จ — ปลอดภัยไว้ก่อนด้วยการซ่อน Form 3 ต่อไป แทนที่จะเสี่ยงโชว์ผิด
     }
+  }
+}
+
+function setChoosingDisabled(disabled) {
+  ["chooseForm1Btn", "chooseForm2Btn", "chooseForm3Btn", "serviceTypeCloseBtn"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+async function chooseForm({ serviceType, formType, screenId }) {
+  const c = state.currentCustomer;
+  const meta = state.pendingVisitMeta;
+  if (!c || !meta) {
+    closeServiceTypeModal();
+    show(c ? "createVisit" : "home");
+    return;
+  }
+
+  state.serviceType = serviceType;
+  state.formType = formType;
+  setChoosingDisabled(true);
+  try {
+    const res = await createVisit({
+      ...meta,
+      serviceType,
+      formType
+    });
+    state.visitContext = {
+      visitId: res.visitId,
+      zervaBookingId: meta.zervaBookingId,
+      visitDate: meta.visitDate,
+      timeSlot: meta.timeSlot
+    };
+    state.pendingVisitMeta = null;
+    state.resetVisitDraft();
+    closeServiceTypeModal();
+    show(screenId);
+  } catch (e) {
+    console.warn("createVisit after form selection failed:", e);
+    alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+  } finally {
+    setChoosingDisabled(false);
   }
 }
 
@@ -61,23 +105,14 @@ export function initServiceType() {
   });
 
   document.getElementById("chooseForm1Btn").addEventListener("click", () => {
-    state.serviceType = "สักคิ้ว";
-    state.formType = "form1";
-    closeServiceTypeModal();
-    show("form1");
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form1", screenId: "form1" });
   });
 
   document.getElementById("chooseForm2Btn").addEventListener("click", () => {
-    state.serviceType = "สักคิ้ว";
-    state.formType = "form2";
-    closeServiceTypeModal();
-    show("form2");
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form2", screenId: "form2" });
   });
 
   document.getElementById("chooseForm3Btn").addEventListener("click", () => {
-    state.serviceType = "เติมสี";
-    state.formType = "form3";
-    closeServiceTypeModal();
-    show("formTouchup");
+    chooseForm({ serviceType: "เติมสี", formType: "form3", screenId: "formTouchup" });
   });
 }

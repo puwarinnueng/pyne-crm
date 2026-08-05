@@ -20,6 +20,16 @@ function parseJsonArray_(json) {
   }
 }
 
+function parseJsonObject_(json) {
+  if (!json) return {};
+  try {
+    const v = JSON.parse(json);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
 function dateValueForClient_(value) {
   if (!value) return null;
   if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
@@ -68,6 +78,7 @@ function rowToVisit_(row) {
     signatureCustomerUrl: stringForClient_(row.SignatureCustomerUrl),
     signatureTechUrl: stringForClient_(row.SignatureTechUrl),
     consentAgreedAt: dateValueForClient_(row.ConsentAgreedAt) || null,
+    rawAnswers: parseJsonObject_(row.RawAnswersJson),
     calendarEventId: stringForClient_(row.CalendarEventId),
     createdAt: dateValueForClient_(row.CreatedAt)
   };
@@ -82,7 +93,7 @@ function getHistoryByCustomer(token, customerId) {
     .sort((a, b) => (Number(b.visitDate) || 0) - (Number(a.visitDate) || 0));
 }
 
-// สร้าง Visit ใหม่ตอน Step 3 (ก่อนเปิดฟอร์ม Consultation ใด ๆ) — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
+// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
 // คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
 function createVisit(token, payload) {
@@ -101,6 +112,8 @@ function createVisit(token, payload) {
       VisitDate: payload.visitDate || now,
       TimeSlot: payload.timeSlot || "",
       Status: "กำลังดำเนินการ",
+      ServiceType: payload.serviceType || "",
+      FormType: payload.formType || "",
       CreatedAt: now
     };
 
