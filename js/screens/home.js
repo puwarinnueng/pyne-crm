@@ -25,7 +25,11 @@ export function initHome() {
   const table = tableCard.querySelector("table");
   const emptyState = document.getElementById("customersEmptyState");
   const searchInput = document.getElementById("searchInput");
-  const newCustomerBtn = document.getElementById("newCustomerBtn");
+  const startChoice = document.getElementById("homeStartChoice");
+  const searchPanel = document.getElementById("homeSearchPanel");
+  const chooseNewCustomerBtn = document.getElementById("chooseNewCustomerBtn");
+  const chooseOldCustomerBtn = document.getElementById("chooseOldCustomerBtn");
+  const searchBackBtn = document.getElementById("homeSearchBackBtn");
   const summary = document.getElementById("customersSummary");
 
   let allCustomers = [];
@@ -201,7 +205,20 @@ export function initHome() {
 
   searchInput.addEventListener("input", render);
 
-  newCustomerBtn.addEventListener("click", () => {
+  function showStartChoice() {
+    startChoice.hidden = false;
+    searchPanel.hidden = true;
+  }
+
+  function showSearchPanel() {
+    startChoice.hidden = true;
+    searchPanel.hidden = false;
+    searchInput.value = "";
+    searchInput.focus();
+    loadCustomers();
+  }
+
+  chooseNewCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
     state.serviceType = null;
@@ -209,8 +226,13 @@ export function initHome() {
     show("newCustomer");
   });
 
+  // ลูกค้าเก่า: ต้องเลือกก่อนถึงจะเข้าค้นหาได้ (Step 1 ตามสเปก Flow การรับลูกค้า) — กันไม่ให้เห็นตาราง
+  // ลูกค้าทั้งหมดตั้งแต่แรกเข้า
+  chooseOldCustomerBtn.addEventListener("click", showSearchPanel);
+  searchBackBtn.addEventListener("click", showStartChoice);
+
   onEnter("home", () => {
+    showStartChoice();
     searchInput.value = "";
-    loadCustomers();
   });
 }

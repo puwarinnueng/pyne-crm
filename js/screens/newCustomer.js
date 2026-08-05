@@ -132,7 +132,17 @@ export function initNewCustomer() {
     const createBtn2 = document.getElementById("ncCreateBtn2");
     createBtn2.disabled = true;
 
-    const existing = await findCustomerByPhone(draft.phone);
+    // ทุก request ข้างล่างนี้ยิงไปเซิร์ฟเวอร์จริง (Apps Script + LockService) พังได้ทั้งจาก network
+    // hiccup หรือ lock timeout เวลาช่างหลายคนกดพร้อมกัน — เดิมไม่มี try/catch เลยสักจุด ถ้า request ไหน
+    // reject ปุ่มจะค้าง disabled (หรือค้างหน้าเดิมเฉยๆ ไม่ error ไม่ navigate ต่อ) ดูเหมือนแอปค้าง/โหลดไม่ขึ้น
+    let existing;
+    try {
+      existing = await findCustomerByPhone(draft.phone);
+    } catch (e) {
+      createBtn2.disabled = false;
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
+      return;
+    }
     if (existing) {
       createBtn2.disabled = false;
       document.getElementById("ncWarning").innerHTML = `
@@ -148,27 +158,41 @@ export function initNewCustomer() {
       return;
     }
 
-    const res = await createCustomer({
-      fullName: draft.fullName.trim(), nickname: draft.nickname.trim(),
-      dob: draft.dob, phone: draft.phone.trim(), line: (draft.line || "").trim()
-    });
+    let res;
+    try {
+      res = await createCustomer({
+        fullName: draft.fullName.trim(), nickname: draft.nickname.trim(),
+        dob: draft.dob, phone: draft.phone.trim(), line: (draft.line || "").trim()
+      });
+    } catch (e) {
+      createBtn2.disabled = false;
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้าง Customer Profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
+      return;
+    }
     createBtn2.disabled = false;
     if (!res.success) {
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
       return;
     }
 
-    const skinRes = await saveSkinProfile(res.customer.customerId, {
-      skinType: draft.skinType || null,
-      hairLook: draft.hairLook || null,
-      hairDensity: draft.hairDensity || null,
-      browShape: draft.browShape || []
-    });
-    const confirmRes = await confirmCustomerProfile(res.customer.customerId);
+    // ลูกค้าถูกสร้างสำเร็จแล้ว ณ จุดนี้ (มี customerId จริงในฐานข้อมูล) — ตั้ง state ทันทีกันไม่ให้ค้าง
+    // หน้าเดิมถ้าขั้นตอนถัดไป (บันทึกประวัติผิว/ยืนยันข้อมูล) พังภายหลัง ประวัติผิวแก้ทีหลังได้ใน Customer Profile
+    state.currentCustomer = res.customer;
+    try {
+      const skinRes = await saveSkinProfile(res.customer.customerId, {
+        skinType: draft.skinType || null,
+        hairLook: draft.hairLook || null,
+        hairDensity: draft.hairDensity || null,
+        browShape: draft.browShape || []
+      });
+      const confirmRes = await confirmCustomerProfile(res.customer.customerId);
+      // ใช้ผลลัพธ์ล่าสุดหลังอัปเดต skinProfile/profileConfirmedAt แล้ว ไม่ใช่ res.customer ตอน createCustomer()
+      // ตอนนั้น (ก่อน saveSkinProfile/confirmCustomerProfile เขียนทับ) เพราะจะทำให้หน้าถัดไปเห็น skinProfile ว่างเปล่า
+      state.currentCustomer = confirmRes.customer || skinRes.customer || res.customer;
+    } catch (e) {
+      console.warn("saveSkinProfile/confirmCustomerProfile failed after customer was created:", e);
+    }
 
-    // ใช้ผลลัพธ์ล่าสุดหลังอัปเดต skinProfile/profileConfirmedAt แล้ว ไม่ใช่ res.customer ตอน createCustomer()
-    // ตอนนั้น (ก่อน saveSkinProfile/confirmCustomerProfile เขียนทับ) เพราะจะทำให้หน้าถัดไปเห็น skinProfile ว่างเปล่า
-    state.currentCustomer = confirmRes.customer || skinRes.customer || res.customer;
     Object.keys(draft).forEach((k) => delete draft[k]);
     show("createVisit");
   }

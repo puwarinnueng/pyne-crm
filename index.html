@@ -158,33 +158,63 @@
         </header>
 
         <div class="customers-page">
-          <div class="toolbar-row">
-            <div class="search-bar-wrap">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="searchInput" class="input search-input" placeholder="Search by name, phone, or LINE...">
+          <!-- Step 1: เริ่มบริการ — ลูกค้าใหม่หรือลูกค้าเก่า (ตามสเปก Flow การรับลูกค้า) -->
+          <div id="homeStartChoice">
+            <p class="choose-lead">เริ่มบริการ — ลูกค้าใหม่หรือลูกค้าเก่า?</p>
+            <div class="service-choices">
+              <button class="service-card" id="chooseNewCustomerBtn" type="button">
+                <span class="service-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+                </span>
+                <span class="service-card-text">
+                  <span class="service-card-title">ลูกค้าใหม่</span>
+                  <span class="service-card-sub">สร้าง Customer Profile ใหม่</span>
+                </span>
+                <span class="service-card-arrow">›</span>
+              </button>
+              <button class="service-card" id="chooseOldCustomerBtn" type="button">
+                <span class="service-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <span class="service-card-text">
+                  <span class="service-card-title">ลูกค้าเก่า</span>
+                  <span class="service-card-sub">ค้นหาจากเบอร์โทรศัพท์ที่จองผ่าน Zerva</span>
+                </span>
+                <span class="service-card-arrow">›</span>
+              </button>
             </div>
-            <button class="btn btn-primary" id="newCustomerBtn">+ New Customer</button>
           </div>
 
-          <div class="customers-summary" id="customersSummary"></div>
-
-          <div class="customers-table-card">
-            <div class="table-scroll">
-              <table class="customers-table">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Phone</th>
-                    <th>Line</th>
-                    <th>Last Visit</th>
-                    <th>Visits</th>
-                    <th class="th-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="customersTableBody"></tbody>
-              </table>
+          <!-- Step 2 (ลูกค้าเก่า): ค้นหาจากเบอร์โทร -->
+          <div id="homeSearchPanel" hidden>
+            <button class="back-link" id="homeSearchBackBtn" type="button">‹ กลับ</button>
+            <div class="toolbar-row">
+              <div class="search-bar-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchInput" class="input search-input" placeholder="ค้นหาด้วยเบอร์โทรศัพท์...">
+              </div>
             </div>
-            <div id="customersEmptyState" class="empty-hint" hidden></div>
+
+            <div class="customers-summary" id="customersSummary"></div>
+
+            <div class="customers-table-card">
+              <div class="table-scroll">
+                <table class="customers-table">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Phone</th>
+                      <th>Line</th>
+                      <th>Last Visit</th>
+                      <th>Visits</th>
+                      <th class="th-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="customersTableBody"></tbody>
+                </table>
+              </div>
+              <div id="customersEmptyState" class="empty-hint" hidden></div>
+            </div>
           </div>
         </div>
       </section>
