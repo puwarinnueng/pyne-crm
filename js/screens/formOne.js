@@ -20,6 +20,17 @@ function consentBlocksHtml() {
   `).join("");
 }
 
+function formOneSummaryValues(draft) {
+  return {
+    technique: draft.technique || "-",
+    desiredOverview: draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"),
+    colorChoice: draft.colorChoice || "-",
+    shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"),
+    notWanted: (draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-",
+    intensity: draft.intensity || "-"
+  };
+}
+
 export function initFormOne() {
   const container = document.getElementById("form1Body");
   const nextBtn = document.getElementById("form1NextBtn");
@@ -52,8 +63,17 @@ export function initFormOne() {
       </div>`;
   }
 
+  function updateSummary() {
+    const values = formOneSummaryValues(state.visitDraft);
+    Object.keys(values).forEach((key) => {
+      const el = container.querySelector(`[data-summary-key="${key}"]`);
+      if (el) el.textContent = values[key];
+    });
+  }
+
   function render() {
     const draft = state.visitDraft;
+    const summary = formOneSummaryValues(draft);
     container.innerHTML = `
       ${visitHeaderHtml()}
       ${readinessBlockHtml(draft)}
@@ -122,12 +142,12 @@ export function initFormOne() {
 
       <div class="form-section-title">ส่วนที่ 3 — สรุปข้อมูลก่อนเริ่มทำ</div>
       <div class="box-quiet">
-        <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value">${escapeHtml(draft.technique || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value">${escapeHtml(draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"))}</div></div>
-        <div class="detail-row"><div class="detail-label">สีที่เลือก</div><div class="detail-value">${escapeHtml(draft.colorChoice || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value">${escapeHtml(draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"))}</div></div>
-        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value">${escapeHtml((draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value">${escapeHtml(draft.intensity || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value" data-summary-key="technique">${escapeHtml(summary.technique)}</div></div>
+        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value" data-summary-key="desiredOverview">${escapeHtml(summary.desiredOverview)}</div></div>
+        <div class="detail-row"><div class="detail-label">สีที่เลือก</div><div class="detail-value" data-summary-key="colorChoice">${escapeHtml(summary.colorChoice)}</div></div>
+        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value" data-summary-key="shapeDesign">${escapeHtml(summary.shapeDesign)}</div></div>
+        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value" data-summary-key="notWanted">${escapeHtml(summary.notWanted)}</div></div>
+        <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value" data-summary-key="intensity">${escapeHtml(summary.intensity)}</div></div>
       </div>
 
       <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
@@ -164,6 +184,11 @@ export function initFormOne() {
 
   bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
     bindReadinessToggle(container, state.visitDraft, changedRadioName);
+    updateSummary();
+  });
+
+  container.addEventListener("input", (e) => {
+    if (e.target.dataset.textKey || e.target.dataset.otherKey) updateSummary();
   });
 
   ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
