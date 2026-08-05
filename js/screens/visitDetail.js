@@ -2,7 +2,7 @@
 // เปิดจากการกดรายการใน customerProfile.js (ส่ง visit object มาทาง show("visitDetail", { data: visit }))
 
 import { onEnter } from "../router.js";
-import { formatDate, escapeHtml } from "../utils.js";
+import { formatDate, escapeHtml, formTypeLabel, isCompletedVisitStatus, visitStatusLabel } from "../utils.js";
 
 const FIELD_LABELS = {
   hadBrowBefore: "เคยสักคิ้วมาก่อนหรือไม่",
@@ -63,7 +63,7 @@ export function initVisitDetail() {
 
     body.innerHTML = `
       <div class="box-quiet">
-        <b>${escapeHtml(visit.serviceType || "-")}</b> &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
+        <b>${escapeHtml(visit.serviceType || "-")}</b>${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""} &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
       </div>
 
       <div class="step-group">
@@ -90,7 +90,7 @@ export function initVisitDetail() {
         ${visit.mixRatio ? row("สัดส่วนสีที่ใช้", visit.mixRatio) : ""}
         ${visit.redness ? row("ความแดงผิว", visit.redness) : ""}
         ${visit.adherence ? row("ความติดสี", visit.adherence) : ""}
-        ${visit.status === "draft" ? row("สถานะ", "บันทึกแบบร่าง (ยังไม่ปิด Visit)") : ""}
+        ${!isCompletedVisitStatus(visit.status) && visitStatusLabel(visit.status) ? row("สถานะ", visitStatusLabel(visit.status)) : ""}
         ${visit.note ? row("หมายเหตุ", visit.note) : ""}
       </div>
 

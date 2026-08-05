@@ -20,8 +20,29 @@ export function escapeHtml(str) {
   }[c]));
 }
 
+export function normalizeVisitStatus(status) {
+  const key = String(status || "").trim();
+  if (key === "กำลังดำเนินการ") return "in_progress";
+  if (key === "เสร็จสิ้น") return "completed";
+  if (key === "ไม่ได้รับบริการ") return "not_served";
+  return key;
+}
+
+export function visitStatusLabel(status) {
+  const key = normalizeVisitStatus(status);
+  if (key === "draft") return "Draft";
+  if (key === "in_progress") return "In progress";
+  if (key === "completed") return "Completed";
+  if (key === "not_served") return "Not served";
+  return key || "";
+}
+
+export function isResumableVisitStatus(status) {
+  return ["draft", "in_progress"].includes(normalizeVisitStatus(status));
+}
+
 export function isCompletedVisitStatus(status) {
-  return ["เสร็จสิ้น", "completed"].includes(String(status || "").trim());
+  return normalizeVisitStatus(status) === "completed";
 }
 
 export function isCompletedBrowVisit(visit) {
@@ -67,4 +88,12 @@ export function draftPhotoUrl(draft, key) {
 
 export function hasDraftPhoto(draft, key) {
   return Boolean(draftPhotoUrl(draft, key));
+}
+
+export function formTypeLabel(formType) {
+  const key = String(formType || "").trim();
+  if (key === "form1") return "สักคิ้วครั้งแรก";
+  if (key === "form2") return "สักทับรอยเก่า";
+  if (key === "form3") return "เติมสีคิ้ว";
+  return "";
 }

@@ -7,6 +7,7 @@ export const state = {
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
   pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
+  currentCustomerHistory: null, // cache history ของลูกค้าปัจจุบัน เพื่อลดการ fetch ซ้ำใน Form 3
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -24,6 +25,7 @@ export const state = {
     this.formType = null;
     this.visitContext = null;
     this.pendingVisitMeta = null;
+    this.currentCustomerHistory = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }

@@ -47,6 +47,14 @@ function stringForClient_(value) {
   return String(value);
 }
 
+function normalizeVisitStatus_(status) {
+  var key = String(status || "").trim();
+  if (key === "กำลังดำเนินการ") return "in_progress";
+  if (key === "เสร็จสิ้น") return "completed";
+  if (key === "ไม่ได้รับบริการ") return "not_served";
+  return key;
+}
+
 function rowToVisit_(row) {
   return {
     serviceId: stringForClient_(row.ServiceID),
@@ -86,8 +94,8 @@ function rowToVisit_(row) {
 }
 
 function visitSortScore_(visit) {
-  var status = String(visit.status || "").trim();
-  var resumableRank = (status === "draft" || status === "กำลังดำเนินการ") ? 1 : 0;
+  var status = normalizeVisitStatus_(visit.status);
+  var resumableRank = (status === "draft" || status === "in_progress") ? 1 : 0;
   var activityTime = Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
   var visitTime = Number(visit.visitDate) || 0;
   return {
@@ -116,7 +124,7 @@ function getHistoryByCustomer(token, customerId) {
     .sort(compareVisitsForHistory_);
 }
 
-// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
+// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "in_progress"
 // คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
 function createVisit(token, payload) {
@@ -134,7 +142,7 @@ function createVisit(token, payload) {
       ZervaBookingId: payload.zervaBookingId || "",
       VisitDate: payload.visitDate || now,
       TimeSlot: payload.timeSlot || "",
-      Status: "กำลังดำเนินการ",
+      Status: "in_progress",
       ServiceType: payload.serviceType || "",
       FormType: payload.formType || "",
       CreatedAt: now
@@ -147,7 +155,7 @@ function createVisit(token, payload) {
   }
 }
 
-// ปิด Visit ด้วยสถานะ "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
+// ปิด Visit ด้วยสถานะ "not_served" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
 function closeVisitNotServed(token, visitId, reason) {
   requireSession_(token);
   const lock = LockService.getScriptLock();
@@ -160,7 +168,7 @@ function closeVisitNotServed(token, visitId, reason) {
     const statusCol = SERVICE_HISTORY_HEADERS.indexOf("Status") + 1;
     const reasonCol = SERVICE_HISTORY_HEADERS.indexOf("NotServedReason") + 1;
     const updatedCol = SERVICE_HISTORY_HEADERS.indexOf("UpdatedAt") + 1;
-    sheet.getRange(row._rowIndex, statusCol).setValue("ไม่ได้รับบริการ");
+    sheet.getRange(row._rowIndex, statusCol).setValue("not_served");
     sheet.getRange(row._rowIndex, reasonCol).setValue(reason);
     sheet.getRange(row._rowIndex, updatedCol).setValue(Date.now());
     return { success: true };
@@ -185,7 +193,7 @@ function saveVisit(token, payload) {
       ZervaBookingId: payload.zervaBookingId,
       VisitDate: payload.visitDate,
       TimeSlot: payload.timeSlot,
-      Status: payload.status,
+      Status: payload.status !== undefined ? normalizeVisitStatus_(payload.status) : undefined,
       ServiceType: payload.serviceType,
       FormType: payload.formType,
       Technique: payload.technique,

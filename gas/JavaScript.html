@@ -22,8 +22,29 @@ function escapeHtml(str) {
   }[c]));
 }
 
+function normalizeVisitStatus(status) {
+  const key = String(status || "").trim();
+  if (key === "กำลังดำเนินการ") return "in_progress";
+  if (key === "เสร็จสิ้น") return "completed";
+  if (key === "ไม่ได้รับบริการ") return "not_served";
+  return key;
+}
+
+function visitStatusLabel(status) {
+  const key = normalizeVisitStatus(status);
+  if (key === "draft") return "Draft";
+  if (key === "in_progress") return "In progress";
+  if (key === "completed") return "Completed";
+  if (key === "not_served") return "Not served";
+  return key || "";
+}
+
+function isResumableVisitStatus(status) {
+  return ["draft", "in_progress"].includes(normalizeVisitStatus(status));
+}
+
 function isCompletedVisitStatus(status) {
-  return ["เสร็จสิ้น", "completed"].includes(String(status || "").trim());
+  return normalizeVisitStatus(status) === "completed";
 }
 
 function isCompletedBrowVisit(visit) {
@@ -69,6 +90,14 @@ function draftPhotoUrl(draft, key) {
 
 function hasDraftPhoto(draft, key) {
   return Boolean(draftPhotoUrl(draft, key));
+}
+
+function formTypeLabel(formType) {
+  const key = String(formType || "").trim();
+  if (key === "form1") return "สักคิ้วครั้งแรก";
+  if (key === "form2") return "สักทับรอยเก่า";
+  if (key === "form3") return "เติมสีคิ้ว";
+  return "";
 }
 </script>
 <script>
@@ -234,6 +263,7 @@ const state = {
   formType: null,             // "form1" | "form2" | "form3" (ใช้เลือก/บันทึกฟอร์มที่ตรงจริง)
   visitContext: null,         // { visitId, zervaBookingId, visitDate, timeSlot } — สร้างจาก Step 3 ก่อนเปิดฟอร์มเสมอ
   pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
+  currentCustomerHistory: null, // cache history ของลูกค้าปัจจุบัน เพื่อลดการ fetch ซ้ำใน Form 3
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
   browStepIndex: 0,
   lastSavedServiceId: null,
@@ -251,6 +281,7 @@ const state = {
     this.formType = null;
     this.visitContext = null;
     this.pendingVisitMeta = null;
+    this.currentCustomerHistory = null;
     this.resetVisitDraft();
     this.browStepIndex = 0;
   }
@@ -1122,6 +1153,7 @@ function initHome() {
   function openProfile(customer) {
     searchRequestSeq += 1; // cancel any in-flight search render before navigating away
     state.currentCustomer = customer;
+    state.currentCustomerHistory = null;
     show("customerProfile");
   }
 
@@ -1130,6 +1162,7 @@ function initHome() {
     // เลือกฟอร์ม (Step 4) ตรง ๆ จากตรงนี้ เพราะ state.visitContext จะไม่ถูกตั้งค่า (ตั้งค่าเฉพาะใน
     // createVisit.js) ทำให้กด Next/บันทึกแบบร่างในฟอร์มแล้วเงียบ ๆ ไม่มีอะไรเกิดขึ้นหรือเด้งกลับ home
     state.currentCustomer = customer;
+    state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
     show("createVisit");
@@ -1343,6 +1376,7 @@ function initHome() {
   chooseNewCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
+    state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
     show("newCustomer");
@@ -1628,7 +1662,12 @@ function shouldResumeAtTechFields(visit, draft) {
 }
 
 function isResumableVisit(visit) {
-  return ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim());
+  return isResumableVisitStatus(visit?.status);
+}
+
+function visitFormBadge(visit) {
+  const label = formTypeLabel(visit?.formType);
+  return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
 }
 
 function resumeDraftVisit(visit) {
@@ -1767,6 +1806,7 @@ function initCustomerProfile() {
     let history = [];
     try {
       history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "โหลดประวัตินานเกินไป กรุณาลองเปิดใหม่อีกครั้ง");
+      state.currentCustomerHistory = history;
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
       historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
@@ -1791,9 +1831,8 @@ function initCustomerProfile() {
       <div class="history-item" data-id="${v.serviceId}">
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
-        ${v.status === "draft" ? `<span class="draft-badge" style="margin:0 0 0 6px">Draft</span>` : ""}
-        ${v.status === "กำลังดำเนินการ" ? `<span class="draft-badge" style="margin:0 0 0 6px">In progress</span>` : ""}
-        ${v.status === "ไม่ได้รับบริการ" ? `<span class="draft-badge" style="margin:0 0 0 6px; background:var(--error-bg); color:var(--error-text)">Not served</span>` : ""}
+        ${visitFormBadge(v)}
+        ${normalizeVisitStatus(v.status) && normalizeVisitStatus(v.status) !== "completed" ? `<span class="draft-badge" style="margin:0 0 0 6px${normalizeVisitStatus(v.status) === "not_served" ? "; background:var(--error-bg); color:var(--error-text)" : ""}">${escapeHtml(visitStatusLabel(v.status))}</span>` : ""}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
@@ -1882,7 +1921,7 @@ function initVisitDetail() {
 
     body.innerHTML = `
       <div class="box-quiet">
-        <b>${escapeHtml(visit.serviceType || "-")}</b> &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
+        <b>${escapeHtml(visit.serviceType || "-")}</b>${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""} &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
       </div>
 
       <div class="step-group">
@@ -1909,7 +1948,7 @@ function initVisitDetail() {
         ${visit.mixRatio ? row("สัดส่วนสีที่ใช้", visit.mixRatio) : ""}
         ${visit.redness ? row("ความแดงผิว", visit.redness) : ""}
         ${visit.adherence ? row("ความติดสี", visit.adherence) : ""}
-        ${visit.status === "draft" ? row("สถานะ", "บันทึกแบบร่าง (ยังไม่ปิด Visit)") : ""}
+        ${!isCompletedVisitStatus(visit.status) && visitStatusLabel(visit.status) ? row("สถานะ", visitStatusLabel(visit.status)) : ""}
         ${visit.note ? row("หมายเหตุ", visit.note) : ""}
       </div>
 
@@ -1989,11 +2028,11 @@ function initCreateVisit() {
 
     continueBtn.disabled = true;
     try {
-      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("กำลังดำเนินการ") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
+      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("in_progress") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
       // ถ้าหน้าเว็บ reload กลางทางระหว่างกรอกฟอร์ม (visitContext เป็นแค่ state ในหน่วยความจำ ไม่ persist)
       // แล้วช่างกลับมาเริ่มใหม่ ไม่งั้นจะได้ Visit ซ้อนกัน 2 แถวสำหรับคิวเดียวกันแบบเงียบ ๆ
       const history = await getHistoryByCustomer(c.customerId);
-      const openVisit = history.find((v) => v.status === "กำลังดำเนินการ");
+      const openVisit = history.find((v) => normalizeVisitStatus(v.status) === "in_progress");
       if (openVisit) {
         const proceed = confirm(
           `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่ (${openVisit.serviceId}, สร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}) ` +
@@ -2681,13 +2720,22 @@ function photoBoxReadOnly(url) {
 
 // รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
 // ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
-async function loadHistoryCtx(customerId) {
-  const history = await getHistoryByCustomer(customerId);
+function historyCtxFromRows(history) {
   const browVisits = history.filter(isCompletedBrowVisit);
   if (!browVisits.length) return null;
   const first = browVisits[browVisits.length - 1];
   const last = browVisits[0];
   return { first, last };
+}
+
+async function loadHistoryCtx(customerId) {
+  const cached = Array.isArray(state.currentCustomerHistory) ? state.currentCustomerHistory : null;
+  if (cached && cached.some((v) => v.customerId === customerId)) {
+    return historyCtxFromRows(cached);
+  }
+  const history = await getHistoryByCustomer(customerId);
+  state.currentCustomerHistory = history;
+  return historyCtxFromRows(history);
 }
 
 function initFormTouchup() {
@@ -2910,9 +2958,16 @@ function initFormTouchup() {
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
     historyCtx = null;
-    container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
+    const cached = Array.isArray(state.currentCustomerHistory) && state.currentCustomerHistory.some((v) => v.customerId === c.customerId)
+      ? historyCtxFromRows(state.currentCustomerHistory)
+      : null;
+    if (cached) {
+      historyCtx = cached;
+    } else {
+      container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
+    }
     try {
-      historyCtx = await loadHistoryCtx(c.customerId);
+      if (!historyCtx) historyCtx = await loadHistoryCtx(c.customerId);
     } catch (e) {
       historyCtx = null;
       container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;
@@ -3157,7 +3212,7 @@ function initTechFields() {
     try {
       const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
       const payload = {
-        ...buildPayload("เสร็จสิ้น"),
+        ...buildPayload("completed"),
         mixRatio,
         beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
         signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",

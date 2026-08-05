@@ -5,7 +5,7 @@ import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { getHistoryByCustomer } from "../mockApi.js";
 import { openServiceTypeModal } from "./serviceType.js";
-import { escapeHtml, formatDate } from "../utils.js";
+import { escapeHtml, formatDate, normalizeVisitStatus } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
 function todayDateValue() {
@@ -56,11 +56,11 @@ export function initCreateVisit() {
 
     continueBtn.disabled = true;
     try {
-      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("กำลังดำเนินการ") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
+      // เช็คก่อนว่าลูกค้าคนนี้มี Visit ที่ยังไม่ปิด ("in_progress") ค้างอยู่ไหม — ปกติไม่ควรมี แต่เกิดได้
       // ถ้าหน้าเว็บ reload กลางทางระหว่างกรอกฟอร์ม (visitContext เป็นแค่ state ในหน่วยความจำ ไม่ persist)
       // แล้วช่างกลับมาเริ่มใหม่ ไม่งั้นจะได้ Visit ซ้อนกัน 2 แถวสำหรับคิวเดียวกันแบบเงียบ ๆ
       const history = await getHistoryByCustomer(c.customerId);
-      const openVisit = history.find((v) => v.status === "กำลังดำเนินการ");
+      const openVisit = history.find((v) => normalizeVisitStatus(v.status) === "in_progress");
       if (openVisit) {
         const proceed = confirm(
           `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่ (${openVisit.serviceId}, สร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}) ` +

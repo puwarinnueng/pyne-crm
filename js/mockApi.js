@@ -250,8 +250,16 @@ export async function getCustomer(customerId) {
   return customers.find((c) => c.customerId === customerId) || null;
 }
 
+function normalizeVisitStatus(status) {
+  const key = String(status || "").trim();
+  if (key === "กำลังดำเนินการ") return "in_progress";
+  if (key === "เสร็จสิ้น") return "completed";
+  if (key === "ไม่ได้รับบริการ") return "not_served";
+  return key;
+}
+
 function compareVisitsForHistory(a, b) {
-  const resumable = (visit) => ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim()) ? 1 : 0;
+  const resumable = (visit) => ["draft", "in_progress"].includes(normalizeVisitStatus(visit?.status)) ? 1 : 0;
   const activityTime = (visit) => Number(visit?.updatedAt || visit?.createdAt || visit?.visitDate) || 0;
   const visitTime = (visit) => Number(visit?.visitDate) || 0;
   return (
@@ -270,7 +278,7 @@ export async function getHistoryByCustomer(customerId) {
     .sort(compareVisitsForHistory);
 }
 
-// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "กำลังดำเนินการ"
+// สร้าง Visit ใหม่หลังเลือก Form 1/2/3 แล้ว — สถานะเริ่มต้นเสมอคือ "in_progress"
 // คืน visitId (= serviceId) กลับไปให้หน้าฟอร์มถัดไปใช้เป็น payload.serviceId ตอนบันทึกแบบร่าง/ปิด Visit
 // เพื่ออัปเดตแถวเดิมแทนการสร้างแถวซ้ำ (ดู saveVisit ด้านล่าง)
 export async function createVisit({ customerId, zervaBookingId, visitDate, timeSlot, serviceType, formType }) {
@@ -284,7 +292,7 @@ export async function createVisit({ customerId, zervaBookingId, visitDate, timeS
     zervaBookingId: zervaBookingId || null,
     visitDate: visitDate || Date.now(),
     timeSlot: timeSlot || null,
-    status: "กำลังดำเนินการ",
+    status: "in_progress",
     serviceType: serviceType || null,
     formType: formType || null,
     createdAt: Date.now()
@@ -295,7 +303,7 @@ export async function createVisit({ customerId, zervaBookingId, visitDate, timeS
   return { success: true, visitId, visit };
 }
 
-// ปิด Visit ด้วยสถานะ "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
+// ปิด Visit ด้วยสถานะ "not_served" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
 export async function closeVisitNotServed(visitId, reason) {
   await wait(200);
   requireSession(getToken());
@@ -304,7 +312,7 @@ export async function closeVisitNotServed(visitId, reason) {
   if (idx < 0) return { success: false };
   database.serviceHistory[idx] = {
     ...database.serviceHistory[idx],
-    status: "ไม่ได้รับบริการ",
+    status: "not_served",
     notServedReason: reason,
     updatedAt: Date.now()
   };

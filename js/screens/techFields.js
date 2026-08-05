@@ -219,7 +219,7 @@ export function initTechFields() {
     try {
       const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
       const payload = {
-        ...buildPayload("เสร็จสิ้น"),
+        ...buildPayload("completed"),
         mixRatio,
         beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
         signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",

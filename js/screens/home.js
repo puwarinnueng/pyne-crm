@@ -42,6 +42,7 @@ export function initHome() {
   function openProfile(customer) {
     searchRequestSeq += 1; // cancel any in-flight search render before navigating away
     state.currentCustomer = customer;
+    state.currentCustomerHistory = null;
     show("customerProfile");
   }
 
@@ -50,6 +51,7 @@ export function initHome() {
     // เลือกฟอร์ม (Step 4) ตรง ๆ จากตรงนี้ เพราะ state.visitContext จะไม่ถูกตั้งค่า (ตั้งค่าเฉพาะใน
     // createVisit.js) ทำให้กด Next/บันทึกแบบร่างในฟอร์มแล้วเงียบ ๆ ไม่มีอะไรเกิดขึ้นหรือเด้งกลับ home
     state.currentCustomer = customer;
+    state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
     show("createVisit");
@@ -263,6 +265,7 @@ export function initHome() {
   chooseNewCustomerBtn.addEventListener("click", () => {
     // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
+    state.currentCustomerHistory = null;
     state.serviceType = null;
     state.resetVisitDraft();
     show("newCustomer");

@@ -29,13 +29,22 @@ function photoBoxReadOnly(url) {
 
 // รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
 // ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
-async function loadHistoryCtx(customerId) {
-  const history = await getHistoryByCustomer(customerId);
+function historyCtxFromRows(history) {
   const browVisits = history.filter(isCompletedBrowVisit);
   if (!browVisits.length) return null;
   const first = browVisits[browVisits.length - 1];
   const last = browVisits[0];
   return { first, last };
+}
+
+async function loadHistoryCtx(customerId) {
+  const cached = Array.isArray(state.currentCustomerHistory) ? state.currentCustomerHistory : null;
+  if (cached && cached.some((v) => v.customerId === customerId)) {
+    return historyCtxFromRows(cached);
+  }
+  const history = await getHistoryByCustomer(customerId);
+  state.currentCustomerHistory = history;
+  return historyCtxFromRows(history);
 }
 
 export function initFormTouchup() {
@@ -258,9 +267,16 @@ export function initFormTouchup() {
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
     historyCtx = null;
-    container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
+    const cached = Array.isArray(state.currentCustomerHistory) && state.currentCustomerHistory.some((v) => v.customerId === c.customerId)
+      ? historyCtxFromRows(state.currentCustomerHistory)
+      : null;
+    if (cached) {
+      historyCtx = cached;
+    } else {
+      container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
+    }
     try {
-      historyCtx = await loadHistoryCtx(c.customerId);
+      if (!historyCtx) historyCtx = await loadHistoryCtx(c.customerId);
     } catch (e) {
       historyCtx = null;
       container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;

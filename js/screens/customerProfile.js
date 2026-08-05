@@ -3,7 +3,7 @@ import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js";
-import { formatDate, escapeHtml } from "../utils.js";
+import { formatDate, escapeHtml, formTypeLabel, isResumableVisitStatus, normalizeVisitStatus, visitStatusLabel } from "../utils.js";
 
 function ageFromDob(dobStr) {
   if (!dobStr) return null;
@@ -59,7 +59,12 @@ function shouldResumeAtTechFields(visit, draft) {
 }
 
 function isResumableVisit(visit) {
-  return ["draft", "กำลังดำเนินการ"].includes(String(visit?.status || "").trim());
+  return isResumableVisitStatus(visit?.status);
+}
+
+function visitFormBadge(visit) {
+  const label = formTypeLabel(visit?.formType);
+  return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
 }
 
 function resumeDraftVisit(visit) {
@@ -198,6 +203,7 @@ export function initCustomerProfile() {
     let history = [];
     try {
       history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "โหลดประวัตินานเกินไป กรุณาลองเปิดใหม่อีกครั้ง");
+      state.currentCustomerHistory = history;
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
       historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
@@ -222,9 +228,8 @@ export function initCustomerProfile() {
       <div class="history-item" data-id="${v.serviceId}">
         <span class="hdate">${formatDate(v.visitDate)}</span>
         <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
-        ${v.status === "draft" ? `<span class="draft-badge" style="margin:0 0 0 6px">Draft</span>` : ""}
-        ${v.status === "กำลังดำเนินการ" ? `<span class="draft-badge" style="margin:0 0 0 6px">In progress</span>` : ""}
-        ${v.status === "ไม่ได้รับบริการ" ? `<span class="draft-badge" style="margin:0 0 0 6px; background:var(--error-bg); color:var(--error-text)">Not served</span>` : ""}
+        ${visitFormBadge(v)}
+        ${normalizeVisitStatus(v.status) && normalizeVisitStatus(v.status) !== "completed" ? `<span class="draft-badge" style="margin:0 0 0 6px${normalizeVisitStatus(v.status) === "not_served" ? "; background:var(--error-bg); color:var(--error-text)" : ""}">${escapeHtml(visitStatusLabel(v.status))}</span>` : ""}
         <div class="hdetail">
           Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
           Intensity: ${escapeHtml(v.intensity || "-")}
