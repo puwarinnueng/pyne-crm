@@ -73,7 +73,8 @@ export function initCustomerProfile() {
     skinCard.innerHTML = isEditingSkin ? skinEditHtml() : skinSummaryHtml(c.skinProfile);
     if (isEditingSkin) {
       document.getElementById("skinCancelBtn").addEventListener("click", () => { isEditingSkin = false; renderSkinCard(c); });
-      document.getElementById("skinSaveBtn").addEventListener("click", async () => {
+      document.getElementById("skinSaveBtn").addEventListener("click", async (e) => {
+        e.currentTarget.disabled = true;
         const payload = { ...skinEditDraft };
         await saveSkinProfile(c.customerId, payload);
         c.skinProfile = { ...c.skinProfile, ...payload };

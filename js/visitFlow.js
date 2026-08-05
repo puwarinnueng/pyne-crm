@@ -56,6 +56,7 @@ export function wireNotServedButton(buttonEl) {
     const reason = prompt("เหตุผลที่ไม่ได้รับบริการ (บังคับกรอก):", "");
     if (reason === null) return; // กดยกเลิก
     if (!reason.trim()) { alert("กรุณาระบุเหตุผล"); return; }
+    buttonEl.disabled = true;
     await closeVisitNotServed(v.visitId, reason.trim());
     state.reset();
     show("home");

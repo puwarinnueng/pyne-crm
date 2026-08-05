@@ -213,11 +213,17 @@ export function initFormTwo() {
     const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
     if (!noErrors) return;
 
+    nextBtn.disabled = true;
     if (!pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
     draft.agreedAt = Date.now();
 
-    if (draft.muscle) {
-      await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
+    try {
+      if (draft.muscle) {
+        await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
+      }
+    } catch (e) {
+      // เช็ก/บันทึกกล้ามเนื้อคิ้วพลาดไม่ควรบล็อกไม่ให้ไปหน้าถัดไป (แก้ค่านี้ทีหลังใน Customer Profile ได้)
+      console.warn("updateMuscleEvaluation failed:", e);
     }
 
     show("techFields");
