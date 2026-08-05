@@ -2,6 +2,7 @@
 // ใช้ร่วมกันระหว่าง formBrow.js และ techFields.js
 
 import { escapeHtml } from "./utils.js";
+import { appAlert } from "./dialogs.js";
 
 export function radioField(key, options, draft) {
   return `
@@ -101,7 +102,7 @@ export function bindMixRatioEvents(container, draft) {
         if (Number(e.target.value) > 0) wellsUsed.add(colorKey); else wellsUsed.delete(colorKey);
         if (wellsUsed.size > 3) {
           e.target.value = "";
-          alert("สัดส่วนสีที่ใช้ได้ไม่เกิน 3 หลุม");
+          appAlert("สัดส่วนสีที่ใช้ได้ไม่เกิน 3 หลุม", { title: "เลือกสีเกินกำหนด" });
           return;
         }
       }

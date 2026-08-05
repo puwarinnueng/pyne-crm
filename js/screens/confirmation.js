@@ -1,6 +1,7 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { exportConsentPdf } from "../mockApi.js";
+import { appAlert } from "../dialogs.js";
 
 export function initConfirmation() {
   const summaryEl = document.getElementById("confirmSummary");
@@ -13,7 +14,7 @@ export function initConfirmation() {
     const res = await exportConsentPdf(state.lastSavedServiceId);
     exportBtn.disabled = false;
     exportBtn.textContent = "Export Consent Form (PDF) — mock";
-    alert(res.note);
+    await appAlert(res.note, { title: "Export PDF" });
   });
 
   backHomeBtn.addEventListener("click", () => {

@@ -2,6 +2,7 @@ import { show } from "./router.js";
 import { state } from "./state.js";
 import { getCustomer, checkSession } from "./mockApi.js";
 import { getToken } from "./session.js";
+import { initDialogs } from "./dialogs.js";
 import { initShell } from "./shell.js";
 import { initLogin, showLogin, hideLogin } from "./screens/login.js";
 import { initHome } from "./screens/home.js";
@@ -16,6 +17,7 @@ import { initFormTouchup } from "./screens/formTouchup.js";
 import { initTechFields } from "./screens/techFields.js";
 import { initConfirmation } from "./screens/confirmation.js";
 
+initDialogs();
 initShell();
 initLogin();
 initHome();

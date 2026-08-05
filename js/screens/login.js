@@ -6,6 +6,7 @@
 import { login, logout, changePassword } from "../mockApi.js";
 import { getToken, setToken, clearToken } from "../session.js";
 import { show } from "../router.js";
+import { appAlert } from "../dialogs.js";
 
 let screen, form, userInput, pwInput, errorEl, submitBtn;
 let resetOverlay, resetForm, resetOldPw, resetPw, resetPwConfirm, resetError;
@@ -169,7 +170,7 @@ function initResetModal() {
         // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
         clearToken();
         closeReset();
-        alert("Password updated. Please sign in again.");
+        await appAlert("Password updated. Please sign in again.", { title: "Password updated" });
         showLogin();
         return;
       }

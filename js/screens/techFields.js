@@ -4,6 +4,7 @@
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js";
+import { appAlert } from "../dialogs.js";
 import { OPTIONS } from "../data/options.js";
 import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
@@ -190,10 +191,10 @@ export function initTechFields() {
         rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
       };
       await saveVisit(payload);
-      alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+      await appAlert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ", { title: "บันทึกแบบร่างแล้ว" });
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
-      alert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
       draftBtn.disabled = false;
     }
@@ -210,7 +211,7 @@ export function initTechFields() {
     const afterEl = !hasDraftPhoto(draft, "after") ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
     if (missingBeforeClose) {
-      alert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`);
+      await appAlert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`, { title: "ข้อมูลยังไม่ครบ" });
       return;
     }
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
@@ -237,7 +238,7 @@ export function initTechFields() {
       show("confirmation");
     } catch (e) {
       console.warn("saveVisit (close) failed:", e);
-      alert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)");
+      await appAlert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)", { title: "บันทึกไม่สำเร็จ" });
       closeBtn.disabled = false;
     }
   });

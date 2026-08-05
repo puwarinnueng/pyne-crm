@@ -5,6 +5,7 @@ import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { getHistoryByCustomer } from "../mockApi.js";
 import { openServiceTypeModal } from "./serviceType.js";
+import { appConfirm } from "../dialogs.js";
 import { escapeHtml, formatDate, normalizeVisitStatus } from "../utils.js";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -62,10 +63,13 @@ export function initCreateVisit() {
       const history = await getHistoryByCustomer(c.customerId);
       const openVisit = history.find((v) => normalizeVisitStatus(v.status) === "in_progress");
       if (openVisit) {
-        const proceed = confirm(
-          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่ (${openVisit.serviceId}, สร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}) ` +
-          `อาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง\n\n` +
-          `กด OK เพื่อสร้าง Visit ใหม่ต่อไป (Visit เก่าจะยังค้างอยู่ ต้องไปปิดเองทีหลัง) หรือ Cancel เพื่อหยุดแล้วไปเช็ค Visit เก่าก่อน`
+        const proceed = await appConfirm(
+          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่\n\nVisit ${openVisit.serviceId}\nสร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}\n\nอาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง ถ้าสร้าง Visit ใหม่ Visit เก่าจะยังค้างอยู่และต้องกลับไปปิดเองทีหลัง`,
+          {
+            title: "มี Visit ที่ยังไม่ปิด",
+            okText: "สร้าง Visit ใหม่",
+            cancelText: "กลับไปเช็คก่อน"
+          }
         );
         if (!proceed) { continueBtn.disabled = false; return; }
       }

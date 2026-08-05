@@ -5,6 +5,7 @@
 import { state } from "./state.js";
 import { show } from "./router.js";
 import { closeVisitNotServed, saveVisit } from "./mockApi.js";
+import { appAlert, appPrompt } from "./dialogs.js";
 import { escapeHtml, formatDate } from "./utils.js";
 
 export function visitHeaderHtml() {
@@ -28,22 +29,28 @@ export function wireDraftSaveButton(buttonEl) {
     if (!c || !v) return;
     buttonEl.disabled = true;
     const draft = state.visitDraft;
-    await saveVisit({
-      serviceId: v.visitId,
-      customerId: c.customerId,
-      zervaBookingId: v.zervaBookingId,
-      timeSlot: v.timeSlot,
-      serviceType: state.serviceType,
-      formType: state.formType,
-      status: "draft",
-      visitDate: v.visitDate || Date.now(),
-      technique: draft.technique || null,
-      colorUsed: draft.colorChoice || null,
-      intensity: draft.intensity || null,
-      rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
-    });
-    buttonEl.disabled = false;
-    alert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ");
+    try {
+      await saveVisit({
+        serviceId: v.visitId,
+        customerId: c.customerId,
+        zervaBookingId: v.zervaBookingId,
+        timeSlot: v.timeSlot,
+        serviceType: state.serviceType,
+        formType: state.formType,
+        status: "draft",
+        visitDate: v.visitDate || Date.now(),
+        technique: draft.technique || null,
+        colorUsed: draft.colorChoice || null,
+        intensity: draft.intensity || null,
+        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
+      });
+      await appAlert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ", { title: "บันทึกแบบร่างแล้ว" });
+    } catch (e) {
+      console.warn("saveVisit (draft) failed:", e);
+      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
+    } finally {
+      buttonEl.disabled = false;
+    }
   });
 }
 
@@ -53,12 +60,25 @@ export function wireNotServedButton(buttonEl) {
   buttonEl.addEventListener("click", async () => {
     const v = state.visitContext;
     if (!v) return;
-    const reason = prompt("เหตุผลที่ไม่ได้รับบริการ (บังคับกรอก):", "");
+    const reason = await appPrompt("กรุณาระบุเหตุผลที่ไม่ได้รับบริการ เพื่อปิด Visit นี้", {
+      title: "ไม่ได้รับบริการ",
+      inputLabel: "เหตุผล",
+      placeholder: "เช่น ลูกค้ายกเลิก / ไม่มาตามนัด / เลื่อนนัด",
+      required: true,
+      requiredMessage: "กรุณาระบุเหตุผล",
+      okText: "ยืนยันปิด Visit",
+      cancelText: "ยกเลิก"
+    });
     if (reason === null) return; // กดยกเลิก
-    if (!reason.trim()) { alert("กรุณาระบุเหตุผล"); return; }
     buttonEl.disabled = true;
-    await closeVisitNotServed(v.visitId, reason.trim());
-    state.reset();
-    show("home");
+    try {
+      await closeVisitNotServed(v.visitId, reason.trim());
+      state.reset();
+      show("home");
+    } catch (e) {
+      console.warn("closeVisitNotServed failed:", e);
+      await appAlert("ปิด Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "ทำรายการไม่สำเร็จ" });
+      buttonEl.disabled = false;
+    }
   });
 }

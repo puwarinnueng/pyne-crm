@@ -1,6 +1,7 @@
 import { show } from "../router.js";
 import { state } from "../state.js";
 import { createVisit, getHistoryByCustomer } from "../mockApi.js";
+import { appAlert } from "../dialogs.js";
 import { isCompletedBrowVisit } from "../utils.js";
 
 let modalEl = null;
@@ -92,7 +93,7 @@ async function chooseForm({ serviceType, formType, screenId }) {
     show(screenId);
   } catch (e) {
     console.warn("createVisit after form selection failed:", e);
-    alert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง");
+    await appAlert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "สร้าง Visit ไม่สำเร็จ" });
   } finally {
     setChoosingDisabled(false);
   }
