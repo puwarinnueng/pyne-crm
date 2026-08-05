@@ -1,4 +1,4 @@
-import { searchCustomers, debugCustomerSearch, normalizePhone } from "../mockApi.js";
+import { searchCustomers, normalizePhone } from "../mockApi.js";
 import { show, onEnter } from "../router.js";
 import { state } from "../state.js";
 import { escapeHtml, formatDateShort } from "../utils.js";
@@ -35,8 +35,8 @@ export function initHome() {
   let searchRequestSeq = 0;
 
   function renderSummary() {
-    const total = visibleCustomers.length;
-    summary.innerHTML = `<strong>${total}</strong> customer${total === 1 ? "" : "s"}`;
+    summary.hidden = true;
+    summary.innerHTML = "";
   }
 
   function openProfile(customer) {
@@ -86,7 +86,7 @@ export function initHome() {
         ? `<span class="cell-empty">New customer</span>`
         : `${ICON_CAL}<span>${escapeHtml(formatDateShort(c.lastVisitDate))}</span>`;
       return `
-      <tr data-id="${c.customerId}">
+      <tr data-id="${c.customerId}" tabindex="0" role="button" aria-label="Open customer profile">
         <td class="cell-customer">
           <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
           <span class="cust-meta">
@@ -132,6 +132,17 @@ export function initHome() {
       const trigger = tr.querySelector(".row-menu-trigger");
       const popover = tr.querySelector(".row-menu-popover");
       if (!menu || !trigger || !popover) return;
+
+      tr.addEventListener("click", (e) => {
+        if (e.target.closest(".row-menu")) return;
+        if (customer) openProfile(customer);
+      });
+      tr.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.target.closest(".row-menu")) return;
+        e.preventDefault();
+        if (customer) openProfile(customer);
+      });
 
       trigger.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -202,18 +213,6 @@ export function initHome() {
       const rows = await searchCustomers(qPhone);
       if (requestId !== searchRequestSeq) return;
       render(rows);
-      if (!rows.length) {
-        try {
-          const debug = await debugCustomerSearch(qPhone);
-          if (requestId !== searchRequestSeq) return;
-          emptyState.innerHTML = `
-            ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"
-            <br><span class="muted small">debug: rows=${escapeHtml(debug.rowCount)} lastRow=${escapeHtml(debug.lastRow)} q=${escapeHtml(debug.qPhone)} sample=${escapeHtml(JSON.stringify(debug.sample || []))}</span>
-          `;
-        } catch (debugErr) {
-          console.warn("debugCustomerSearch failed:", debugErr);
-        }
-      }
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("searchCustomers failed:", e);

@@ -452,7 +452,8 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
   white-space: nowrap;
 }
 .customers-table tbody td { padding: var(--sp-16) var(--sp-24); border-bottom: 1px solid var(--border); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink); white-space: nowrap; vertical-align: middle; }
-.customers-table tbody tr { transition: background .12s; }
+.customers-table tbody tr { transition: background .12s; cursor: pointer; }
+.customers-table tbody tr:focus-visible { outline: 2px solid var(--pyne-gold); outline-offset: -2px; }
 .customers-table tbody tr:last-child td { border-bottom: none; }
 .customers-table tbody tr:hover { background: var(--bg-alt); }
 .customers-table tbody tr.is-selected { background: #F3E9E1; box-shadow: inset 2px 0 0 0 var(--pyne-gold); }

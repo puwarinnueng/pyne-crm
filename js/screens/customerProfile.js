@@ -120,7 +120,14 @@ export function initCustomerProfile() {
 
     historySummary.hidden = true;
     historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
-    const history = await getHistoryByCustomer(c.customerId);
+    let history = [];
+    try {
+      history = await getHistoryByCustomer(c.customerId);
+    } catch (e) {
+      console.warn("getHistoryByCustomer failed:", e);
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}</div>`;
+      return;
+    }
 
     if (history.length === 0) {
       historyList.innerHTML = `<div class="empty-hint">No service history yet</div>`;
