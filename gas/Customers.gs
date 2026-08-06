@@ -126,8 +126,52 @@ function searchCustomers(token, query) {
     .map(rowToCustomer_);
 }
 
+function visitActivityTime_(visit) {
+  return Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
+}
+
 function listRecentCustomers(token, limit) {
-  return listCustomersWithStats(token).slice(0, limit || 10);
+  requireSession_(token);
+  const max = limit || 10;
+  const customers = sheetToObjects_(getCustomersSheet_()).map(rowToCustomer_);
+  const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
+  const statsByCustomerId = {};
+
+  history.forEach((visit) => {
+    const customerId = visit.customerId;
+    if (!customerId) return;
+    const current = statsByCustomerId[customerId] || {
+      visitsCount: 0,
+      lastVisit: null,
+      lastActivityAt: 0
+    };
+    const activityAt = visitActivityTime_(visit);
+    current.visitsCount += 1;
+    if (!current.lastVisit || activityAt > current.lastActivityAt) {
+      current.lastVisit = visit;
+      current.lastActivityAt = activityAt;
+    }
+    statsByCustomerId[customerId] = current;
+  });
+
+  return customers
+    .map((c) => {
+      const stats = statsByCustomerId[c.customerId] || null;
+      const lastVisit = stats && stats.lastVisit ? stats.lastVisit : null;
+      return Object.assign({}, c, {
+        visitsCount: stats ? stats.visitsCount : 0,
+        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
+        lastActivityAt: stats ? stats.lastActivityAt : (Number(c.createdAt) || 0)
+      });
+    })
+    .sort((a, b) => (b.lastActivityAt || 0) - (a.lastActivityAt || 0))
+    .slice(0, max)
+    .map((c) => {
+      const copy = Object.assign({}, c);
+      delete copy.lastActivityAt;
+      return copy;
+    });
 }
 
 function getCustomer(token, customerId) {

@@ -111,8 +111,44 @@ export async function searchCustomers(query) {
 }
 
 export async function listRecentCustomers(limit) {
-  const rows = await listCustomersWithStats();
-  return rows.slice(0, limit || 10);
+  await wait();
+  requireSession(getToken());
+  const max = limit || 10;
+  const { customers, serviceHistory } = db.get();
+  const statsByCustomerId = {};
+
+  serviceHistory.forEach((visit) => {
+    const customerId = visit.customerId;
+    if (!customerId) return;
+    const current = statsByCustomerId[customerId] || {
+      visitsCount: 0,
+      lastVisit: null,
+      lastActivityAt: 0
+    };
+    const activityAt = Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
+    current.visitsCount += 1;
+    if (!current.lastVisit || activityAt > current.lastActivityAt) {
+      current.lastVisit = visit;
+      current.lastActivityAt = activityAt;
+    }
+    statsByCustomerId[customerId] = current;
+  });
+
+  return customers
+    .map((c) => {
+      const stats = statsByCustomerId[c.customerId] || null;
+      const lastVisit = stats && stats.lastVisit ? stats.lastVisit : null;
+      return {
+        ...c,
+        visitsCount: stats ? stats.visitsCount : 0,
+        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
+        lastActivityAt: stats ? stats.lastActivityAt : (Number(c.createdAt) || 0)
+      };
+    })
+    .sort((a, b) => (b.lastActivityAt || 0) - (a.lastActivityAt || 0))
+    .slice(0, max)
+    .map(({ lastActivityAt, ...c }) => c);
 }
 
 export async function debugCustomerSearch(query) {

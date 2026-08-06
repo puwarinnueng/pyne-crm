@@ -291,7 +291,7 @@ export function initHome() {
     visibleCustomers = [];
     renderSummary();
     if (data?.mode === "oldCustomerSearch") {
-      showSearchPanel({ loadRecent: false });
+      showSearchPanel();
     }
   });
 }
