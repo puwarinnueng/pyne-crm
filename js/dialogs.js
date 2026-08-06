@@ -1,100 +1,100 @@
-let overlay;
-let dialog;
-let titleEl;
-let bodyEl;
-let fieldEl;
-let labelEl;
-let inputEl;
-let errorEl;
-let okBtn;
-let cancelBtn;
-let closeBtn;
-let activeResolver = null;
-let activeOptions = null;
+let appDialogOverlayEl;
+let appDialogEl;
+let appDialogTitleEl;
+let appDialogBodyEl;
+let appDialogFieldEl;
+let appDialogLabelEl;
+let appDialogInputEl;
+let appDialogErrorEl;
+let appDialogOkBtn;
+let appDialogCancelBtn;
+let appDialogCloseBtn;
+let appDialogActiveResolver = null;
+let appDialogActiveOptions = null;
 
 function setHidden(el, hidden) {
   if (el) el.hidden = hidden;
 }
 
 function closeDialog(value) {
-  if (!overlay || !activeResolver) return;
-  const resolve = activeResolver;
-  activeResolver = null;
-  activeOptions = null;
-  overlay.hidden = true;
+  if (!appDialogOverlayEl || !appDialogActiveResolver) return;
+  const resolve = appDialogActiveResolver;
+  appDialogActiveResolver = null;
+  appDialogActiveOptions = null;
+  appDialogOverlayEl.hidden = true;
   resolve(value);
 }
 
 function openDialog(options) {
-  if (!overlay) {
+  if (!appDialogOverlayEl) {
     return Promise.resolve(options.mode === "confirm" ? false : options.mode === "prompt" ? null : undefined);
   }
-  if (activeResolver) closeDialog(null);
+  if (appDialogActiveResolver) closeDialog(null);
 
-  activeOptions = options;
-  titleEl.textContent = options.title || "แจ้งเตือน";
-  bodyEl.textContent = options.message || "";
-  okBtn.textContent = options.okText || "OK";
-  cancelBtn.textContent = options.cancelText || "Cancel";
-  setHidden(cancelBtn, options.mode === "alert");
-  setHidden(closeBtn, options.closeButton === false);
-  setHidden(errorEl, true);
-  errorEl.textContent = "";
+  appDialogActiveOptions = options;
+  appDialogTitleEl.textContent = options.title || "แจ้งเตือน";
+  appDialogBodyEl.textContent = options.message || "";
+  appDialogOkBtn.textContent = options.okText || "OK";
+  appDialogCancelBtn.textContent = options.cancelText || "Cancel";
+  setHidden(appDialogCancelBtn, options.mode === "alert");
+  setHidden(appDialogCloseBtn, options.closeButton === false);
+  setHidden(appDialogErrorEl, true);
+  appDialogErrorEl.textContent = "";
 
   const isPrompt = options.mode === "prompt";
-  setHidden(fieldEl, !isPrompt);
+  setHidden(appDialogFieldEl, !isPrompt);
   if (isPrompt) {
-    labelEl.textContent = options.inputLabel || "";
-    inputEl.value = options.defaultValue || "";
-    inputEl.placeholder = options.placeholder || "";
+    appDialogLabelEl.textContent = options.inputLabel || "";
+    appDialogInputEl.value = options.defaultValue || "";
+    appDialogInputEl.placeholder = options.placeholder || "";
   }
 
-  overlay.hidden = false;
-  requestAnimationFrame(() => (isPrompt ? inputEl : okBtn).focus());
+  appDialogOverlayEl.hidden = false;
+  requestAnimationFrame(() => (isPrompt ? appDialogInputEl : appDialogOkBtn).focus());
 
   return new Promise((resolve) => {
-    activeResolver = resolve;
+    appDialogActiveResolver = resolve;
   });
 }
 
 export function initDialogs() {
-  overlay = document.getElementById("appDialogOverlay");
-  dialog = document.getElementById("appDialog");
-  titleEl = document.getElementById("appDialogTitle");
-  bodyEl = document.getElementById("appDialogBody");
-  fieldEl = document.getElementById("appDialogField");
-  labelEl = document.getElementById("appDialogInputLabel");
-  inputEl = document.getElementById("appDialogInput");
-  errorEl = document.getElementById("appDialogError");
-  okBtn = document.getElementById("appDialogOk");
-  cancelBtn = document.getElementById("appDialogCancel");
-  closeBtn = document.getElementById("appDialogClose");
-  if (!overlay || !dialog) return;
+  appDialogOverlayEl = document.getElementById("appDialogOverlay");
+  appDialogEl = document.getElementById("appDialog");
+  appDialogTitleEl = document.getElementById("appDialogTitle");
+  appDialogBodyEl = document.getElementById("appDialogBody");
+  appDialogFieldEl = document.getElementById("appDialogField");
+  appDialogLabelEl = document.getElementById("appDialogInputLabel");
+  appDialogInputEl = document.getElementById("appDialogInput");
+  appDialogErrorEl = document.getElementById("appDialogError");
+  appDialogOkBtn = document.getElementById("appDialogOk");
+  appDialogCancelBtn = document.getElementById("appDialogCancel");
+  appDialogCloseBtn = document.getElementById("appDialogClose");
+  if (!appDialogOverlayEl || !appDialogEl) return;
 
-  dialog.addEventListener("submit", (e) => {
+  appDialogEl.addEventListener("submit", (e) => {
     e.preventDefault();
-    if (activeOptions?.mode === "prompt") {
-      const value = inputEl.value.trim();
-      if (activeOptions.required && !value) {
-        errorEl.textContent = activeOptions.requiredMessage || "กรุณากรอกข้อมูล";
-        errorEl.hidden = false;
-        inputEl.focus();
+    if (appDialogActiveOptions?.mode === "prompt") {
+      const value = appDialogInputEl.value.trim();
+      if (appDialogActiveOptions.required && !value) {
+        appDialogErrorEl.textContent = appDialogActiveOptions.requiredMessage || "กรุณากรอกข้อมูล";
+        appDialogErrorEl.hidden = false;
+        appDialogInputEl.focus();
         return;
       }
       closeDialog(value);
       return;
     }
-    closeDialog(activeOptions?.mode === "confirm" ? true : undefined);
+    closeDialog(appDialogActiveOptions?.mode === "confirm" ? true : undefined);
   });
 
-  cancelBtn.addEventListener("click", () => closeDialog(activeOptions?.mode === "confirm" ? false : null));
-  closeBtn.addEventListener("click", () => closeDialog(activeOptions?.mode === "confirm" ? false : null));
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeDialog(activeOptions?.mode === "confirm" ? false : null);
+  appDialogCancelBtn.addEventListener("click", () => closeDialog(appDialogActiveOptions?.mode === "confirm" ? false : null));
+  appDialogCloseBtn.addEventListener("click", () => closeDialog(appDialogActiveOptions?.mode === "confirm" ? false : null));
+  appDialogOverlayEl.addEventListener("click", (e) => {
+    if (e.target === appDialogOverlayEl) closeDialog(appDialogActiveOptions?.mode === "confirm" ? false : null);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay && !overlay.hidden) {
-      closeDialog(activeOptions?.mode === "confirm" ? false : null);
+    if (e.key === "Escape" && appDialogOverlayEl && !appDialogOverlayEl.hidden) {
+      closeDialog(appDialogActiveOptions?.mode === "confirm" ? false : null);
     }
   });
 }

@@ -23,6 +23,7 @@ JS_ORDER = [
     "js/state.js",
     "js/router.js",
     "js/session.js",
+    "js/dialogs.js",
     "js/shell.js",
     "js/signaturePad.js",
     "js/fieldHelpers.js",

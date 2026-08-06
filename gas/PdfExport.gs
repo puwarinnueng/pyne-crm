@@ -1,8 +1,7 @@
 /**
  * PdfExport.gs — สร้าง Consent / Service summary เป็น PDF จริงใน Google Drive
  *
- * ใช้ Google Doc ชั่วคราวเป็นตัวกลางแล้ว export เป็น PDF เพราะเสถียรกว่า HTML-to-PDF
- * ใน Apps Script และไม่ต้องเปิด Advanced Drive service เพิ่ม
+ * สร้างจาก HTML blob แล้วแปลงเป็น PDF เพื่อไม่ต้องขอ scope Google Docs เพิ่ม
  */
 
 const PDF_FIELD_LABELS = {
@@ -44,6 +43,12 @@ function pdfDateTime_(value, pattern) {
   return Utilities.formatDate(date, "Asia/Bangkok", pattern || "d MMM yyyy HH:mm");
 }
 
+function pdfEscape_(value) {
+  return String(value === undefined || value === null ? "" : value).replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
 function pdfValue_(value) {
   if (Array.isArray(value)) return value.length ? value.join(", ") : "-";
   if (value === undefined || value === null || value === "") return "-";
@@ -56,17 +61,19 @@ function pdfRows_(rows) {
     .map(function(row) { return [String(row[0]), pdfValue_(row[1])]; });
 }
 
-function appendPdfSection_(body, title, rows) {
+function pdfSectionHtml_(title, rows) {
   rows = pdfRows_(rows);
-  if (!rows.length) return;
-  body.appendParagraph(title).setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  var table = body.appendTable(rows);
-  for (var i = 0; i < table.getNumRows(); i += 1) {
-    var labelCell = table.getRow(i).getCell(0);
-    labelCell.setBackgroundColor("#f5f0ea");
-    labelCell.editAsText().setBold(true);
-  }
-  body.appendParagraph("");
+  if (!rows.length) return "";
+  return [
+    '<section>',
+    '<h2>' + pdfEscape_(title) + '</h2>',
+    '<table>',
+    rows.map(function(row) {
+      return '<tr><th>' + pdfEscape_(row[0]) + '</th><td>' + pdfEscape_(row[1]) + '</td></tr>';
+    }).join(""),
+    '</table>',
+    '</section>'
+  ].join("");
 }
 
 function findPdfVisit_(serviceId) {
@@ -95,7 +102,7 @@ function getPdfExportFolder_(customer, visit) {
   return getOrCreateSubfolder_(customerFolder, visitFolderName).folder;
 }
 
-function appendPdfRawAnswers_(body, raw) {
+function pdfRawAnswersHtml_(raw) {
   var rows = Object.keys(PDF_FIELD_LABELS)
     .filter(function(key) {
       var value = raw[key];
@@ -104,89 +111,96 @@ function appendPdfRawAnswers_(body, raw) {
     .map(function(key) {
       return [PDF_FIELD_LABELS[key], raw[key]];
     });
-  appendPdfSection_(body, "Consultation Answers", rows);
+  return pdfSectionHtml_("Consultation Answers", rows);
+}
+
+function createConsentPdfHtml_(customer, visit) {
+  var raw = visit.rawAnswers || {};
+  var formLabel = pdfFormTypeLabel_(visit.formType);
+  return [
+    '<!doctype html>',
+    '<html>',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<style>',
+    'body{font-family:Arial,"Noto Sans Thai",sans-serif;color:#342d29;margin:32px;font-size:12px;line-height:1.55;}',
+    'h1{font-size:24px;margin:0 0 6px;color:#6f5645;}',
+    'h2{font-size:15px;margin:22px 0 8px;color:#6f5645;border-bottom:1px solid #ded4c8;padding-bottom:5px;}',
+    '.sub{color:#8b7d73;margin-bottom:16px;}',
+    'table{width:100%;border-collapse:collapse;margin-bottom:10px;}',
+    'th,td{border:1px solid #ded4c8;padding:7px 9px;vertical-align:top;white-space:pre-wrap;word-break:break-word;}',
+    'th{width:30%;background:#f5f0ea;text-align:left;color:#6f5645;}',
+    '.footer{margin-top:24px;color:#8b7d73;font-size:10px;}',
+    '</style>',
+    '</head>',
+    '<body>',
+    '<h1>Pyne Studio Consent Form</h1>',
+    '<div class="sub">' + pdfEscape_(formLabel || visit.serviceType || "-") + ' · Exported: ' + pdfEscape_(pdfDateTime_(Date.now())) + '</div>',
+    pdfSectionHtml_("Customer", [
+      ["Customer ID", customer && customer.customerId],
+      ["ชื่อ-นามสกุล", customer && customer.fullName],
+      ["ชื่อเล่น", customer && customer.nickname],
+      ["วันเกิด", customer && customer.dob],
+      ["โทรศัพท์", customer && (customer.phoneDisplay || customer.phoneNormalized)],
+      ["Line", customer && customer.line]
+    ]),
+    pdfSectionHtml_("Visit", [
+      ["Service ID", visit.serviceId],
+      ["Service Type", visit.serviceType],
+      ["Form", formLabel],
+      ["Status", normalizeVisitStatus_(visit.status)],
+      ["Visit Date", pdfDateTime_(visit.visitDate, "d MMM yyyy")],
+      ["Time Slot", visit.timeSlot],
+      ["Zerva Booking ID", visit.zervaBookingId]
+    ]),
+    pdfRawAnswersHtml_(raw),
+    pdfSectionHtml_("Service Summary", [
+      ["Technique", visit.technique],
+      ["Color", visit.colorUsed],
+      ["Intensity", visit.intensity],
+      ["Muscle", visit.muscle],
+      ["Shape Design", visit.shapeDesign],
+      ["Brow Guard", visit.browGuard],
+      ["Satisfaction", visit.satisfaction],
+      ["Color Retention", visit.colorRetention],
+      ["Wants More Change", visit.wantsMoreChange],
+      ["Change Items", visit.changeItems],
+      ["Mix Ratio", visit.mixRatio],
+      ["Redness", visit.redness],
+      ["Adherence", visit.adherence],
+      ["Analysis", visit.analysis],
+      ["Note", visit.note],
+      ["Not Served Reason", visit.notServedReason]
+    ]),
+    pdfSectionHtml_("Files", [
+      ["Before Photo", visit.beforePhotoUrl],
+      ["After Photo", visit.afterPhotoUrl],
+      ["Customer Signature", visit.signatureCustomerUrl],
+      ["Technician Signature", visit.signatureTechUrl]
+    ]),
+    pdfSectionHtml_("Consent", [
+      ["Consent Agreed At", pdfDateTime_(visit.consentAgreedAt || raw.agreedAt)],
+      ["Final Agreement", raw.finalAgree || raw.consentAgree],
+      ["Customer Signature", visit.signatureCustomerUrl ? "Signed" : ""],
+      ["Technician Signature", visit.signatureTechUrl ? "Signed" : ""]
+    ]),
+    '<div class="footer">Generated by Pyne Studio CRM</div>',
+    '</body>',
+    '</html>'
+  ].join("");
 }
 
 function createConsentPdf_(customer, visit) {
-  var raw = visit.rawAnswers || {};
-  var formLabel = pdfFormTypeLabel_(visit.formType);
   var filename = [
     "Pyne_Consent",
     visit.serviceId || "service",
     customer ? (customer.customerId || "customer") : "customer"
   ].join("_");
 
-  var doc = DocumentApp.create(filename);
-  var docFile = DriveApp.getFileById(doc.getId());
-  var body = doc.getBody();
-
-  body.clear();
-  body.appendParagraph("Pyne Studio Consent Form")
-    .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph(formLabel || visit.serviceType || "-");
-  body.appendParagraph("Exported: " + pdfDateTime_(Date.now()));
-  body.appendParagraph("");
-
-  appendPdfSection_(body, "Customer", [
-    ["Customer ID", customer && customer.customerId],
-    ["ชื่อ-นามสกุล", customer && customer.fullName],
-    ["ชื่อเล่น", customer && customer.nickname],
-    ["วันเกิด", customer && customer.dob],
-    ["โทรศัพท์", customer && (customer.phoneDisplay || customer.phoneNormalized)],
-    ["Line", customer && customer.line]
-  ]);
-
-  appendPdfSection_(body, "Visit", [
-    ["Service ID", visit.serviceId],
-    ["Service Type", visit.serviceType],
-    ["Form", formLabel],
-    ["Status", normalizeVisitStatus_(visit.status)],
-    ["Visit Date", pdfDateTime_(visit.visitDate, "d MMM yyyy")],
-    ["Time Slot", visit.timeSlot],
-    ["Zerva Booking ID", visit.zervaBookingId]
-  ]);
-
-  appendPdfRawAnswers_(body, raw);
-
-  appendPdfSection_(body, "Service Summary", [
-    ["Technique", visit.technique],
-    ["Color", visit.colorUsed],
-    ["Intensity", visit.intensity],
-    ["Muscle", visit.muscle],
-    ["Shape Design", visit.shapeDesign],
-    ["Brow Guard", visit.browGuard],
-    ["Satisfaction", visit.satisfaction],
-    ["Color Retention", visit.colorRetention],
-    ["Wants More Change", visit.wantsMoreChange],
-    ["Change Items", visit.changeItems],
-    ["Mix Ratio", visit.mixRatio],
-    ["Redness", visit.redness],
-    ["Adherence", visit.adherence],
-    ["Analysis", visit.analysis],
-    ["Note", visit.note],
-    ["Not Served Reason", visit.notServedReason]
-  ]);
-
-  appendPdfSection_(body, "Files", [
-    ["Before Photo", visit.beforePhotoUrl],
-    ["After Photo", visit.afterPhotoUrl],
-    ["Customer Signature", visit.signatureCustomerUrl],
-    ["Technician Signature", visit.signatureTechUrl]
-  ]);
-
-  appendPdfSection_(body, "Consent", [
-    ["Consent Agreed At", pdfDateTime_(visit.consentAgreedAt || raw.agreedAt)],
-    ["Final Agreement", raw.finalAgree || raw.consentAgree],
-    ["Customer Signature", visit.signatureCustomerUrl ? "Signed" : ""],
-    ["Technician Signature", visit.signatureTechUrl ? "Signed" : ""]
-  ]);
-
-  doc.saveAndClose();
-
   var exportFolder = getPdfExportFolder_(customer, visit);
-  var pdfBlob = docFile.getBlob().getAs(MimeType.PDF).setName(filename + ".pdf");
+  var htmlBlob = Utilities.newBlob(createConsentPdfHtml_(customer, visit), "text/html", filename + ".html");
+  var pdfBlob = htmlBlob.getAs(MimeType.PDF).setName(filename + ".pdf");
   var pdfFile = exportFolder.createFile(pdfBlob);
-  docFile.setTrashed(true);
 
   return {
     success: true,
