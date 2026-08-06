@@ -78,7 +78,7 @@ export function initFormOne() {
       ${visitHeaderHtml()}
       ${readinessBlockHtml(draft)}
 
-      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
+      <div class="form-section-title">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
       <div class="step-group">
         <div class="step-group-title">ปัญหาหลักที่กังวล <span class="required-star">*</span></div>
         ${chipGroup("concerns", OPTIONS.form1Concerns, draft, true)}
@@ -98,13 +98,13 @@ export function initFormOne() {
       <div class="step-group">
         <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
         ${radioField("intensity", OPTIONS.intensity, draft)}
-        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+        <p class="muted small mt-8">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
       </div>
       <div class="step-group">
         <div class="step-group-title">ยอมรับเงื่อนไขก่อนเริ่มบริการ <span class="required-star">*</span></div>
-        <details class="consent-block" style="cursor:pointer">
-          <summary style="font-weight:600; color:var(--deep-bronze)">เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
-          <div style="margin-top:10px">${consentBlocksHtml()}</div>
+        <details class="consent-block">
+          <summary>เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
+          <div class="consent-body">${consentBlocksHtml()}</div>
         </details>
         <label class="agree-row" data-check-key="preServiceAgree">
           <input type="checkbox" id="f1PreAgree" ${draft.preServiceAgree ? "checked" : ""}>

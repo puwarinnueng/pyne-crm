@@ -64,7 +64,7 @@ function isResumableVisit(visit) {
 
 function visitFormBadge(visit) {
   const label = formTypeLabel(visit?.formType);
-  return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
+  return label ? `<span class="draft-badge draft-badge--inline">${escapeHtml(label)}</span>` : "";
 }
 
 function visitStatusBadge(visit) {
@@ -75,7 +75,7 @@ function visitStatusBadge(visit) {
     : status === "not_served"
       ? "is-not-served"
       : "";
-  return `<span class="draft-badge ${className}" style="margin:0 0 0 6px">${escapeHtml(visitStatusLabel(status))}</span>`;
+  return `<span class="draft-badge draft-badge--inline ${className}">${escapeHtml(visitStatusLabel(status))}</span>`;
 }
 
 function resumeDraftVisit(visit) {
@@ -139,7 +139,7 @@ export function initCustomerProfile() {
         <div class="detail-label">กล้ามเนื้อคิ้ว</div>
         <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}${sp.muscleNote ? `<br><span class="muted small">${escapeHtml(sp.muscleNote)}</span>` : ""}</div>
       </div>
-      <button type="button" class="icon-btn" id="skinEditBtn" style="padding-left:0">แก้ไขประวัติผิวและคิ้ว</button>
+      <button type="button" class="icon-btn icon-btn--flush" id="skinEditBtn">แก้ไขประวัติผิวและคิ้ว</button>
     `;
   }
 
@@ -161,9 +161,9 @@ export function initCustomerProfile() {
         <div class="step-group-title">ทรงคิ้ว</div>
         ${chipGroup("browShape", OPTIONS.browShape, skinEditDraft, true)}
       </div>
-      <div style="display:flex; gap:10px; margin-top:10px">
-        <button type="button" class="btn btn-outline" id="skinCancelBtn" style="flex:1">ยกเลิก</button>
-        <button type="button" class="btn btn-primary" id="skinSaveBtn" style="flex:1">บันทึก</button>
+      <div class="row-actions">
+        <button type="button" class="btn btn-outline" id="skinCancelBtn">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" id="skinSaveBtn">บันทึก</button>
       </div>
     `;
   }
@@ -217,7 +217,7 @@ export function initCustomerProfile() {
       state.currentCustomerHistory = history;
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
-      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryHistoryBtn">ลองใหม่</button></div>`;
       const retryBtn = document.getElementById("retryHistoryBtn");
       if (retryBtn) retryBtn.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
       return;

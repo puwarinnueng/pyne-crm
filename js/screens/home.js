@@ -224,7 +224,7 @@ export function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("searchCustomers failed:", e);
-      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryLoadCustomersBtn">ลองใหม่</button>`;
       const retryBtn = document.getElementById("retryLoadCustomersBtn");
       if (retryBtn) retryBtn.addEventListener("click", runPhoneSearch);
       return;
@@ -242,7 +242,7 @@ export function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("listRecentCustomers failed:", e);
-      emptyState.innerHTML = `โหลดลูกค้าล่าสุดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryRecentCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      emptyState.innerHTML = `โหลดลูกค้าล่าสุดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryRecentCustomersBtn">ลองใหม่</button>`;
       const retryBtn = document.getElementById("retryRecentCustomersBtn");
       if (retryBtn) retryBtn.addEventListener("click", () => loadRecentCustomers());
     }

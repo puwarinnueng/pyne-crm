@@ -79,11 +79,11 @@ export function initFormTouchup() {
         ${row("เทคนิคเดิม", last.technique)}
         ${row("สีเดิม", last.colorUsed)}
         ${row("กล้ามเนื้อคิ้วล่าสุด", (state.currentCustomer && state.currentCustomer.skinProfile && state.currentCustomer.skinProfile.muscle) || "ยังไม่ได้ประเมิน")}
-        <div class="photo-row" style="margin-top:10px">
+        <div class="photo-row mt-12">
           ${photoBoxReadOnly(first.beforePhotoUrl)}
           ${photoBoxReadOnly(first.afterPhotoUrl)}
         </div>
-        <button type="button" class="icon-btn" id="tuViewLastBtn" style="padding-left:0; margin-top:6px">ดูรายละเอียด ›</button>
+        <button type="button" class="icon-btn icon-btn--flush mt-8" id="tuViewLastBtn">ดูรายละเอียด ›</button>
       </div>`;
   }
 
@@ -92,7 +92,7 @@ export function initFormTouchup() {
 
     container.innerHTML = `
       ${visitHeaderHtml()}
-      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ประวัติเดิม</div>
+      <div class="form-section-title">ส่วนที่ 1 — ประวัติเดิม</div>
       ${historyBlockHtml()}
 
       ${readinessBlockHtml(draft)}
@@ -117,7 +117,7 @@ export function initFormTouchup() {
       <div class="step-group">
         <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
         ${radioField("intensity", OPTIONS.intensity, draft)}
-        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+        <p class="muted small mt-8">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
       </div>
       <div class="step-group">
         <div class="step-group-title">รูป Before <span class="required-star">*</span></div>

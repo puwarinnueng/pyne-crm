@@ -22,7 +22,7 @@ export function createSignaturePad(canvas) {
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#261F1C"; /* Espresso Ink — token: --espresso-ink */
+    ctx.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue("--espresso-ink").trim()) || "#261F1C";
     if (snapshot) {
       const img = new Image();
       img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);

@@ -58,7 +58,7 @@ export function initTechFields() {
         <div class="tech-sig-wrap">
           <img src="${TECH_SIGNATURE_DATA_URL}" alt="ลายเซ็นช่าง">
         </div>
-        <p class="muted small" style="text-align:center">(ชนิสตา ศุภสุข)</p>
+        <p class="muted small text-center">(ชนิสตา ศุภสุข)</p>
       </div>
     `;
 

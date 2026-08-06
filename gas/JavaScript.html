@@ -646,7 +646,7 @@ function createSignaturePad(canvas) {
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#261F1C"; /* Espresso Ink — token: --espresso-ink */
+    ctx.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue("--espresso-ink").trim()) || "#261F1C";
     if (snapshot) {
       const img = new Image();
       img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
@@ -1474,7 +1474,7 @@ function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("searchCustomers failed:", e);
-      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryLoadCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryLoadCustomersBtn">ลองใหม่</button>`;
       const retryBtn = document.getElementById("retryLoadCustomersBtn");
       if (retryBtn) retryBtn.addEventListener("click", runPhoneSearch);
       return;
@@ -1492,7 +1492,7 @@ function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("listRecentCustomers failed:", e);
-      emptyState.innerHTML = `โหลดลูกค้าล่าสุดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryRecentCustomersBtn" style="margin-top:10px">ลองใหม่</button>`;
+      emptyState.innerHTML = `โหลดลูกค้าล่าสุดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryRecentCustomersBtn">ลองใหม่</button>`;
       const retryBtn = document.getElementById("retryRecentCustomersBtn");
       if (retryBtn) retryBtn.addEventListener("click", () => loadRecentCustomers());
     }
@@ -1619,7 +1619,7 @@ function initNewCustomer() {
       </div>
       <p class="muted small">กล้ามเนื้อคิ้ว: ยังไม่ได้ประเมิน (จะประเมินหลังเช็ดคิ้ว/วัดทรงจริงในฟอร์ม 1 หรือ 2 ครั้งแรก)</p>
 
-      <button class="btn btn-primary btn-block" id="ncCreateBtn2" style="margin-top:14px">Create Customer &amp; Continue</button>
+      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">Create Customer &amp; Continue</button>
     `;
 
     ["ncFullName", "ncNickname", "ncDob", "ncPhone", "ncLine"].forEach((id) => {
@@ -1692,7 +1692,7 @@ function initNewCustomer() {
         <div class="dup-warning">
           ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
           Please use the existing customer instead of creating a duplicate.
-          <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">Open this customer</button>
+          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">Open this customer</button>
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
@@ -1813,7 +1813,7 @@ function isResumableVisit(visit) {
 
 function visitFormBadge(visit) {
   const label = formTypeLabel(visit?.formType);
-  return label ? `<span class="draft-badge" style="margin:0 0 0 6px">${escapeHtml(label)}</span>` : "";
+  return label ? `<span class="draft-badge draft-badge--inline">${escapeHtml(label)}</span>` : "";
 }
 
 function visitStatusBadge(visit) {
@@ -1824,7 +1824,7 @@ function visitStatusBadge(visit) {
     : status === "not_served"
       ? "is-not-served"
       : "";
-  return `<span class="draft-badge ${className}" style="margin:0 0 0 6px">${escapeHtml(visitStatusLabel(status))}</span>`;
+  return `<span class="draft-badge draft-badge--inline ${className}">${escapeHtml(visitStatusLabel(status))}</span>`;
 }
 
 function resumeDraftVisit(visit) {
@@ -1888,7 +1888,7 @@ function initCustomerProfile() {
         <div class="detail-label">กล้ามเนื้อคิ้ว</div>
         <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}${sp.muscleNote ? `<br><span class="muted small">${escapeHtml(sp.muscleNote)}</span>` : ""}</div>
       </div>
-      <button type="button" class="icon-btn" id="skinEditBtn" style="padding-left:0">แก้ไขประวัติผิวและคิ้ว</button>
+      <button type="button" class="icon-btn icon-btn--flush" id="skinEditBtn">แก้ไขประวัติผิวและคิ้ว</button>
     `;
   }
 
@@ -1910,9 +1910,9 @@ function initCustomerProfile() {
         <div class="step-group-title">ทรงคิ้ว</div>
         ${chipGroup("browShape", OPTIONS.browShape, skinEditDraft, true)}
       </div>
-      <div style="display:flex; gap:10px; margin-top:10px">
-        <button type="button" class="btn btn-outline" id="skinCancelBtn" style="flex:1">ยกเลิก</button>
-        <button type="button" class="btn btn-primary" id="skinSaveBtn" style="flex:1">บันทึก</button>
+      <div class="row-actions">
+        <button type="button" class="btn btn-outline" id="skinCancelBtn">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" id="skinSaveBtn">บันทึก</button>
       </div>
     `;
   }
@@ -1966,7 +1966,7 @@ function initCustomerProfile() {
       state.currentCustomerHistory = history;
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
-      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary" id="retryHistoryBtn" style="margin-top:10px">ลองใหม่</button></div>`;
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryHistoryBtn">ลองใหม่</button></div>`;
       const retryBtn = document.getElementById("retryHistoryBtn");
       if (retryBtn) retryBtn.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
       return;
@@ -2487,7 +2487,7 @@ function initFormOne() {
       ${visitHeaderHtml()}
       ${readinessBlockHtml(draft)}
 
-      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
+      <div class="form-section-title">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
       <div class="step-group">
         <div class="step-group-title">ปัญหาหลักที่กังวล <span class="required-star">*</span></div>
         ${chipGroup("concerns", OPTIONS.form1Concerns, draft, true)}
@@ -2507,13 +2507,13 @@ function initFormOne() {
       <div class="step-group">
         <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
         ${radioField("intensity", OPTIONS.intensity, draft)}
-        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+        <p class="muted small mt-8">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
       </div>
       <div class="step-group">
         <div class="step-group-title">ยอมรับเงื่อนไขก่อนเริ่มบริการ <span class="required-star">*</span></div>
-        <details class="consent-block" style="cursor:pointer">
-          <summary style="font-weight:600; color:var(--deep-bronze)">เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
-          <div style="margin-top:10px">${consentBlocksHtml()}</div>
+        <details class="consent-block">
+          <summary>เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
+          <div class="consent-body">${consentBlocksHtml()}</div>
         </details>
         <label class="agree-row" data-check-key="preServiceAgree">
           <input type="checkbox" id="f1PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
@@ -2719,7 +2719,7 @@ function initFormTwo() {
       ${visitHeaderHtml()}
       ${readinessBlockHtml(draft)}
 
-      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ประเมินรอยเดิมและความต้องการ</div>
+      <div class="form-section-title">ส่วนที่ 1 — ประเมินรอยเดิมและความต้องการ</div>
       <div class="step-group">
         <div class="step-group-title">ลักษณะรอยเก่าที่เห็นในปัจจุบัน <span class="required-star">*</span></div>
         ${chipGroup("oldMarkLook", OPTIONS.oldMarkLook, draft, true)}
@@ -2747,13 +2747,13 @@ function initFormTwo() {
       <div class="step-group">
         <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
         ${radioField("intensity", OPTIONS.intensity, draft)}
-        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+        <p class="muted small mt-8">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
       </div>
       <div class="step-group">
         <div class="step-group-title">ยอมรับเงื่อนไขก่อนเริ่มบริการ <span class="required-star">*</span></div>
-        <details class="consent-block" style="cursor:pointer">
-          <summary style="font-weight:600; color:var(--deep-bronze)">เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
-          <div style="margin-top:10px">${consentBlocksHtml()}</div>
+        <details class="consent-block">
+          <summary>เปิดอ่านเงื่อนไขก่อนเริ่มบริการ</summary>
+          <div class="consent-body">${consentBlocksHtml()}</div>
         </details>
         <label class="agree-row" data-check-key="preServiceAgree">
           <input type="checkbox" id="f2PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
@@ -2979,11 +2979,11 @@ function initFormTouchup() {
         ${row("เทคนิคเดิม", last.technique)}
         ${row("สีเดิม", last.colorUsed)}
         ${row("กล้ามเนื้อคิ้วล่าสุด", (state.currentCustomer && state.currentCustomer.skinProfile && state.currentCustomer.skinProfile.muscle) || "ยังไม่ได้ประเมิน")}
-        <div class="photo-row" style="margin-top:10px">
+        <div class="photo-row mt-12">
           ${photoBoxReadOnly(first.beforePhotoUrl)}
           ${photoBoxReadOnly(first.afterPhotoUrl)}
         </div>
-        <button type="button" class="icon-btn" id="tuViewLastBtn" style="padding-left:0; margin-top:6px">ดูรายละเอียด ›</button>
+        <button type="button" class="icon-btn icon-btn--flush mt-8" id="tuViewLastBtn">ดูรายละเอียด ›</button>
       </div>`;
   }
 
@@ -2992,7 +2992,7 @@ function initFormTouchup() {
 
     container.innerHTML = `
       ${visitHeaderHtml()}
-      <div class="form-section-title" style="margin-top:4px">ส่วนที่ 1 — ประวัติเดิม</div>
+      <div class="form-section-title">ส่วนที่ 1 — ประวัติเดิม</div>
       ${historyBlockHtml()}
 
       ${readinessBlockHtml(draft)}
@@ -3017,7 +3017,7 @@ function initFormTouchup() {
       <div class="step-group">
         <div class="step-group-title">ระดับความเข้มหลังทำเสร็จวันนี้ <span class="required-star">*</span></div>
         ${radioField("intensity", OPTIONS.intensity, draft)}
-        <p class="muted small" style="margin-top:8px">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
+        <p class="muted small mt-8">${escapeHtml(INTENSITY_DISCLAIMER)}</p>
       </div>
       <div class="step-group">
         <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
@@ -3260,7 +3260,7 @@ function initTechFields() {
         <div class="tech-sig-wrap">
           <img src="${TECH_SIGNATURE_DATA_URL}" alt="ลายเซ็นช่าง">
         </div>
-        <p class="muted small" style="text-align:center">(ชนิสตา ศุภสุข)</p>
+        <p class="muted small text-center">(ชนิสตา ศุภสุข)</p>
       </div>
     `;
 

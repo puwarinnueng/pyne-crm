@@ -79,7 +79,7 @@ export function initNewCustomer() {
       </div>
       <p class="muted small">กล้ามเนื้อคิ้ว: ยังไม่ได้ประเมิน (จะประเมินหลังเช็ดคิ้ว/วัดทรงจริงในฟอร์ม 1 หรือ 2 ครั้งแรก)</p>
 
-      <button class="btn btn-primary btn-block" id="ncCreateBtn2" style="margin-top:14px">Create Customer &amp; Continue</button>
+      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">Create Customer &amp; Continue</button>
     `;
 
     ["ncFullName", "ncNickname", "ncDob", "ncPhone", "ncLine"].forEach((id) => {
@@ -152,7 +152,7 @@ export function initNewCustomer() {
         <div class="dup-warning">
           ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
           Please use the existing customer instead of creating a duplicate.
-          <br><button class="btn btn-primary" id="ncUseExistingBtn" type="button" style="margin-top:8px">Open this customer</button>
+          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">Open this customer</button>
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
