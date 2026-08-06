@@ -6,6 +6,7 @@ import { isCompletedBrowVisit } from "../utils.js";
 
 let modalEl = null;
 let closeTimer = null;
+let isChoosing = false;
 
 function getModal() {
   if (!modalEl) modalEl = document.getElementById("serviceTypeModal");
@@ -30,6 +31,7 @@ export async function openServiceTypeModal() {
   const modal = getModal();
   if (!modal) return;
   const form3Btn = document.getElementById("chooseForm3Btn");
+  setChoosingDisabled(false);
   // "เติมสีคิ้ว" (Form 3) ใช้ได้เฉพาะลูกค้าที่เคยมีประวัติเข้ารับบริการกับร้านมาก่อนหน้า Visit นี้เท่านั้น
   // เดิมเช็คแค่ "มี state.currentCustomer อยู่ไหม" ซึ่งจริงอยู่เสมอ (ทั้งลูกค้าใหม่/เก่า) ณ จุดนี้ของ flow
   // เลยไม่เคยซ่อนปุ่มนี้จริง ๆ เลยสักครั้ง — ต้องเช็คประวัติจริงจากเซิร์ฟเวอร์ ซ่อนไว้ก่อนเป็นค่า default
@@ -56,14 +58,23 @@ export async function openServiceTypeModal() {
   }
 }
 
-function setChoosingDisabled(disabled) {
-  ["chooseForm1Btn", "chooseForm2Btn", "chooseForm3Btn", "serviceTypeCloseBtn"].forEach((id) => {
+function setChoosingDisabled(disabled, activeId = null) {
+  isChoosing = disabled;
+  ["chooseForm1Btn", "chooseForm2Btn", "chooseForm3Btn"].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.disabled = disabled;
+    if (!el) return;
+    el.disabled = disabled;
+    el.classList.toggle("is-loading", disabled && id === activeId);
+    el.classList.toggle("is-muted", disabled && id !== activeId);
+    if (disabled && id === activeId) el.setAttribute("aria-busy", "true");
+    else el.removeAttribute("aria-busy");
   });
+  const closeBtn = document.getElementById("serviceTypeCloseBtn");
+  if (closeBtn) closeBtn.disabled = disabled;
 }
 
-async function chooseForm({ serviceType, formType, screenId }) {
+async function chooseForm({ serviceType, formType, screenId, buttonId }) {
+  if (isChoosing) return;
   const c = state.currentCustomer;
   const meta = state.pendingVisitMeta;
   if (!c || !meta) {
@@ -74,7 +85,7 @@ async function chooseForm({ serviceType, formType, screenId }) {
 
   state.serviceType = serviceType;
   state.formType = formType;
-  setChoosingDisabled(true);
+  setChoosingDisabled(true, buttonId);
   try {
     const res = await createVisit({
       ...meta,
@@ -89,7 +100,7 @@ async function chooseForm({ serviceType, formType, screenId }) {
     };
     state.pendingVisitMeta = null;
     state.resetVisitDraft();
-    closeServiceTypeModal();
+    closeServiceTypeModal({ force: true });
     show(screenId);
   } catch (e) {
     console.warn("createVisit after form selection failed:", e);
@@ -99,8 +110,9 @@ async function chooseForm({ serviceType, formType, screenId }) {
   }
 }
 
-export function closeServiceTypeModal() {
+export function closeServiceTypeModal(options = {}) {
   const modal = getModal();
+  if (isChoosing && !options.force) return;
   if (!modal || modal.hidden) return;
   modal.classList.remove("is-open");
   closeTimer = setTimeout(() => { modal.hidden = true; }, 220);
@@ -123,14 +135,14 @@ export function initServiceType() {
   });
 
   document.getElementById("chooseForm1Btn").addEventListener("click", () => {
-    chooseForm({ serviceType: "สักคิ้ว", formType: "form1", screenId: "form1" });
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form1", screenId: "form1", buttonId: "chooseForm1Btn" });
   });
 
   document.getElementById("chooseForm2Btn").addEventListener("click", () => {
-    chooseForm({ serviceType: "สักคิ้ว", formType: "form2", screenId: "form2" });
+    chooseForm({ serviceType: "สักคิ้ว", formType: "form2", screenId: "form2", buttonId: "chooseForm2Btn" });
   });
 
   document.getElementById("chooseForm3Btn").addEventListener("click", () => {
-    chooseForm({ serviceType: "เติมสี", formType: "form3", screenId: "formTouchup" });
+    chooseForm({ serviceType: "เติมสี", formType: "form3", screenId: "formTouchup", buttonId: "chooseForm3Btn" });
   });
 }

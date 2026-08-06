@@ -9,7 +9,7 @@ import { OPTIONS } from "../data/options.js";
 import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
 import { readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
-import { visitHeaderHtml, wireNotServedButton } from "../visitFlow.js";
+import { promptAfterDraftSaved, setDraftSaveLoading, visitHeaderHtml, wireNotServedButton } from "../visitFlow.js";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
@@ -180,7 +180,7 @@ export function initTechFields() {
 
   draftBtn.addEventListener("click", async () => {
     if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
-    draftBtn.disabled = true;
+    setDraftSaveLoading(draftBtn, true);
     const draft = state.visitDraft;
     try {
       const { beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl } = await uploadAndBuildFolder();
@@ -191,12 +191,12 @@ export function initTechFields() {
         rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
       };
       await saveVisit(payload);
-      await appAlert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ", { title: "บันทึกแบบร่างแล้ว" });
+      await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
       await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
-      draftBtn.disabled = false;
+      setDraftSaveLoading(draftBtn, false);
     }
   });
 

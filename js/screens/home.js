@@ -255,12 +255,18 @@ export function initHome() {
     searchPanel.hidden = true;
   }
 
-  function showSearchPanel() {
+  function showSearchPanel(options = {}) {
+    const shouldLoadRecent = options.loadRecent !== false;
     startChoice.hidden = true;
     searchPanel.hidden = false;
     searchInput.value = "";
     visibleCustomers = [];
-    loadRecentCustomers();
+    if (shouldLoadRecent) {
+      loadRecentCustomers();
+    } else {
+      searchRequestSeq += 1;
+      render([], "search");
+    }
     searchInput.focus();
   }
 
@@ -279,10 +285,13 @@ export function initHome() {
   chooseOldCustomerBtn.addEventListener("click", showSearchPanel);
   searchBackBtn.addEventListener("click", showStartChoice);
 
-  onEnter("home", () => {
+  onEnter("home", (data) => {
     showStartChoice();
     searchInput.value = "";
     visibleCustomers = [];
     renderSummary();
+    if (data?.mode === "oldCustomerSearch") {
+      showSearchPanel({ loadRecent: false });
+    }
   });
 }

@@ -382,8 +382,14 @@ select.input { -webkit-appearance: none; appearance: none; }
   box-shadow: var(--shadow);
   transition: transform .15s, border-color .15s;
 }
-.service-card:hover { transform: translateY(-2px); border-color: var(--deep-bronze); }
-.service-card:active { transform: translateY(0); }
+.service-card:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--deep-bronze); }
+.service-card:active:not(:disabled) { transform: translateY(0); }
+.service-card:disabled { cursor: not-allowed; }
+.service-card.is-muted { opacity: .46; }
+.service-card.is-loading {
+  border-color: var(--deep-bronze);
+  background: var(--bg-white);
+}
 .service-card[hidden] { display: none; }
 .service-card-icon {
   flex: 0 0 52px; width: 52px; height: 52px; border-radius: var(--radius-md);
@@ -398,7 +404,12 @@ select.input { -webkit-appearance: none; appearance: none; }
   flex: 0 0 auto; color: var(--deep-bronze); font-size: 26px; line-height: 1;
   transition: transform .15s;
 }
-.service-card:hover .service-card-arrow { transform: translateX(3px); }
+.service-card:hover:not(:disabled) .service-card-arrow { transform: translateX(3px); }
+.service-card.is-loading .service-card-arrow {
+  width: 18px; height: 18px; border: 2px solid var(--border);
+  border-top-color: var(--deep-bronze); border-radius: 50%;
+  color: transparent; font-size: 0; animation: spin .8s linear infinite;
+}
 
 /* ===================== Glass modal (เลือกประเภทบริการ) ===================== */
 .modal-overlay {
@@ -445,7 +456,10 @@ select.input { -webkit-appearance: none; appearance: none; }
   background: var(--bg-white); border-color: var(--deep-bronze);
   box-shadow: var(--shadow);
 }
+.glass-modal .service-card:hover:disabled { box-shadow: none; }
 .glass-modal .service-card-icon { background: var(--bg-white); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .error-text { color: var(--error-text); font-size: var(--fs-caption); line-height: var(--lh-caption); margin: calc(var(--sp-8) * -1) 0 var(--sp-8); }
 
@@ -701,6 +715,11 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
   font-size: var(--fs-body-sm); font-weight: 600; padding: var(--sp-8) var(--sp-12);
   border-radius: var(--radius-md); cursor: pointer; font-family: inherit;
 }
+.draft-save-btn:disabled {
+  background: var(--disabled-bg); border-color: var(--border); color: var(--disabled-text);
+  cursor: not-allowed; opacity: .78;
+}
+.draft-save-btn[aria-busy="true"] { min-width: 116px; }
 .not-served-link {
   background: var(--error-bg); border: 1px solid var(--error-text);
   color: var(--error-text); font-size: var(--fs-body-sm); font-weight: 600;

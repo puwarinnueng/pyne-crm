@@ -5,7 +5,7 @@
 import { state } from "./state.js";
 import { show } from "./router.js";
 import { closeVisitNotServed, saveVisit } from "./mockApi.js";
-import { appAlert, appPrompt } from "./dialogs.js";
+import { appAlert, appConfirm, appPrompt } from "./dialogs.js";
 import { escapeHtml, formatDate } from "./utils.js";
 
 export function visitHeaderHtml() {
@@ -19,6 +19,31 @@ export function visitHeaderHtml() {
     </div>`;
 }
 
+export function setDraftSaveLoading(buttonEl, isLoading) {
+  if (!buttonEl) return;
+  if (isLoading) {
+    buttonEl.dataset.idleText = buttonEl.textContent;
+    buttonEl.textContent = "กำลังบันทึก...";
+    buttonEl.setAttribute("aria-busy", "true");
+    buttonEl.disabled = true;
+    return;
+  }
+  buttonEl.textContent = buttonEl.dataset.idleText || "บันทึกแบบร่าง";
+  buttonEl.removeAttribute("aria-busy");
+  buttonEl.disabled = false;
+}
+
+export async function promptAfterDraftSaved() {
+  const goHome = await appConfirm("บันทึกแบบร่างแล้ว — ต้องการอยู่หน้านี้ต่อหรือกลับไปหน้าลูกค้าเก่า?", {
+    title: "บันทึกแบบร่างแล้ว",
+    okText: "กลับหน้าหลัก",
+    cancelText: "อยู่หน้านี้ต่อ"
+  });
+  if (!goHome) return;
+  state.reset();
+  show("home", { data: { mode: "oldCustomerSearch" } });
+}
+
 // ปุ่ม "บันทึกแบบร่าง" มุมขวาบน — กดได้ตลอดทุกจุดของฟอร์ม โดยไม่ต้องรอข้อมูลบังคับครบ
 // เก็บ rawAnswers ดิบทั้งหมดไว้ก่อน ไม่ normalize เป็นฟิลด์ทีละอันเหมือนตอนปิด Visit จริง
 export function wireDraftSaveButton(buttonEl) {
@@ -27,7 +52,7 @@ export function wireDraftSaveButton(buttonEl) {
     const c = state.currentCustomer;
     const v = state.visitContext;
     if (!c || !v) return;
-    buttonEl.disabled = true;
+    setDraftSaveLoading(buttonEl, true);
     const draft = state.visitDraft;
     try {
       await saveVisit({
@@ -44,12 +69,12 @@ export function wireDraftSaveButton(buttonEl) {
         intensity: draft.intensity || null,
         rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
       });
-      await appAlert("บันทึกแบบร่างแล้ว — กลับมาทำต่อได้ทุกเมื่อ", { title: "บันทึกแบบร่างแล้ว" });
+      await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
       await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
-      buttonEl.disabled = false;
+      setDraftSaveLoading(buttonEl, false);
     }
   });
 }
