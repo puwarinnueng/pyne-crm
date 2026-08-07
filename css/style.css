@@ -33,8 +33,11 @@
   --border: var(--hairline);
   --ink: var(--espresso-ink);
   --heading: var(--soft-charcoal);
-  --text-secondary: var(--muted-taupe);
+  /* Deep Bronze คือสีเดียวใน guide ที่ตาราง Contrast รับรองว่าใช้เป็น text ได้ (4.6:1) นอกจาก Ink
+     กับ Error-text — Muted Taupe เป็น "icons, badges & dividers only, never text under 18px" */
+  --text-secondary: var(--deep-bronze);
   --disabled-bg: var(--greige);
+  /* ปุ่ม disabled ให้คง Taupe ตาม Component States ที่ระบุไว้ตรงๆ ว่า "bg Greige / text Taupe" */
   --disabled-text: var(--muted-taupe);
   --destructive: var(--error-text);
 
@@ -86,6 +89,9 @@ html, body {
 button, input, select, textarea {
   font-family: inherit;
 }
+
+/* เบราว์เซอร์ตั้ง <b>/<strong> เป็น 700 มาให้ — style guide จำกัด weight ไว้ที่ 400–600 เท่านั้น */
+b, strong { font-weight: 600; }
 
 /* ---- Spacing / layout helpers (prefer classes over inline styles) ---- */
 .mt-4  { margin-top: var(--sp-4)  !important; }
@@ -303,15 +309,16 @@ button, input, select, textarea {
 .back-link {
   display: inline-flex; align-items: center; gap: var(--sp-4);
   background: none; border: none; color: var(--deep-bronze);
-  font-size: var(--fs-body-sm); font-weight: 600; font-family: inherit;
+  font-size: var(--fs-button); line-height: var(--lh-button); font-weight: var(--fw-button); font-family: inherit;
   padding: var(--sp-8) var(--sp-8) var(--sp-8) var(--sp-4); margin-left: calc(var(--sp-8) * -1); border-radius: var(--radius-md);
   cursor: pointer; transition: background .15s, color .15s;
 }
 .back-link:hover { background: var(--bg-alt); color: var(--espresso); }
 /* alias เผื่อยังมี markup เก่าใช้ .icon-btn อยู่ */
 .icon-btn {
-  background: none; border: none; color: var(--deep-bronze); font-size: var(--fs-body-sm);
-  font-weight: 600; padding: var(--sp-8) var(--sp-12); cursor: pointer; font-family: inherit;
+  background: none; border: none; color: var(--deep-bronze);
+  font-size: var(--fs-button); line-height: var(--lh-button); font-weight: var(--fw-button);
+  padding: var(--sp-8) var(--sp-12); cursor: pointer; font-family: inherit;
 }
 .step-indicator { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--deep-bronze); }
 
@@ -328,7 +335,8 @@ button, input, select, textarea {
   outline: none; border-color: var(--pyne-gold); border-width: 1.5px;
   box-shadow: var(--focus-ring);
 }
-.input-lg { text-align: center; font-size: var(--fs-h1); letter-spacing: var(--sp-8); }
+/* letter-spacing เป็นค่าเชิงตัวอักษร ไม่ใช่ระยะ layout เลยไม่ใช้ --sp-* token */
+.input-lg { text-align: center; font-size: var(--fs-h1); letter-spacing: 8px; }
 .textarea { min-height: 80px; resize: vertical; }
 .field-label {
   display: block; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: var(--fw-label);
@@ -356,7 +364,8 @@ select.input { -webkit-appearance: none; appearance: none; }
 
 /* Button · Secondary (neutral surface — same palette) */
 .btn-secondary { background: var(--greige); color: var(--espresso-ink); }
-.btn-secondary:hover:not(:disabled) { background: var(--soft-bronze); color: var(--white); }
+/* ตัวหนังสือบนพื้น Soft Bronze ต้องเป็น Espresso Ink (6.4:1) — สีขาวได้แค่ 2.5:1 ไม่ผ่าน WCAG AA */
+.btn-secondary:hover:not(:disabled) { background: var(--soft-bronze); color: var(--espresso-ink); }
 .btn-secondary:disabled { background: var(--disabled-bg); color: var(--disabled-text); }
 
 /* Button · Ghost */
@@ -668,7 +677,10 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 .sig-wrap { border: 1.5px dashed var(--border); border-radius: var(--radius-md); overflow: hidden; margin: var(--sp-8) 0; background: var(--white); }
 .sig-wrap canvas { display: block; width: 100%; height: 180px; touch-action: none; }
 .sig-actions { display: flex; justify-content: flex-end; padding: var(--sp-8); background: var(--bg-alt); }
-.sig-actions button { background: none; border: none; color: var(--deep-bronze); font-size: var(--fs-caption); font-family: inherit; cursor: pointer; }
+.sig-actions button {
+  background: none; border: none; color: var(--deep-bronze); font-family: inherit; cursor: pointer;
+  font-size: var(--fs-button); line-height: var(--lh-button); font-weight: var(--fw-button);
+}
 
 /* Static technician signature (fixed image, not a live pad) */
 .tech-sig-wrap {
@@ -712,7 +724,8 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 .topbar-actions { position: absolute; top: var(--sp-12); right: var(--sp-16); display: flex; gap: var(--sp-8); }
 .draft-save-btn {
   background: transparent; border: 1px solid var(--pyne-gold); color: var(--deep-bronze);
-  font-size: var(--fs-body-sm); font-weight: 600; padding: var(--sp-8) var(--sp-12);
+  font-size: var(--fs-button); line-height: var(--lh-button); font-weight: var(--fw-button);
+  padding: var(--sp-8) var(--sp-12);
   border-radius: var(--radius-md); cursor: pointer; font-family: inherit;
 }
 .draft-save-btn:disabled {
@@ -722,7 +735,7 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 .draft-save-btn[aria-busy="true"] { min-width: 116px; }
 .not-served-link {
   background: var(--error-bg); border: 1px solid var(--error-text);
-  color: var(--error-text); font-size: var(--fs-body-sm); font-weight: 600;
+  color: var(--error-text); font-size: var(--fs-button); line-height: var(--lh-button); font-weight: var(--fw-button);
   cursor: pointer; font-family: inherit; padding: var(--sp-8) var(--sp-12);
   border-radius: var(--radius-md); box-shadow: var(--shadow);
 }
@@ -814,7 +827,8 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
   color: var(--ink); font-size: 16px; font-family: inherit;
   outline: none; transition: border-color .15s, box-shadow .15s;
 }
-.login-input::placeholder { color: var(--text-secondary); opacity: .72; }
+/* ไม่ลด opacity — จะทำให้ contrast ของ placeholder ตกจาก 4.6:1 เหลือ ~2.7:1 */
+.login-input::placeholder { color: var(--text-secondary); opacity: 1; }
 .login-input:focus {
   border-color: var(--pyne-gold);
   box-shadow: var(--focus-ring);
@@ -832,8 +846,8 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 .login-forgot { text-align: right; margin-bottom: var(--sp-16); }
 .login-forgot-link {
   background: none; border: none; cursor: pointer;
-  color: var(--deep-bronze); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm);
-  font-weight: 500; padding: 0; font-family: inherit;
+  color: var(--deep-bronze); font-size: var(--fs-button); line-height: var(--lh-button);
+  font-weight: var(--fw-button); padding: 0; font-family: inherit;
 }
 .login-forgot-link:hover { color: var(--espresso); text-decoration: underline; }
 
@@ -902,8 +916,8 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
   width: 100%; margin-top: var(--sp-12);
   background: none; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: var(--sp-8);
-  color: var(--deep-bronze); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm);
-  font-weight: 500; padding: var(--sp-8); font-family: inherit;
+  color: var(--deep-bronze); font-size: var(--fs-button); line-height: var(--lh-button);
+  font-weight: var(--fw-button); padding: var(--sp-8); font-family: inherit;
 }
 .reset-back:hover { color: var(--espresso); }
 .reset-back svg { width: 15px; height: 15px; }
