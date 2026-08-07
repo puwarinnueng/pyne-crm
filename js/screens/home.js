@@ -24,6 +24,7 @@ export function initHome() {
   const table = tableCard.querySelector("table");
   const emptyState = document.getElementById("customersEmptyState");
   const searchInput = document.getElementById("searchInput");
+  const tableScroll = tableCard.querySelector(".table-scroll");
   const startChoice = document.getElementById("homeStartChoice");
   const searchPanel = document.getElementById("homeSearchPanel");
   const chooseNewCustomerBtn = document.getElementById("chooseNewCustomerBtn");
@@ -33,6 +34,40 @@ export function initHome() {
 
   let visibleCustomers = [];
   let searchRequestSeq = 0;
+  let tablePointer = null;
+  let tableDragStarted = false;
+
+  if (tableScroll) {
+    tableScroll.addEventListener("pointerdown", (e) => {
+      tablePointer = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: tableScroll.scrollLeft
+      };
+      tableDragStarted = false;
+    }, { passive: true });
+    tableScroll.addEventListener("pointermove", (e) => {
+      if (!tablePointer) return;
+      const dx = Math.abs(e.clientX - tablePointer.x);
+      const dy = Math.abs(e.clientY - tablePointer.y);
+      if (dx > 8 || dy > 8 || Math.abs(tableScroll.scrollLeft - tablePointer.scrollLeft) > 4) {
+        tableDragStarted = true;
+      }
+    }, { passive: true });
+    tableScroll.addEventListener("scroll", () => {
+      if (tablePointer) tableDragStarted = true;
+    }, { passive: true });
+    tableScroll.addEventListener("pointerup", () => {
+      window.setTimeout(() => {
+        tablePointer = null;
+        tableDragStarted = false;
+      }, 0);
+    }, { passive: true });
+    tableScroll.addEventListener("pointercancel", () => {
+      tablePointer = null;
+      tableDragStarted = false;
+    }, { passive: true });
+  }
 
   function renderSummary() {
     summary.hidden = true;
@@ -140,9 +175,9 @@ export function initHome() {
       const popover = tr.querySelector(".row-menu-popover");
       if (!menu || !trigger || !popover) return;
 
-      tr.addEventListener("pointerdown", (e) => {
+      tr.addEventListener("click", (e) => {
         if (e.target.closest(".row-menu")) return;
-        e.preventDefault(); // keep the search input from firing a blur/change search before navigation
+        if (tableDragStarted) return;
         if (customer) openProfile(customer);
       });
       tr.addEventListener("keydown", (e) => {
@@ -257,17 +292,25 @@ export function initHome() {
 
   function showSearchPanel(options = {}) {
     const shouldLoadRecent = options.loadRecent !== false;
+    const shouldPreserveSearch = options.preserveSearch === true;
     startChoice.hidden = true;
     searchPanel.hidden = false;
-    searchInput.value = "";
-    visibleCustomers = [];
+    if (!shouldPreserveSearch) {
+      searchInput.value = "";
+      visibleCustomers = [];
+    }
     if (shouldLoadRecent) {
-      loadRecentCustomers();
+      if (shouldPreserveSearch && normalizePhone(searchInput.value).length >= 3) {
+        render(visibleCustomers, "search");
+      } else if (shouldPreserveSearch && visibleCustomers.length) {
+        render(visibleCustomers, "recent");
+      } else {
+        loadRecentCustomers();
+      }
     } else {
       searchRequestSeq += 1;
       render([], "search");
     }
-    searchInput.focus();
   }
 
   chooseNewCustomerBtn.addEventListener("click", () => {
@@ -286,12 +329,13 @@ export function initHome() {
   searchBackBtn.addEventListener("click", showStartChoice);
 
   onEnter("home", (data) => {
+    if (data?.mode === "oldCustomerSearch") {
+      showSearchPanel({ preserveSearch: data.preserveSearch === true });
+      return;
+    }
     showStartChoice();
     searchInput.value = "";
     visibleCustomers = [];
     renderSummary();
-    if (data?.mode === "oldCustomerSearch") {
-      showSearchPanel();
-    }
   });
 }

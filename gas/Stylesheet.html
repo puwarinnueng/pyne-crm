@@ -501,7 +501,7 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
   /* อย่าใช้ overflow:hidden — จะตัด dropdown Actions ของแต่ละแถว */
   overflow: visible;
 }
-.table-scroll { overflow-x: auto; overflow-y: visible; }
+.table-scroll { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 .customers-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .customers-table thead th {
   text-align: left; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: var(--fw-label);

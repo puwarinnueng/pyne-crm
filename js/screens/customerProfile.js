@@ -120,6 +120,7 @@ export function initCustomerProfile() {
   const historySummary = document.getElementById("historySummary");
   const historyList = document.getElementById("historyList");
   const addVisitBtn = document.getElementById("addVisitBtn");
+  const backBtn = document.getElementById("customerProfileBackBtn");
 
   // object เดียวคงที่ตลอดอายุโมดูล (mutate ด้วย key เอา ห้าม reassign เป็น {} ใหม่) เพราะ bindFieldEvents
   // ผูก event delegation ไว้กับ reference นี้ตอน init ครั้งเดียว — ดูคำเตือนแบบเดียวกันใน state.js
@@ -127,6 +128,13 @@ export function initCustomerProfile() {
   let isEditingSkin = false;
 
   addVisitBtn.addEventListener("click", () => show("createVisit"));
+  backBtn.addEventListener("click", () => {
+    if (state.customerFlow === "old") {
+      show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true }, pushHistory: false });
+      return;
+    }
+    show("home", { pushHistory: false });
+  });
 
   function skinSummaryHtml(sp) {
     sp = sp || {};
