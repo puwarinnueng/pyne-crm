@@ -1,22 +1,22 @@
-import { show } from "./router.js?v=20260808ae";
-import { state } from "./state.js?v=20260808ae";
-import { getCustomer, checkSession } from "./mockApi.js?v=20260808ae";
-import { getToken } from "./session.js?v=20260808ae";
-import { initDialogs } from "./dialogs.js?v=20260808ae";
-import { initShell } from "./shell.js?v=20260808ae";
-import { initHistorySheet } from "./formWizard.js?v=20260808af";
-import { initLogin, showLogin, hideLogin } from "./screens/login.js?v=20260808ae";
-import { initHome } from "./screens/home.js?v=20260808ae";
-import { initNewCustomer } from "./screens/newCustomer.js?v=20260808ae";
-import { initCustomerProfile } from "./screens/customerProfile.js?v=20260808ae";
-import { initVisitDetail } from "./screens/visitDetail.js?v=20260808ae";
-import { initCreateVisit } from "./screens/createVisit.js?v=20260808ae";
-import { initServiceType } from "./screens/serviceType.js?v=20260808ae";
-import { initFormOne } from "./screens/formOne.js?v=20260808ae";
-import { initFormTwo } from "./screens/formTwo.js?v=20260808ae";
-import { initFormTouchup } from "./screens/formTouchup.js?v=20260808ae";
-import { initTechFields } from "./screens/techFields.js?v=20260808ae";
-import { initConfirmation } from "./screens/confirmation.js?v=20260808ae";
+import { show } from "./router.js?v=20260808ag";
+import { state } from "./state.js?v=20260808ag";
+import { getCustomer, checkSession } from "./mockApi.js?v=20260808ag";
+import { getToken } from "./session.js?v=20260808ag";
+import { initDialogs } from "./dialogs.js?v=20260808ag";
+import { initShell } from "./shell.js?v=20260808ag";
+import { initHistorySheet } from "./formWizard.js?v=20260808ag";
+import { initLogin, showLogin, hideLogin } from "./screens/login.js?v=20260808ag";
+import { initHome } from "./screens/home.js?v=20260808ag";
+import { initNewCustomer } from "./screens/newCustomer.js?v=20260808ag";
+import { initCustomerProfile } from "./screens/customerProfile.js?v=20260808ag";
+import { initVisitDetail } from "./screens/visitDetail.js?v=20260808ao";
+import { initCreateVisit } from "./screens/createVisit.js?v=20260808ag";
+import { initServiceType } from "./screens/serviceType.js?v=20260808ag";
+import { initFormOne } from "./screens/formOne.js?v=20260808ag";
+import { initFormTwo } from "./screens/formTwo.js?v=20260808ag";
+import { initFormTouchup } from "./screens/formTouchup.js?v=20260808ag";
+import { initTechFields } from "./screens/techFields.js?v=20260808ag";
+import { initConfirmation } from "./screens/confirmation.js?v=20260808ao";
 
 function safeInit(name, fn) {
   try {

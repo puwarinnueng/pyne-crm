@@ -114,6 +114,24 @@ function isCompletedBrowVisit(visit) {
   );
 }
 
+/** เปิด/ดาวน์โหลดไฟล์จาก URL (blob หรือ https) — ใช้แทน window.open หลัง await เพื่อกันโดนบล็อก/about:blank */
+function openExportFile(url, filename, opts = {}) {
+  if (!url) return false;
+  const a = document.createElement("a");
+  a.href = url;
+  const forceDownload = opts.download === true || (filename && /\.pdf$/i.test(filename) && opts.preview !== true);
+  if (forceDownload && filename) {
+    a.download = filename;
+  } else {
+    a.target = "_blank";
+    a.rel = "noopener";
+  }
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
+
 // unique key ต่อ visit หนึ่งครั้ง ใช้กันชื่อ Drive folder ชนกันเมื่อลูกค้าคนเดียวกันมีหลาย visit วันเดียวกัน
 // สร้างครั้งแรกที่เรียกแล้ว cache ไว้ใน draft — เรียกซ้ำได้ค่าเดิมตลอดวงจรชีวิตของ visit นั้น
 function ensureVisitSessionKey(draft) {
@@ -2983,8 +3001,11 @@ function sectionRows(raw, fields) {
   return fields.map(([key, label]) => row(label, displayField(raw, key))).join("");
 }
 
+const EXPORT_BTN_IDLE = withIcon("file", "ใบยินยอม PDF");
+
 function initVisitDetail() {
   const body = document.getElementById("visitDetailBody");
+  const exportBtn = document.getElementById("visitExportPdfBtn");
 
   async function handleExportPdf(visit, btn) {
     const idle = btn.innerHTML;
@@ -2992,12 +3013,12 @@ function initVisitDetail() {
     btn.textContent = "กำลังสร้าง PDF...";
     try {
       const res = await exportConsentPdf(visit.serviceId);
-      if (res && res.success && res.url) {
-        await appAlert(`PDF พร้อมแล้ว\n${res.filename || ""}`, {
+      if (res && res.success && (res.downloadUrl || res.url)) {
+        openExportFile(res.downloadUrl || res.url, res.filename || "consent.pdf", { preview: Boolean(res.preview) });
+        await appAlert(res.note || "เปิดหน้าต่างพิมพ์แล้ว — เลือก Save as PDF", {
           title: "ส่งออก PDF",
-          okText: "เปิด PDF"
+          okText: "ตกลง"
         });
-        window.open(res.url, "_blank", "noopener");
         return;
       }
       await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "ส่งออก PDF" });
@@ -3010,6 +3031,13 @@ function initVisitDetail() {
   }
 
   onEnter("visitDetail", (visit) => {
+    if (exportBtn) {
+      exportBtn.hidden = true;
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = EXPORT_BTN_IDLE;
+      exportBtn.onclick = null;
+    }
+
     if (!visit) {
       body.innerHTML = `<div class="empty-hint">ไม่พบคิวนี้</div>`;
       return;
@@ -3079,10 +3107,6 @@ function initVisitDetail() {
       ${sectionHtml("ข้อมูลคิว", metaRows)}
       ${sectionHtml("สรุปงาน", summaryRows)}
 
-      ${isCompletedVisitStatus(visit.status) ? `
-      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">${withIcon("file", "ส่งออกใบยินยอม (PDF)")}</button>
-      ` : ""}
-
       ${formSections}
       ${extraRows ? sectionHtml("คำตอบอื่น ๆ", extraRows) : ""}
 
@@ -3107,8 +3131,10 @@ function initVisitDetail() {
       </div>` : ""}
     `;
 
-    const exportBtn = document.getElementById("visitExportPdfBtn");
-    if (exportBtn) exportBtn.addEventListener("click", () => handleExportPdf(visit, exportBtn));
+    if (exportBtn && isCompletedVisitStatus(visit.status)) {
+      exportBtn.hidden = false;
+      exportBtn.onclick = () => handleExportPdf(visit, exportBtn);
+    }
   });
 }
 </script>
@@ -3394,7 +3420,7 @@ function initServiceType() {
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808af";
+} from "../formWizard.js?v=20260808ag";
 
 function consentBlocksHtml() {
   return CONSENT_BLOCKS.map((b) => `
@@ -3723,7 +3749,7 @@ function initFormOne() {
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808af";
+} from "../formWizard.js?v=20260808ag";
 
 function consentBlocksHtml() {
   const blocks = [CONSENT_BLOCKS[0], FORM2_EXTRA_CONSENT_BLOCK, ...CONSENT_BLOCKS.slice(1)];
@@ -4022,12 +4048,12 @@ import {
   formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto,
   isOtherOption, selectionIncludesOther, TOUCHUP_ORIGINAL,
   resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
-} from "../utils.js?v=20260808ae";
+} from "../utils.js?v=20260808ag";
 
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808af";
+} from "../formWizard.js?v=20260808ag";
 
 function monthsSince(ts) {
   if (!ts) return "-";
@@ -4409,7 +4435,7 @@ function initFormTouchup() {
 import {
   readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther,
   resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
-} from "../utils.js?v=20260808ae";
+} from "../utils.js?v=20260808ag";
 
 
 
@@ -4674,12 +4700,12 @@ function initConfirmation() {
     exportBtn.textContent = "กำลังสร้าง PDF...";
     try {
       const res = await exportConsentPdf(state.lastSavedServiceId);
-      if (res && res.success && res.url) {
-        await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
+      if (res && res.success && (res.downloadUrl || res.url)) {
+        openExportFile(res.downloadUrl || res.url, res.filename || "consent.pdf", { preview: Boolean(res.preview) });
+        await appAlert(res.note || "เปิดหน้าต่างพิมพ์แล้ว — เลือก Save as PDF", {
           title: "ส่งออก PDF",
-          okText: "เปิด PDF"
+          okText: "ตกลง"
         });
-        window.open(res.url, "_blank", "noopener");
         return;
       }
       await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "ส่งออก PDF" });

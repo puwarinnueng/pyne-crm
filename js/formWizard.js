@@ -1,12 +1,12 @@
 // formWizard.js — 5-step consultation wizard (ตาม mockup) + visit strip + history sheet
 // ไม่เขียน DB — อ่านประวัติ/สกินโปรไฟล์อย่างเดียว แล้วกลับมาจุดเดิมของฟอร์ม
 
-import { state } from "./state.js?v=20260808ae";
-import { getHistoryByCustomer, closeVisitNotServed } from "./mockApi.js?v=20260808ae";
-import { show } from "./router.js?v=20260808ae";
-import { appConfirm, appPrompt, appAlert } from "./dialogs.js?v=20260808ae";
-import { escapeHtml, formatDate, visitStatusLabel, visitStatusBadgeClass, formTypeLabel, isOtherOption, TOUCHUP_ORIGINAL } from "./utils.js?v=20260808ae";
-import { withIcon, ICONS } from "./icons.js?v=20260808ae";
+import { state } from "./state.js?v=20260808ag";
+import { getHistoryByCustomer, closeVisitNotServed } from "./mockApi.js?v=20260808ag";
+import { show } from "./router.js?v=20260808ag";
+import { appConfirm, appPrompt, appAlert } from "./dialogs.js?v=20260808ag";
+import { escapeHtml, formatDate, visitStatusLabel, visitStatusBadgeClass, formTypeLabel, isOtherOption, TOUCHUP_ORIGINAL } from "./utils.js?v=20260808ag";
+import { withIcon, ICONS } from "./icons.js?v=20260808ag";
 
 export const LAST_CONSULT_STEP = 4;
 export const CONSULT_STEP_COUNT = 5;

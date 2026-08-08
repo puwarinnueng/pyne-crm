@@ -112,6 +112,24 @@ export function isCompletedBrowVisit(visit) {
   );
 }
 
+/** เปิด/ดาวน์โหลดไฟล์จาก URL (blob หรือ https) — ใช้แทน window.open หลัง await เพื่อกันโดนบล็อก/about:blank */
+export function openExportFile(url, filename, opts = {}) {
+  if (!url) return false;
+  const a = document.createElement("a");
+  a.href = url;
+  const forceDownload = opts.download === true || (filename && /\.pdf$/i.test(filename) && opts.preview !== true);
+  if (forceDownload && filename) {
+    a.download = filename;
+  } else {
+    a.target = "_blank";
+    a.rel = "noopener";
+  }
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
+
 // unique key ต่อ visit หนึ่งครั้ง ใช้กันชื่อ Drive folder ชนกันเมื่อลูกค้าคนเดียวกันมีหลาย visit วันเดียวกัน
 // สร้างครั้งแรกที่เรียกแล้ว cache ไว้ใน draft — เรียกซ้ำได้ค่าเดิมตลอดวงจรชีวิตของ visit นั้น
 export function ensureVisitSessionKey(draft) {

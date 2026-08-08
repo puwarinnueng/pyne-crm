@@ -3,10 +3,10 @@
 // production (gas/) เทียบกับแท็บ Config ของ Sheet ผ่าน login()/changePassword() — ดู gas/Code.gs
 // สถานะ login จริงคือ session token ที่เซิร์ฟเวอร์ออกให้ (ดู js/session.js) ไม่ใช่ flag ฝั่ง client เฉยๆ
 
-import { login, logout, changePassword } from "../mockApi.js?v=20260808ae";
-import { getToken, setToken, clearToken } from "../session.js?v=20260808ae";
-import { show } from "../router.js?v=20260808ae";
-import { appAlert } from "../dialogs.js?v=20260808ae";
+import { login, logout, changePassword } from "../mockApi.js?v=20260808ag";
+import { getToken, setToken, clearToken } from "../session.js?v=20260808ag";
+import { show } from "../router.js?v=20260808ag";
+import { appAlert } from "../dialogs.js?v=20260808ag";
 
 let screen, form, userInput, pwInput, errorEl, submitBtn;
 let resetOverlay, resetForm, resetOldPw, resetPw, resetPwConfirm, resetError;

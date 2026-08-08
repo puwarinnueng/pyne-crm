@@ -1,12 +1,12 @@
 // visitFlow.js — ส่วนที่ใช้ร่วมกันทุกฟอร์ม Consultation (Form 1/2/3 + หน้าบันทึกหลังทำ)
 
-import { state } from "./state.js?v=20260808ae";
-import { show } from "./router.js?v=20260808ae";
-import { closeVisitNotServed, saveVisit } from "./mockApi.js?v=20260808ae";
-import { appAlert, appConfirm, appPrompt } from "./dialogs.js?v=20260808ae";
-import { showToast } from "./toast.js?v=20260808ae";
-import { escapeHtml, formatDate, resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor } from "./utils.js?v=20260808ae";
-import { withIcon } from "./icons.js?v=20260808ae";
+import { state } from "./state.js?v=20260808ag";
+import { show } from "./router.js?v=20260808ag";
+import { closeVisitNotServed, saveVisit } from "./mockApi.js?v=20260808ag";
+import { appAlert, appConfirm, appPrompt } from "./dialogs.js?v=20260808ag";
+import { showToast } from "./toast.js?v=20260808ag";
+import { escapeHtml, formatDate, resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor } from "./utils.js?v=20260808ag";
+import { withIcon } from "./icons.js?v=20260808ag";
 
 export function visitHeaderHtml() {
   const c = state.currentCustomer;

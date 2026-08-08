@@ -1,19 +1,19 @@
 // formTwo.js — Form 2: สักทับรอยเก่า
 // Wizard 5 ขั้น: ข้อมูลลูกค้า → สุขภาพ → ความต้องการ → การออกแบบ → ยืนยัน → techFields
 
-import { show, onEnter } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { OPTIONS } from "../data/options.js?v=20260808ae";
-import { CONSENT_BLOCKS, FORM2_EXTRA_CONSENT_BLOCK, INTENSITY_DISCLAIMER, PRE_SERVICE_AGREE_TEXT, FINAL_AGREEMENT_TEXT } from "../data/consentText.js?v=20260808ae";
-import { radioField, chipGroup, textField, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
-import { createSignaturePad } from "../signaturePad.js?v=20260808ae";
-import { escapeHtml, readFileAsDataUrl, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther } from "../utils.js?v=20260808ae";
-import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ae";
+import { show, onEnter } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { OPTIONS } from "../data/options.js?v=20260808ag";
+import { CONSENT_BLOCKS, FORM2_EXTRA_CONSENT_BLOCK, INTENSITY_DISCLAIMER, PRE_SERVICE_AGREE_TEXT, FINAL_AGREEMENT_TEXT } from "../data/consentText.js?v=20260808ag";
+import { radioField, chipGroup, textField, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js?v=20260808ag";
+import { createSignaturePad } from "../signaturePad.js?v=20260808ag";
+import { escapeHtml, readFileAsDataUrl, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther } from "../utils.js?v=20260808ag";
+import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ag";
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808af";
-import { updateMuscleEvaluation } from "../mockApi.js?v=20260808ae";
+} from "../formWizard.js?v=20260808ag";
+import { updateMuscleEvaluation } from "../mockApi.js?v=20260808ag";
 
 function consentBlocksHtml() {
   const blocks = [CONSENT_BLOCKS[0], FORM2_EXTRA_CONSENT_BLOCK, ...CONSENT_BLOCKS.slice(1)];

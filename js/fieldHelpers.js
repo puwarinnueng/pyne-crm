@@ -1,9 +1,9 @@
 // fieldHelpers.js — ตัวช่วยสร้าง HTML ฟิลด์ฟอร์มแบบใช้ซ้ำได้ (chip / radio / text)
 // ใช้ร่วมกันระหว่าง formBrow.js และ techFields.js
 
-import { escapeHtml, isOtherOption, selectionIncludesOther, optionDisplayLabel } from "./utils.js?v=20260808ae";
-import { appAlert } from "./dialogs.js?v=20260808ae";
-import { OPTIONS } from "./data/options.js?v=20260808ae";
+import { escapeHtml, isOtherOption, selectionIncludesOther, optionDisplayLabel } from "./utils.js?v=20260808ag";
+import { appAlert } from "./dialogs.js?v=20260808ag";
+import { OPTIONS } from "./data/options.js?v=20260808ag";
 
 export function radioField(key, options, draft, labelFn) {
   return `

@@ -1,12 +1,12 @@
 // newCustomer.js — Step 2 (ลูกค้าใหม่): กรอกข้อมูลส่วนตัว 5 ฟิลด์ > ยืนยันข้อมูล > กรอกประวัติผิวและคิ้ว > สร้าง Customer Profile
 // flow: home > "+ New Customer" > หน้านี้ > สร้างลูกค้าเข้า DB > ไปหน้าสร้าง Visit (Step 3)
 
-import { show, onEnter } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { findCustomerByPhone, createCustomer, saveSkinProfile, confirmCustomerProfile } from "../mockApi.js?v=20260808ae";
-import { OPTIONS } from "../data/options.js?v=20260808ae";
-import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
-import { escapeHtml } from "../utils.js?v=20260808ae";
+import { show, onEnter } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { findCustomerByPhone, createCustomer, saveSkinProfile, confirmCustomerProfile } from "../mockApi.js?v=20260808ag";
+import { OPTIONS } from "../data/options.js?v=20260808ag";
+import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js?v=20260808ag";
+import { escapeHtml } from "../utils.js?v=20260808ag";
 
 // state ชั่วคราวของหน้านี้เท่านั้น (ยังไม่ได้สร้าง customer จริงจนกว่าจะกด Continue) — ไม่ใช้ state.visitDraft
 // เพราะฟิลด์นี้เป็นของ Customer Profile ไม่ใช่ของ Visit

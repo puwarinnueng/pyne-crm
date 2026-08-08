@@ -1,11 +1,11 @@
 // visitDetail.js — read-only visit details (opened from customer profile)
 
-import { onEnter } from "../router.js?v=20260808ae";
-import { formatDate, escapeHtml, formTypeLabel, isCompletedVisitStatus, visitStatusLabel, isOtherOption, optionDisplayLabel } from "../utils.js?v=20260808ae";
-import { enrichVisitForDisplay } from "../formWizard.js?v=20260808af";
-import { exportConsentPdf } from "../mockApi.js?v=20260808ae";
-import { appAlert } from "../dialogs.js?v=20260808ae";
-import { withIcon } from "../icons.js?v=20260808ae";
+import { onEnter } from "../router.js?v=20260808ag";
+import { formatDate, escapeHtml, formTypeLabel, isCompletedVisitStatus, visitStatusLabel, isOtherOption, optionDisplayLabel, openExportFile } from "../utils.js?v=20260808ao";
+import { enrichVisitForDisplay } from "../formWizard.js?v=20260808ag";
+import { exportConsentPdf } from "../mockApi.js?v=20260808ao";
+import { appAlert } from "../dialogs.js?v=20260808ag";
+import { withIcon } from "../icons.js?v=20260808ag";
 
 const SKIP_RAW_KEYS = new Set([
   "formStepIndex",
@@ -173,8 +173,11 @@ function sectionRows(raw, fields) {
   return fields.map(([key, label]) => row(label, displayField(raw, key))).join("");
 }
 
+const EXPORT_BTN_IDLE = withIcon("file", "ใบยินยอม PDF");
+
 export function initVisitDetail() {
   const body = document.getElementById("visitDetailBody");
+  const exportBtn = document.getElementById("visitExportPdfBtn");
 
   async function handleExportPdf(visit, btn) {
     const idle = btn.innerHTML;
@@ -182,12 +185,12 @@ export function initVisitDetail() {
     btn.textContent = "กำลังสร้าง PDF...";
     try {
       const res = await exportConsentPdf(visit.serviceId);
-      if (res && res.success && res.url) {
-        await appAlert(`PDF พร้อมแล้ว\n${res.filename || ""}`, {
+      if (res && res.success && (res.downloadUrl || res.url)) {
+        openExportFile(res.downloadUrl || res.url, res.filename || "consent.pdf", { preview: Boolean(res.preview) });
+        await appAlert(res.note || "เปิดหน้าต่างพิมพ์แล้ว — เลือก Save as PDF", {
           title: "ส่งออก PDF",
-          okText: "เปิด PDF"
+          okText: "ตกลง"
         });
-        window.open(res.url, "_blank", "noopener");
         return;
       }
       await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "ส่งออก PDF" });
@@ -200,6 +203,13 @@ export function initVisitDetail() {
   }
 
   onEnter("visitDetail", (visit) => {
+    if (exportBtn) {
+      exportBtn.hidden = true;
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = EXPORT_BTN_IDLE;
+      exportBtn.onclick = null;
+    }
+
     if (!visit) {
       body.innerHTML = `<div class="empty-hint">ไม่พบคิวนี้</div>`;
       return;
@@ -269,10 +279,6 @@ export function initVisitDetail() {
       ${sectionHtml("ข้อมูลคิว", metaRows)}
       ${sectionHtml("สรุปงาน", summaryRows)}
 
-      ${isCompletedVisitStatus(visit.status) ? `
-      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">${withIcon("file", "ส่งออกใบยินยอม (PDF)")}</button>
-      ` : ""}
-
       ${formSections}
       ${extraRows ? sectionHtml("คำตอบอื่น ๆ", extraRows) : ""}
 
@@ -297,7 +303,9 @@ export function initVisitDetail() {
       </div>` : ""}
     `;
 
-    const exportBtn = document.getElementById("visitExportPdfBtn");
-    if (exportBtn) exportBtn.addEventListener("click", () => handleExportPdf(visit, exportBtn));
+    if (exportBtn && isCompletedVisitStatus(visit.status)) {
+      exportBtn.hidden = false;
+      exportBtn.onclick = () => handleExportPdf(visit, exportBtn);
+    }
   });
 }

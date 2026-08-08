@@ -314,7 +314,8 @@ b, strong { font-weight: 600; }
 /* Header Back — ขนาดเดียวกับ Cancel / Save draft */
 .btn.topbar-back-btn,
 .btn.page-header-back,
-.btn.cp-back-btn {
+.btn.cp-back-btn,
+.btn.visit-export-topbar-btn {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -336,13 +337,15 @@ b, strong { font-weight: 600; }
 }
 .btn.topbar-back-btn:hover:not(:disabled),
 .btn.page-header-back:hover:not(:disabled),
-.btn.cp-back-btn:hover:not(:disabled) {
+.btn.cp-back-btn:hover:not(:disabled),
+.btn.visit-export-topbar-btn:hover:not(:disabled) {
   background: var(--bg-alt);
   transform: none;
 }
 .btn.topbar-back-btn svg,
 .btn.page-header-back svg,
-.btn.cp-back-btn svg {
+.btn.cp-back-btn svg,
+.btn.visit-export-topbar-btn svg {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
@@ -350,7 +353,8 @@ b, strong { font-weight: 600; }
 }
 .btn.topbar-back-btn > span,
 .btn.page-header-back > span,
-.btn.cp-back-btn > span { line-height: 1.2; }
+.btn.cp-back-btn > span,
+.btn.visit-export-topbar-btn > span { line-height: 1.2; }
 .back-link {
   display: inline-flex; align-items: center; gap: var(--sp-4);
   background: none; border: none; color: var(--deep-bronze);
@@ -1116,6 +1120,7 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
   .btn.topbar-back-btn,
   .btn.page-header-back,
   .btn.cp-back-btn,
+  .btn.visit-export-topbar-btn,
   .draft-save-btn,
   .cancel-link {
     padding: 7px 12px;
@@ -1186,7 +1191,7 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 .draft-badge.is-not-served { background: var(--error-bg); color: var(--error-text); }
 .draft-badge.is-draft { background: #f3e6d4; color: #8a5a2b; }
 .draft-badge.is-in-progress { background: #e4eef8; color: #2f5f8a; }
-.visit-export-btn { margin-bottom: var(--sp-16); }
+.visit-export-topbar-btn[hidden] { display: none; }
 
 /* ===================== Form wizard: Steps + visit strip + history sheet ===================== */
 /* ล็อกสกอลล์เฉพาะหน้า consultation เท่านั้น — ไม่แตะ Home / New customer / อื่นๆ */

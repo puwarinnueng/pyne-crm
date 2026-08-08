@@ -4,10 +4,11 @@
 // ตามชื่อฟังก์ชันเดียวกันนี้ แล้วเปลี่ยนจุดเรียกใช้ในหน้าจอ js/screens/*.js จาก import ที่นี่
 // เป็น wrapper ที่เรียก google.script.run แทน (โครงสร้างพารามิเตอร์/ผลลัพธ์ไม่ต้องเปลี่ยน)
 
-import { db } from "./data/mockData.js?v=20260808ae";
-import { AUTH_CONFIG } from "./data/authConfig.js?v=20260808ae";
-import { getToken, sessionExpired } from "./session.js?v=20260808ae";
-import { isResumableVisitStatus, normalizeVisitStatus } from "./utils.js?v=20260808ae";
+import { db } from "./data/mockData.js?v=20260808ag";
+import { AUTH_CONFIG } from "./data/authConfig.js?v=20260808ag";
+import { getToken, sessionExpired } from "./session.js?v=20260808ag";
+import { isResumableVisitStatus, normalizeVisitStatus } from "./utils.js?v=20260808ag";
+import { buildConsentPdfHtml, loadLogoDataUri } from "./consentPdfHtml.js?v=20260808ao";
 
 const DELAY = 250; // จำลอง network latency ให้เห็น loading state จริง
 
@@ -411,12 +412,32 @@ export async function uploadImage(dataUrl, meta) {
 }
 
 export async function exportConsentPdf(serviceId) {
-  await wait(500);
+  await wait(300);
   requireSession(getToken());
+  if (!serviceId) {
+    return { success: false, error: "missing_service_id", note: "ไม่พบ Service ID สำหรับ export PDF" };
+  }
+
+  const database = db.get();
+  const visit = (database.serviceHistory || []).find((v) => String(v.serviceId) === String(serviceId));
+  if (!visit) {
+    return { success: false, error: "visit_not_found", note: "ไม่พบข้อมูล Visit นี้" };
+  }
+  const customer = (database.customers || []).find((c) => String(c.customerId) === String(visit.customerId)) || null;
+
+  // Local: เปิด HTML เลย์เอาต์เต็ม (เหมือนตัวอย่าง Consent — S0007.pdf) แล้วพิมพ์เป็น PDF
+  // ไม่ใช้ html2pdf.js — แปลง client-side แล้วเลย์เอาต์เพี้ยน
+  const logoSrc = await loadLogoDataUri();
+  const html = buildConsentPdfHtml(customer, visit, { logoSrc, autoPrint: true });
+  const filename = `Consent — ${serviceId || "export"}.pdf`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
   return {
     success: true,
-    note: "mock: สร้าง PDF แล้ว",
-    filename: `Pyne_Consent_${serviceId || "service"}_mock.pdf`,
-    url: "about:blank"
+    note: "เปิดหน้าต่างพิมพ์แล้ว — เลือก Save as PDF",
+    filename,
+    url,
+    downloadUrl: url,
+    preview: true
   };
 }

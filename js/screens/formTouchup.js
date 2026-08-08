@@ -1,23 +1,23 @@
 // formTouchup.js — Form 3 "เติมสีคิ้ว"
 // Wizard 5 ขั้น: ข้อมูลลูกค้า(+ประวัติ) → สุขภาพ → ติดตามผล+Before → การออกแบบ → ยืนยัน → techFields
 
-import { show, onEnter } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { getHistoryByCustomer } from "../mockApi.js?v=20260808ae";
-import { OPTIONS } from "../data/options.js?v=20260808ae";
-import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js?v=20260808ae";
-import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
-import { createSignaturePad } from "../signaturePad.js?v=20260808ae";
+import { show, onEnter } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { getHistoryByCustomer } from "../mockApi.js?v=20260808ag";
+import { OPTIONS } from "../data/options.js?v=20260808ag";
+import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js?v=20260808ag";
+import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js?v=20260808ag";
+import { createSignaturePad } from "../signaturePad.js?v=20260808ag";
 import {
   formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto,
   isOtherOption, selectionIncludesOther, TOUCHUP_ORIGINAL,
   resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
-} from "../utils.js?v=20260808ae";
-import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ae";
+} from "../utils.js?v=20260808ag";
+import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ag";
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808af";
+} from "../formWizard.js?v=20260808ag";
 
 function monthsSince(ts) {
   if (!ts) return "-";

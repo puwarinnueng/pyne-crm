@@ -1,12 +1,12 @@
 // customerProfile.js — Customer Profile (hero + stats + skin panel + visit cards)
 
-import { getHistoryByCustomer, saveSkinProfile } from "../mockApi.js?v=20260808ae";
-import { show, onEnter } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { OPTIONS } from "../data/options.js?v=20260808ae";
-import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
-import { formatDate, escapeHtml, formTypeLabel, isResumableVisitStatus, normalizeVisitStatus, visitStatusLabel, visitStatusBadgeClass } from "../utils.js?v=20260808ae";
-import { enrichVisitForDisplay } from "../formWizard.js?v=20260808af";
+import { getHistoryByCustomer, saveSkinProfile } from "../mockApi.js?v=20260808ag";
+import { show, onEnter } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { OPTIONS } from "../data/options.js?v=20260808ag";
+import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js?v=20260808ag";
+import { formatDate, escapeHtml, formTypeLabel, isResumableVisitStatus, normalizeVisitStatus, visitStatusLabel, visitStatusBadgeClass } from "../utils.js?v=20260808ag";
+import { enrichVisitForDisplay } from "../formWizard.js?v=20260808ag";
 
 function ageFromDob(dobStr) {
   if (!dobStr) return null;

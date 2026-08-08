@@ -1,8 +1,8 @@
-import { show } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { createVisit, getHistoryByCustomer } from "../mockApi.js?v=20260808ae";
-import { appAlert } from "../dialogs.js?v=20260808ae";
-import { isCompletedBrowVisit } from "../utils.js?v=20260808ae";
+import { show } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { createVisit, getHistoryByCustomer } from "../mockApi.js?v=20260808ag";
+import { appAlert } from "../dialogs.js?v=20260808ag";
+import { isCompletedBrowVisit } from "../utils.js?v=20260808ag";
 
 let modalEl = null;
 let closeTimer = null;

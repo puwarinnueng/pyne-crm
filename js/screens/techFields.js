@@ -1,20 +1,20 @@
 // techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูปหลังทำ, ลายเซ็นช่าง)
 // เหมือนกันทุกฟอร์มตามสเปก ("กติกากลางของทั้ง 3 ฟอร์ม") จึงมีหน้าเดียวใช้ร่วมกัน แยกแค่ payload ตอนบันทึก
 
-import { show, onEnter } from "../router.js?v=20260808ae";
-import { state } from "../state.js?v=20260808ae";
-import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js?v=20260808ae";
-import { appAlert } from "../dialogs.js?v=20260808ae";
-import { OPTIONS } from "../data/options.js?v=20260808ae";
-import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js?v=20260808ae";
+import { show, onEnter } from "../router.js?v=20260808ag";
+import { state } from "../state.js?v=20260808ag";
+import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js?v=20260808ag";
+import { appAlert } from "../dialogs.js?v=20260808ag";
+import { OPTIONS } from "../data/options.js?v=20260808ag";
+import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js?v=20260808ag";
 import {
   readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther,
   resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
-} from "../utils.js?v=20260808ae";
-import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js?v=20260808ae";
-import { promptAfterDraftSaved, setDraftSaveLoading } from "../visitFlow.js?v=20260808ae";
-import { showToast } from "../toast.js?v=20260808ae";
-import { mountVisitStripOnly, wireCancelButton, LAST_CONSULT_STEP } from "../formWizard.js?v=20260808af";
+} from "../utils.js?v=20260808ag";
+import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js?v=20260808ag";
+import { promptAfterDraftSaved, setDraftSaveLoading } from "../visitFlow.js?v=20260808ag";
+import { showToast } from "../toast.js?v=20260808ag";
+import { mountVisitStripOnly, wireCancelButton, LAST_CONSULT_STEP } from "../formWizard.js?v=20260808ag";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
