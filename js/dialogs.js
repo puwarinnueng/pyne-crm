@@ -34,8 +34,8 @@ function openDialog(options) {
   appDialogActiveOptions = options;
   appDialogTitleEl.textContent = options.title || "แจ้งเตือน";
   appDialogBodyEl.textContent = options.message || "";
-  appDialogOkBtn.textContent = options.okText || "OK";
-  appDialogCancelBtn.textContent = options.cancelText || "Cancel";
+  appDialogOkBtn.textContent = options.okText || "ตกลง";
+  appDialogCancelBtn.textContent = options.cancelText || "ยกเลิก";
   setHidden(appDialogCancelBtn, options.mode === "alert");
   setHidden(appDialogCloseBtn, options.closeButton === false);
   setHidden(appDialogErrorEl, true);
@@ -76,7 +76,7 @@ export function initDialogs() {
     if (appDialogActiveOptions?.mode === "prompt") {
       const value = appDialogInputEl.value.trim();
       if (appDialogActiveOptions.required && !value) {
-        appDialogErrorEl.textContent = appDialogActiveOptions.requiredMessage || "กรุณากรอกข้อมูล";
+        appDialogErrorEl.textContent = appDialogActiveOptions.requiredMessage || "กรอกช่องนี้ก่อนนะ";
         appDialogErrorEl.hidden = false;
         appDialogInputEl.focus();
         return;

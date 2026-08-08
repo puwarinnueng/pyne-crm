@@ -32,11 +32,69 @@ function normalizeVisitStatus(status) {
 
 function visitStatusLabel(status) {
   const key = normalizeVisitStatus(status);
-  if (key === "draft") return "Draft";
-  if (key === "in_progress") return "In progress";
-  if (key === "completed") return "Completed";
-  if (key === "not_served") return "Not served";
+  if (key === "draft") return "แบบร่าง";
+  if (key === "in_progress") return "ทำค้างไว้";
+  if (key === "completed") return "เสร็จแล้ว";
+  if (key === "not_served") return "ไม่ได้รับบริการ";
   return key || "";
+}
+
+/** ค่าตัวเลือกที่ต้องเปิดช่องกรอกรายละเอียด (สเปก: อื่น ๆ / จุดอื่น ๆ) */
+function isOtherOption(opt) {
+  return opt === "Other" || opt === "จุดอื่นๆ" || opt === "จุดอื่น ๆ" || opt === "อื่นๆ" || opt === "อื่น ๆ";
+}
+
+function selectionIncludesOther(selected) {
+  const arr = Array.isArray(selected) ? selected : selected != null ? [selected] : [];
+  return arr.some(isOtherOption);
+}
+
+function optionDisplayLabel(opt) {
+  if (opt === "Other" || opt === "อื่นๆ") return "อื่น ๆ";
+  return opt;
+}
+
+/** Form 3 — ค่า sentinel เมื่อเลือกใช้ข้อมูลครั้งเดิม */
+const TOUCHUP_ORIGINAL = {
+  technique: "เทคนิคเดิม",
+  shape: "ทรงเดิม",
+  color: "สีเดิม"
+};
+
+function resolveTouchupTechnique(draft) {
+  if (!draft) return null;
+  if (draft.technique === TOUCHUP_ORIGINAL.technique) {
+    return draft.prevTechnique || null;
+  }
+  return draft.technique || null;
+}
+
+function resolveTouchupShape(draft) {
+  if (!draft) return null;
+  if (draft.shapeDesign === "Other" || isOtherOption(draft.shapeDesign)) {
+    return draft.shapeDesignOther || "อื่น ๆ";
+  }
+  if (draft.shapeDesign === TOUCHUP_ORIGINAL.shape) {
+    return draft.prevShapeDesign || null;
+  }
+  return draft.shapeDesign || null;
+}
+
+function resolveTouchupColor(draft) {
+  if (!draft) return null;
+  if (draft.colorChoice === TOUCHUP_ORIGINAL.color) {
+    return draft.prevColorUsed || null;
+  }
+  return draft.colorChoice || null;
+}
+
+function visitStatusBadgeClass(status) {
+  const key = normalizeVisitStatus(status);
+  if (key === "completed") return "is-completed";
+  if (key === "not_served") return "is-not-served";
+  if (key === "draft") return "is-draft";
+  if (key === "in_progress") return "is-in-progress";
+  return "";
 }
 
 function isResumableVisitStatus(status) {
@@ -95,8 +153,8 @@ function hasDraftPhoto(draft, key) {
 function formTypeLabel(formType) {
   const key = String(formType || "").trim();
   if (key === "form1") return "สักคิ้วครั้งแรก";
-  if (key === "form2") return "สักทับรอยเก่า";
-  if (key === "form3") return "เติมสีคิ้ว";
+  if (key === "form2") return "ปิดงานเก่า";
+  if (key === "form3") return "เติมสี";
   return "";
 }
 </script>
@@ -122,7 +180,7 @@ const OPTIONS = {
   timeSlots: ["10:30", "13:30", "16:00", "18:30"],
 
   // ===== ข้อมูลความพร้อมก่อนรับบริการ — ใช้ร่วมกันทุกฟอร์ม (Form 1/2/3) =====
-  scarCause: ["จากรอยเก่า", "จุดอื่นๆ"],
+  scarCause: ["จากรอยเก่า", "จุดอื่น ๆ"],
 
   // ===== Step 2 — ประวัติผิวและคิ้ว (ระดับ Customer Profile แก้ไขได้ ใช้ซ้ำทุก Visit) =====
   skinType: ["ปกติ", "แห้ง", "มัน", "ผิวผสม", "ผิวมันขาดน้ำ", "ไม่แน่ใจ"],
@@ -194,7 +252,7 @@ const CONSENT_BLOCKS = [
     title: "ความคงทนของสีและการเติมสี",
     body: `การทำครั้งแรกสีจะติดอยู่โดยเฉลี่ยประมาณ 1 ปี ทั้งนี้ขึ้นอยู่กับสภาพผิว การใช้ชีวิต และการดูแลหลังทำ
 หากต้องการให้สีชัดและติดทนขึ้น แนะนำให้กลับมาเติมสีภายใน 3 เดือนแรก
-ค่าบริการเติมสีภายใน 2 ปี คือ 2,000 บาท
+ค่าบริการเติมสีภายใน 2 ปี คือ 2,000-2,500 บาท
 การเติมสีไม่ใช่ข้อบังคับ แต่เป็นโอกาสให้ช่างประเมินผลหลังผิวบริเวณคิ้วฟื้นตัวดี และสามารถปรับรายละเอียดได้เล็กน้อย`
   },
   {
@@ -266,6 +324,7 @@ const state = {
   pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
   currentCustomerHistory: null, // cache history ของลูกค้าปัจจุบัน เพื่อลดการ fetch ซ้ำใน Form 3
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
+  formStepIndex: 0,           // 0 ลูกค้า · 1 สุขภาพ · 2 ความต้องการ · 3 ออกแบบ · 4 ยืนยัน · 5 = techFields
   browStepIndex: 0,
   lastSavedServiceId: null,
 
@@ -285,6 +344,7 @@ const state = {
     this.pendingVisitMeta = null;
     this.currentCustomerHistory = null;
     this.resetVisitDraft();
+    this.formStepIndex = 0;
     this.browStepIndex = 0;
   }
 };
@@ -417,8 +477,8 @@ function openDialog(options) {
   appDialogActiveOptions = options;
   appDialogTitleEl.textContent = options.title || "แจ้งเตือน";
   appDialogBodyEl.textContent = options.message || "";
-  appDialogOkBtn.textContent = options.okText || "OK";
-  appDialogCancelBtn.textContent = options.cancelText || "Cancel";
+  appDialogOkBtn.textContent = options.okText || "ตกลง";
+  appDialogCancelBtn.textContent = options.cancelText || "ยกเลิก";
   setHidden(appDialogCancelBtn, options.mode === "alert");
   setHidden(appDialogCloseBtn, options.closeButton === false);
   setHidden(appDialogErrorEl, true);
@@ -459,7 +519,7 @@ function initDialogs() {
     if (appDialogActiveOptions?.mode === "prompt") {
       const value = appDialogInputEl.value.trim();
       if (appDialogActiveOptions.required && !value) {
-        appDialogErrorEl.textContent = appDialogActiveOptions.requiredMessage || "กรุณากรอกข้อมูล";
+        appDialogErrorEl.textContent = appDialogActiveOptions.requiredMessage || "กรอกช่องนี้ก่อนนะ";
         appDialogErrorEl.hidden = false;
         appDialogInputEl.focus();
         return;
@@ -704,19 +764,20 @@ function createSignaturePad(canvas) {
 
 
 
-function radioField(key, options, draft) {
+
+function radioField(key, options, draft, labelFn) {
   return `
     <div class="radio-row" data-radio-key="${key}">
       ${options.map((opt) => `
         <label class="native-choice">
           <input type="radio" name="${key}" value="${escapeHtml(opt)}" ${draft[key] === opt ? "checked" : ""}>
-          <span>${escapeHtml(opt)}</span>
+          <span>${escapeHtml(labelFn ? labelFn(opt) : optionDisplayLabel(opt))}</span>
         </label>
       `).join("")}
     </div>`;
 }
 
-// option ที่ชื่อ "Other" จะมีช่องกรอกข้อความต่อท้ายทันที (โชว์เฉพาะตอนติ๊กเลือก) — ค่าที่พิมพ์เก็บแยกไว้ที่ draft[`${key}Other`]
+// option ประเภท "อื่น ๆ" / "จุดอื่น ๆ" จะมีช่องกรอกข้อความต่อท้าย (โชว์ตอนติ๊กเลือก) — ค่าเก็บที่ draft[`${key}Other`]
 function chipGroup(key, options, draft, multi) {
   const selected = multi ? (draft[key] || []) : [draft[key]].filter(Boolean);
   const otherKey = `${key}Other`;
@@ -724,12 +785,12 @@ function chipGroup(key, options, draft, multi) {
   return `
     <div class="choice-grid" data-chip-key="${key}" data-chip-multi="${multi ? "1" : "0"}">
       ${options.map((opt) => {
-        const isOther = opt === "Other";
+        const isOther = isOtherOption(opt);
         const checked = selected.includes(opt);
         return `
           <label class="native-choice">
             <input type="${inputType}" ${multi ? "" : `name="${key}"`} data-chip-value="${escapeHtml(opt)}" ${checked ? "checked" : ""}>
-            <span>${isOther ? "อื่นๆ" : escapeHtml(opt)}</span>
+            <span>${escapeHtml(optionDisplayLabel(opt))}</span>
           </label>
           ${isOther ? `<input type="text" class="input other-input" data-other-key="${otherKey}" placeholder="ระบุ..." value="${escapeHtml(draft[otherKey] || "")}" ${checked ? "" : "hidden"}>` : ""}
         `;
@@ -763,7 +824,7 @@ function mixRatioField(key, colorNames, draft) {
     <div class="mix-ratio-grid" data-mix-group="${key}">
       ${colorNames.map((name) => row(name, name, parts[name])).join("")}
       <div class="mix-row">
-        <input type="text" class="input mix-other-label" data-mix-other-label="${key}" placeholder="อื่นๆ ระบุ..." value="${escapeHtml(otherLabel)}">
+        <input type="text" class="input mix-other-label" data-mix-other-label="${key}" placeholder="อื่น ๆ ระบุ..." value="${escapeHtml(otherLabel)}">
         <input type="number" min="0" inputmode="numeric" class="input mix-input" data-mix-key="${key}" data-mix-color="__other__" value="${parts.__other__ === undefined || parts.__other__ === null || parts.__other__ === "" ? "" : escapeHtml(String(parts.__other__))}" placeholder="0">
         <span class="mix-unit">หยด</span>
       </div>
@@ -823,7 +884,7 @@ function readinessBlockHtml(draft) {
       <div class="step-group-title">ผิวบริเวณคิ้วมีแผลเป็นหรือไม่ <span class="required-star">*</span></div>
       ${radioField("hasScar", ["ไม่มี", "มี"], draft)}
       <div id="scarCauseBlock" ${draft.hasScar === "มี" ? "" : "hidden"}>
-        ${chipGroup("scarCause", ["จากรอยเก่า", "Other"], draft, true)}
+        ${chipGroup("scarCause", OPTIONS.scarCause, draft, true)}
       </div>
     </div>
     <div class="step-group">
@@ -877,7 +938,7 @@ function bindFieldEvents(container, draft, onChange) {
       }
       const otherInput = chipGroupEl.querySelector("[data-other-key]");
       if (otherInput) {
-        otherInput.hidden = multi ? !draft[key].includes("Other") : draft[key] !== "Other";
+        otherInput.hidden = !selectionIncludesOther(draft[key]);
       }
       onChange();
       return;
@@ -954,10 +1015,476 @@ function uploadImage(dataUrl, meta) { return callServerAuthed_("uploadImage", da
 function exportConsentPdf(serviceId) { return callServerAuthed_("exportConsentPdf", serviceId); }
 </script>
 <script>
+// ==== js/icons.js ====
+// Shared inline SVG icons for buttons / chrome (stroke-based, 24×24)
+
+const attrs = `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+
+const ICONS = {
+  chevronLeft: `<svg ${attrs}><path d="m15 18-6-6 6-6"/></svg>`,
+  chevronRight: `<svg ${attrs}><path d="m9 18 6-6-6-6"/></svg>`,
+  save: `<svg ${attrs}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
+  history: `<svg ${attrs}><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>`,
+  userPlus: `<svg ${attrs}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>`,
+  search: `<svg ${attrs}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>`,
+  check: `<svg ${attrs}><path d="m5 13 4 4L19 7"/></svg>`,
+  home: `<svg ${attrs}><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
+  file: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+  plus: `<svg ${attrs}><path d="M12 5v14M5 12h14"/></svg>`,
+  x: `<svg ${attrs}><path d="M18 6 6 18M6 6l12 12"/></svg>`
+};
+
+/** Label with leading icon for button innerHTML */
+function withIcon(iconKey, label) {
+  const svg = ICONS[iconKey] || "";
+  return `${svg}<span>${label}</span>`;
+}
+</script>
+<script>
+// ==== js/toast.js ====
+// toast เบา ๆ มุมล่าง — บอกผลสั้น ๆ โดยไม่บล็อกการทำงาน
+
+let hostEl = null;
+let hideTimer = null;
+
+function ensureHost() {
+  if (hostEl && document.body.contains(hostEl)) return hostEl;
+  hostEl = document.createElement("div");
+  hostEl.className = "toast-host";
+  hostEl.setAttribute("aria-live", "polite");
+  document.body.appendChild(hostEl);
+  return hostEl;
+}
+
+function showToast(message, options = {}) {
+  const text = String(message || "").trim();
+  if (!text) return;
+  const host = ensureHost();
+  const el = document.createElement("div");
+  el.className = `toast${options.tone ? ` toast--${options.tone}` : ""}`;
+  el.textContent = text;
+  host.appendChild(el);
+
+  requestAnimationFrame(() => el.classList.add("is-in"));
+
+  const ms = Number(options.duration) > 0 ? Number(options.duration) : 2600;
+  window.setTimeout(() => {
+    el.classList.remove("is-in");
+    el.classList.add("is-out");
+    window.setTimeout(() => el.remove(), 220);
+  }, ms);
+
+  if (hideTimer) clearTimeout(hideTimer);
+}
+</script>
+<script>
+// ==== js/formWizard.js ====
+// formWizard.js — 5-step consultation wizard (ตาม mockup) + visit strip + history sheet
+// ไม่เขียน DB — อ่านประวัติ/สกินโปรไฟล์อย่างเดียว แล้วกลับมาจุดเดิมของฟอร์ม
+
+
+
+
+
+
+
+const LAST_CONSULT_STEP = 4;
+const CONSULT_STEP_COUNT = 5;
+
+const CONSULT_STEPS = [
+  { key: "customer", title: "ลูกค้า" },
+  { key: "health", title: "สุขภาพ" },
+  { key: "needs", title: "ความต้องการ" },
+  { key: "design", title: "ออกแบบ" },
+  { key: "confirm", title: "ยืนยัน" }
+];
+
+const CHECK_SVG = ICONS.check;
+
+function stepStatus(index, currentIndex) {
+  if (index < currentIndex) return "finish";
+  if (index === currentIndex) return "process";
+  return "wait";
+}
+
+function stepsHtml(currentIndex, steps = CONSULT_STEPS) {
+  const total = steps.length;
+  const safeIndex = Math.max(0, Math.min(currentIndex, total - 1));
+  const current = steps[safeIndex];
+  return `
+    <div class="pyne-steps" role="list" aria-label="ความคืบหน้าฟอร์ม">
+      <div class="pyne-steps-mobile">
+        <span class="pyne-steps-mobile-label">ขั้นที่ ${safeIndex + 1} จาก ${total}</span>
+        <strong class="pyne-steps-mobile-title">${escapeHtml(current.title)}</strong>
+        <div class="pyne-steps-progress" aria-hidden="true">
+          <span style="width:${((safeIndex + 1) / total) * 100}%"></span>
+        </div>
+      </div>
+      <ol class="pyne-steps-list">
+        ${steps.map((step, i) => {
+          const status = stepStatus(i, safeIndex);
+          const icon = status === "finish"
+            ? CHECK_SVG
+            : `<span class="pyne-step-num">${i + 1}</span>`;
+          return `
+            <li class="pyne-step is-${status}" role="listitem" aria-current="${status === "process" ? "step" : "false"}">
+              <span class="pyne-step-icon" aria-hidden="true">${icon}</span>
+              <span class="pyne-step-title">${escapeHtml(step.title)}</span>
+            </li>`;
+        }).join("")}
+      </ol>
+    </div>`;
+}
+
+function stickyVisitBarHtml({ showHistory = true } = {}) {
+  const c = state.currentCustomer;
+  const v = state.visitContext;
+  if (!c) {
+    return `<div class="visit-strip visit-strip--empty"><div class="visit-strip-meta">ยังไม่ได้เลือกลูกค้า</div></div>`;
+  }
+  const displayName = c.fullName || c.name || c.nickname || "ลูกค้า";
+  const nick = c.nickname && c.nickname !== displayName ? ` (${escapeHtml(c.nickname)})` : "";
+  const meta = v
+    ? `${escapeHtml(c.customerId)}<span class="dot">·</span>คิว ${escapeHtml(v.visitId)}<span class="dot">·</span>Zerva ${escapeHtml(v.zervaBookingId || "-")}<span class="dot">·</span>${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}`
+    : `${escapeHtml(c.customerId)}`;
+  return `
+    <div class="visit-strip">
+      <div class="visit-strip-main">
+        <div class="visit-strip-name">${escapeHtml(displayName)}${nick}</div>
+        <div class="visit-strip-meta">${meta}</div>
+      </div>
+      ${showHistory ? `
+        <button type="button" class="btn btn-outline visit-strip-btn" data-open-history>
+          ${withIcon("history", "ข้อมูลเก่า")}
+        </button>` : ""}
+    </div>`;
+}
+
+function ageFromDob(dobStr) {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+/** Step 1 — ยืนยันข้อมูลลูกค้า + นัด */
+function customerConfirmStepHtml(draft, { extraHtml = "" } = {}) {
+  const c = state.currentCustomer || {};
+  const v = state.visitContext || {};
+  const age = ageFromDob(c.dob);
+  const row = (label, value) =>
+    `<div class="detail-row"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value || "-")}</div></div>`;
+  return `
+    <div class="form-section-title">ยืนยันข้อมูลลูกค้า</div>
+    <div class="box-quiet">
+      ${row("ชื่อจริง", c.fullName || c.name)}
+      ${row("ชื่อเล่น", c.nickname)}
+      ${row("วันเกิด", c.dob ? `${c.dob}${age != null ? ` (อายุ ${age})` : ""}` : "-")}
+      ${row("เบอร์โทร", c.phoneDisplay || c.phone)}
+      ${row("รหัสลูกค้า", c.customerId)}
+      ${row("รหัสคิว", v.visitId)}
+      ${row("รหัสจอง Zerva", v.zervaBookingId)}
+      ${row("นัดหมาย", v.visitDate ? `${formatDate(v.visitDate)} ${v.timeSlot || ""}`.trim() : "-")}
+    </div>
+    ${extraHtml}
+    <div class="step-group">
+      <div class="step-group-title">ข้อมูลลูกค้าและนัดถูกต้องไหม? <span class="required-star">*</span></div>
+      <label class="agree-row" data-check-key="customerInfoConfirmed">
+        <input type="checkbox" id="customerInfoConfirm" ${draft.customerInfoConfirmed ? "checked" : ""}>
+        <span>ยืนยันว่าข้อมูลด้านบนถูกต้อง</span>
+      </label>
+    </div>`;
+}
+
+function bindCustomerConfirm(container, draft) {
+  const el = container.querySelector("#customerInfoConfirm");
+  if (!el) return;
+  el.addEventListener("change", (e) => {
+    draft.customerInfoConfirmed = e.target.checked;
+    e.target.closest(".field-error")?.classList.remove("field-error");
+  });
+}
+
+/** Chrome ด้านบน: Steps + visit strip */
+function formChromeInnerHtml(currentIndex, options = {}) {
+  const { showSteps = true, showHistory = true } = options;
+  return `
+    ${showSteps ? stepsHtml(currentIndex) : ""}
+    ${stickyVisitBarHtml({ showHistory })}`;
+}
+
+function mountFormChrome(chromeEl, currentIndex, options = {}) {
+  let el = chromeEl;
+  if (!el || !el.isConnected) {
+    const screen = document.querySelector(".screen.active");
+    el = screen?.querySelector(":scope > .form-chrome") || null;
+    if (!el && screen) {
+      const pad = screen.querySelector(":scope > .page-pad");
+      if (!pad) return;
+      el = document.createElement("div");
+      el.className = "form-chrome";
+      screen.insertBefore(el, pad);
+    }
+  }
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML = formChromeInnerHtml(currentIndex, options);
+}
+
+/** หน้า techFields — เหลือแค่ visit strip ไม่โชว์แถบ 5 ขั้น */
+function mountVisitStripOnly(chromeEl) {
+  mountFormChrome(chromeEl, 0, { showSteps: false, showHistory: true });
+}
+
+function fmtVal(v) {
+  if (Array.isArray(v)) return v.length ? v.join(", ") : "-";
+  if (v === undefined || v === null || v === "") return "-";
+  return String(v);
+}
+
+/** รวมคอลัมน์ Sheet + rawAnswers ให้โชว์ครบเวลาดูประวัติ */
+function enrichVisitForDisplay(visit) {
+  if (!visit) return visit;
+  const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
+  const pick = (...vals) => {
+    for (const v of vals) {
+      if (v === undefined || v === null || v === "") continue;
+      if (Array.isArray(v) && !v.length) continue;
+      return v;
+    }
+    return "";
+  };
+  const resolveShape = (v) => {
+    if (v === TOUCHUP_ORIGINAL.shape) return raw.prevShapeDesign || "";
+    if (isOtherOption(v)) return raw.shapeDesignOther || "อื่น ๆ";
+    return v;
+  };
+  const resolveTech = (v) => (v === TOUCHUP_ORIGINAL.technique ? (raw.prevTechnique || "") : v);
+  const resolveColor = (v) => (v === TOUCHUP_ORIGINAL.color ? (raw.prevColorUsed || "") : v);
+  const shape = pick(
+    visit.shapeDesign,
+    resolveShape(raw.shapeDesign),
+    raw.prevShapeDesign
+  );
+  return {
+    ...visit,
+    technique: pick(visit.technique, resolveTech(raw.technique), raw.prevTechnique),
+    colorUsed: pick(visit.colorUsed, resolveColor(raw.colorChoice), raw.prevColorUsed),
+    intensity: pick(visit.intensity, raw.intensity),
+    muscle: pick(visit.muscle, raw.muscle),
+    shapeDesign: shape,
+    browGuard: pick(visit.browGuard, raw.browGuard),
+    mixRatio: pick(visit.mixRatio, raw.mixRatio),
+    redness: pick(visit.redness, raw.redness),
+    adherence: pick(visit.adherence, raw.adherence),
+    satisfaction: pick(visit.satisfaction, raw.satisfaction),
+    colorRetention: pick(visit.colorRetention, raw.colorRetention),
+    wantsMoreChange: pick(visit.wantsMoreChange, raw.wantsMoreChange),
+    changeItems: (Array.isArray(visit.changeItems) && visit.changeItems.length)
+      ? visit.changeItems
+      : (Array.isArray(raw.changeItems) ? raw.changeItems : visit.changeItems),
+    note: pick(visit.note, raw.note),
+    analysis: pick(visit.analysis, raw.analysis)
+  };
+}
+
+function skinRowsHtml(sp = {}) {
+  const row = (label, value) =>
+    `<div class="detail-row"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(fmtVal(value))}</div></div>`;
+  return `
+    ${row("ประเภทผิว", sp.skinType)}
+    ${row("ลักษณะขน", sp.hairLook)}
+    ${row("ความหนาแน่น", sp.hairDensity)}
+    ${row("ทรงคิ้ว", sp.browShape)}
+    ${row("กล้ามเนื้อคิ้ว", sp.muscle || "ยังไม่ได้ประเมิน")}
+    ${sp.muscleNote ? row("โน้ตกล้ามเนื้อ", sp.muscleNote) : ""}
+    ${sp.muscleEvaluatedAt ? row("ประเมินเมื่อ", formatDate(sp.muscleEvaluatedAt)) : ""}`;
+}
+
+function visitCardHtml(v, { isCurrent = false } = {}) {
+  v = enrichVisitForDisplay(v);
+  const title = formTypeLabel(v.formType) || v.serviceType || "คิว";
+  const meta = [
+    v.serviceId ? `คิว ${v.serviceId}` : null,
+    v.zervaBookingId ? `Zerva ${v.zervaBookingId}` : null,
+    v.timeSlot || null
+  ].filter(Boolean).join(" · ");
+  const summaryRows = [
+    ["เทคนิค", v.technique],
+    ["สีที่ใช้", v.colorUsed],
+    ["ความเข้ม", v.intensity],
+    ["ทรง", v.shapeDesign],
+    ["บราวการ์ด", v.browGuard],
+    ["อัตราส่วนสี", v.mixRatio],
+    ["ผิวแดง", v.redness],
+    ["สีติด", v.adherence]
+  ].filter(([, val]) => val !== undefined && val !== null && val !== "");
+
+  return `
+    <div class="history-sheet-item${isCurrent ? " is-current" : ""}">
+      <div class="history-sheet-item-top">
+        <span class="draft-badge ${visitStatusBadgeClass(v.status)}">${escapeHtml(visitStatusLabel(v.status) || v.status || "คิว")}${isCurrent ? " · คิวนี้" : ""}</span>
+        <span class="muted small">${escapeHtml(formatDate(v.visitDate))}</span>
+      </div>
+      <div class="history-sheet-item-title">${escapeHtml(title)}</div>
+      ${meta ? `<div class="muted small">${escapeHtml(meta)}</div>` : ""}
+      ${summaryRows.length
+        ? `<div class="history-sheet-item-fields">${summaryRows.map(([label, val]) =>
+            `<div class="history-sheet-field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(fmtVal(val))}</strong></div>`
+          ).join("")}</div>`
+        : `<div class="muted small mt-8">${isCurrent ? "คิวนี้ยังไม่มีรายละเอียดงาน" : "ยังไม่มีเทคนิค/สีที่บันทึกไว้"}</div>`}
+    </div>`;
+}
+
+function historyListHtml(history) {
+  if (!history || !history.length) {
+    return `<div class="empty-hint">ยังไม่มีประวัติ</div>`;
+  }
+  const currentId = state.visitContext && state.visitContext.visitId;
+  const current = currentId ? history.find((v) => v.serviceId === currentId) : null;
+  const past = history.filter((v) => v.serviceId !== currentId);
+
+  const parts = [];
+  if (current) {
+    parts.push(`<p class="muted small" style="margin:0 0 var(--sp-8)">คิวนี้</p>`);
+    parts.push(visitCardHtml(current, { isCurrent: true }));
+  }
+  if (past.length) {
+    parts.push(`<p class="muted small" style="margin:var(--sp-16) 0 var(--sp-8)">ครั้งก่อน</p>`);
+    parts.push(past.slice(0, 8).map((v) => visitCardHtml(v)).join(""));
+  } else if (!current) {
+    return `<div class="empty-hint">ยังไม่มีประวัติ</div>`;
+  } else {
+    parts.push(`<p class="muted small mt-12">ยังไม่มีครั้งก่อน</p>`);
+  }
+  return parts.join("");
+}
+
+function initHistorySheet() {
+  const overlay = document.getElementById("historySheetOverlay");
+  const body = document.getElementById("historySheetBody");
+  const closeBtn = document.getElementById("historySheetClose");
+  if (!overlay || !body) return;
+
+  function close() {
+    overlay.hidden = true;
+  }
+
+  async function open() {
+    const c = state.currentCustomer;
+    if (!c) return;
+    body.innerHTML = `<div class="empty-hint">กำลังโหลด...</div>`;
+    overlay.hidden = false;
+
+    // ดึงประวัติใหม่ทุกครั้งที่เปิด — ไม่ใช้ cache เก่าที่อาจยังไม่มี visit ปัจจุบัน
+    let history = [];
+    try {
+      history = await getHistoryByCustomer(c.customerId);
+      state.currentCustomerHistory = history;
+    } catch (e) {
+      console.warn("history sheet load failed:", e);
+      history = Array.isArray(state.currentCustomerHistory) ? state.currentCustomerHistory : [];
+    }
+
+    const sp = c.skinProfile || {};
+    const missingSkin = ["skinType", "hairLook", "hairDensity"].filter((k) => !sp[k]);
+    const missingNote = missingSkin.length
+      ? `<p class="muted small">โปรไฟล์ยังไม่ครบ: ${escapeHtml(missingSkin.map((k) => ({ skinType: "ประเภทผิว", hairLook: "ลักษณะขน", hairDensity: "ความหนาแน่น" }[k])).join(", "))}</p>`
+      : "";
+
+    body.innerHTML = `
+      <h3 class="section-title" style="margin-top:0">ผิว &amp; คิ้ว</h3>
+      <div class="box-quiet">${skinRowsHtml(sp)}</div>
+      ${missingNote}
+      <h3 class="section-title">ประวัติบริการ</h3>
+      <div class="history-sheet-list">${historyListHtml(history)}</div>
+      <p class="muted small mt-12">ดูอย่างเดียว — ปิดแล้วกลับไปกรอกฟอร์มต่อได้</p>
+    `;
+  }
+
+  closeBtn?.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) close();
+  });
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-open-history]");
+    if (!btn) return;
+    e.preventDefault();
+    open();
+  });
+}
+
+function setFooterWizardMode(prevBtn, nextBtn, stepMetaEl, { stepIndex, lastConsultStep = LAST_CONSULT_STEP }) {
+  const total = lastConsultStep + 1;
+  if (stepMetaEl) {
+    stepMetaEl.textContent = `ขั้นที่ ${stepIndex + 1} จาก ${total}`;
+  }
+  if (prevBtn) {
+    prevBtn.hidden = stepIndex <= 0;
+    prevBtn.innerHTML = withIcon("chevronLeft", "กลับ");
+  }
+  if (nextBtn) {
+    nextBtn.innerHTML = stepIndex >= lastConsultStep
+      ? withIcon("chevronRight", "หลังทำ")
+      : withIcon("chevronRight", "ถัดไป");
+  }
+}
+
+/** Cancel: เลือกปิดคิวไม่ได้รับบริการ หรือแค่พักออก */
+function wireCancelButton(buttonEl) {
+  if (!buttonEl) return;
+  buttonEl.addEventListener("click", async () => {
+    const markNotServed = await appConfirm(
+      "อยากปิดคิวนี้ว่าไม่ได้รับบริการ หรือแค่พักออกไปก่อน?",
+      { title: "ออกจากฟอร์ม", okText: "ปิดคิว — ไม่ได้รับบริการ", cancelText: "พักออกก่อน" }
+    );
+    if (markNotServed) {
+      const v = state.visitContext;
+      if (!v) return;
+      const reason = await appPrompt("บอกเหตุผลสั้น ๆ ว่าทำไมไม่ได้รับบริการ", {
+        title: "ปิดคิว — ไม่ได้รับบริการ",
+        inputLabel: "เหตุผล",
+        placeholder: "เช่น ลูกค้าไม่มา / เลื่อนนัด / ยกเลิก",
+        required: true,
+        requiredMessage: "กรอกเหตุผลก่อนนะ",
+        okText: "ปิดคิว",
+        cancelText: "ยกเลิก"
+      });
+      if (reason === null) return;
+      buttonEl.disabled = true;
+      try {
+        await closeVisitNotServed(v.visitId, reason.trim());
+        state.reset();
+        show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true } });
+      } catch (e) {
+        console.warn("closeVisitNotServed failed:", e);
+        await appAlert("ปิดคิวไม่สำเร็จ ลองอีกครั้ง", { title: "ทำไม่สำเร็จ" });
+        buttonEl.disabled = false;
+      }
+      return;
+    }
+    const leave = await appConfirm(
+      "ยังไม่ได้บันทึกล่าสุด ออกเลยไหม?\n(ถ้าอยากเก็บไว้ กดยกเลิกแล้วกด “บันทึกร่าง” ก่อน)",
+      { title: "ออกโดยไม่บันทึก?", okText: "ออกเลย", cancelText: "อยู่ต่อ" }
+    );
+    if (!leave) return;
+    show(state.currentCustomer ? "customerProfile" : "home");
+  });
+}
+</script>
+<script>
 // ==== js/visitFlow.js ====
 // visitFlow.js — ส่วนที่ใช้ร่วมกันทุกฟอร์ม Consultation (Form 1/2/3 + หน้าบันทึกหลังทำ)
-// ตาม "กติกากลางของทั้ง 3 ฟอร์ม": แสดง Customer ID/Visit ID/Zerva Booking ID/ชื่อ/ชื่อเล่น/วันเวลานัด
-// ที่ดึงจากขั้นตอนก่อนหน้า + ปุ่ม "ไม่ได้รับบริการ" ที่กดได้ทุกจุดของฟอร์ม
+
+
 
 
 
@@ -971,39 +1498,41 @@ function visitHeaderHtml() {
   return `
     <div class="box-quiet visit-header">
       <div><b>${escapeHtml(c.fullName || c.nickname || c.name || "")}</b> (${escapeHtml(c.nickname || "-")}) &nbsp;·&nbsp; ${escapeHtml(c.customerId)}</div>
-      <div class="muted small">Visit ${escapeHtml(v.visitId)} &nbsp;·&nbsp; Zerva ${escapeHtml(v.zervaBookingId || "-")} &nbsp;·&nbsp; ${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}</div>
+      <div class="muted small">คิว ${escapeHtml(v.visitId)} &nbsp;·&nbsp; Zerva ${escapeHtml(v.zervaBookingId || "-")} &nbsp;·&nbsp; ${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}</div>
     </div>`;
 }
 
 function setDraftSaveLoading(buttonEl, isLoading) {
   if (!buttonEl) return;
   if (isLoading) {
-    buttonEl.dataset.idleText = buttonEl.textContent;
-    buttonEl.textContent = "กำลังบันทึก...";
+    if (!buttonEl.dataset.idleHtml) buttonEl.dataset.idleHtml = buttonEl.innerHTML;
+    buttonEl.innerHTML = "กำลังบันทึก...";
     buttonEl.setAttribute("aria-busy", "true");
     buttonEl.disabled = true;
     return;
   }
-  buttonEl.textContent = buttonEl.dataset.idleText || "บันทึกแบบร่าง";
+  buttonEl.innerHTML = buttonEl.dataset.idleHtml || withIcon("save", "บันทึกร่าง");
   buttonEl.removeAttribute("aria-busy");
   buttonEl.disabled = false;
 }
 
 async function promptAfterDraftSaved() {
-  const goHome = await appConfirm("บันทึกแบบร่างแล้ว — ต้องการอยู่หน้านี้ต่อหรือกลับไปหน้าลูกค้าเก่า?", {
-    title: "บันทึกแบบร่างแล้ว",
-    okText: "กลับหน้าหลัก",
+  showToast("บันทึกร่างแล้ว", { tone: "ok" });
+  const goHome = await appConfirm("บันทึกร่างแล้ว กลับหน้าลูกค้าเลยไหม?", {
+    title: "บันทึกแล้ว",
+    okText: "กลับหน้าลูกค้า",
     cancelText: "อยู่หน้านี้ต่อ"
   });
   if (!goHome) return;
   state.reset();
-  show("home", { data: { mode: "oldCustomerSearch" } });
+  show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true } });
 }
 
-// ปุ่ม "บันทึกแบบร่าง" มุมขวาบน — กดได้ตลอดทุกจุดของฟอร์ม โดยไม่ต้องรอข้อมูลบังคับครบ
-// เก็บ rawAnswers ดิบทั้งหมดไว้ก่อน ไม่ normalize เป็นฟิลด์ทีละอันเหมือนตอนปิด Visit จริง
 function wireDraftSaveButton(buttonEl) {
   if (!buttonEl) return;
+  if (!buttonEl.querySelector("svg")) {
+    buttonEl.innerHTML = withIcon("save", "บันทึกร่าง");
+  }
   buttonEl.addEventListener("click", async () => {
     const c = state.currentCustomer;
     const v = state.visitContext;
@@ -1020,45 +1549,54 @@ function wireDraftSaveButton(buttonEl) {
         formType: state.formType,
         status: "draft",
         visitDate: v.visitDate || Date.now(),
-        technique: draft.technique || null,
-        colorUsed: draft.colorChoice || null,
+        technique: resolveTouchupTechnique(draft) || null,
+        colorUsed: resolveTouchupColor(draft) || null,
         intensity: draft.intensity || null,
-        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
+        muscle: draft.muscle || null,
+        shapeDesign: resolveTouchupShape(draft) || null,
+        browGuard: draft.browGuard || null,
+        rawAnswers: {
+          ...draft,
+          formStepIndex: state.formStepIndex || 0,
+          beforePhotoDataUrl: undefined,
+          afterPhotoDataUrl: undefined,
+          signatureCustomerDataUrl: undefined
+        }
       });
       await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
-      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
       setDraftSaveLoading(buttonEl, false);
     }
   });
 }
 
-// ปุ่ม "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล แล้วปิด Visit ทันทีโดยไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
 function wireNotServedButton(buttonEl) {
   if (!buttonEl) return;
   buttonEl.addEventListener("click", async () => {
     const v = state.visitContext;
     if (!v) return;
-    const reason = await appPrompt("กรุณาระบุเหตุผลที่ไม่ได้รับบริการ เพื่อปิด Visit นี้", {
-      title: "ไม่ได้รับบริการ",
+    const reason = await appPrompt("บอกเหตุผลสั้น ๆ ว่าทำไมไม่ได้รับบริการ", {
+      title: "ปิดคิว — ไม่ได้รับบริการ",
       inputLabel: "เหตุผล",
-      placeholder: "เช่น ลูกค้ายกเลิก / ไม่มาตามนัด / เลื่อนนัด",
+      placeholder: "เช่น ลูกค้าไม่มา / เลื่อนนัด / ยกเลิก",
       required: true,
-      requiredMessage: "กรุณาระบุเหตุผล",
-      okText: "ยืนยันปิด Visit",
+      requiredMessage: "กรอกเหตุผลก่อนนะ",
+      okText: "ปิดคิว",
       cancelText: "ยกเลิก"
     });
-    if (reason === null) return; // กดยกเลิก
+    if (reason === null) return;
     buttonEl.disabled = true;
     try {
       await closeVisitNotServed(v.visitId, reason.trim());
+      showToast("ปิดคิวแล้ว", { tone: "ok" });
       state.reset();
-      show("home");
+      show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true } });
     } catch (e) {
       console.warn("closeVisitNotServed failed:", e);
-      await appAlert("ปิด Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "ทำรายการไม่สำเร็จ" });
+      await appAlert("ปิดคิวไม่สำเร็จ ลองอีกครั้ง", { title: "ทำไม่สำเร็จ" });
       buttonEl.disabled = false;
     }
   });
@@ -1082,7 +1620,7 @@ function setLoginLoading(isLoading) {
   if (!submitBtn) return;
   if (!submitBtn.dataset.readyText) submitBtn.dataset.readyText = submitBtn.textContent;
   submitBtn.disabled = isLoading;
-  submitBtn.textContent = isLoading ? "Signing in..." : submitBtn.dataset.readyText;
+  submitBtn.textContent = isLoading ? "กำลังเข้าสู่ระบบ..." : submitBtn.dataset.readyText;
 }
 
 function setButtonLoading(button, isLoading, loadingText) {
@@ -1163,12 +1701,12 @@ function initLogin() {
       const username = userInput.value.trim();
       const password = pwInput.value;
       if (!username || !password) {
-        errorEl.textContent = "Please enter your username and password.";
+        errorEl.textContent = "ใส่อีเมลกับรหัสผ่านก่อนนะ";
         errorEl.hidden = false;
         return;
       }
       errorEl.hidden = true;
-      setButtonLoading(submitBtn, true, "Signing in...");
+      setButtonLoading(submitBtn, true, "กำลังเข้าสู่ระบบ...");
       try {
         const res = await login(username, password);
         if (res.success) {
@@ -1179,11 +1717,11 @@ function initLogin() {
           show("home");
           return;
         }
-        errorEl.textContent = "Invalid username or password.";
+        errorEl.textContent = "อีเมลหรือรหัสผ่านไม่ถูก";
         errorEl.hidden = false;
       } catch (err) {
         console.warn("login failed:", err);
-        errorEl.textContent = "Could not sign in. Please try again.";
+        errorEl.textContent = "เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้ง";
         errorEl.hidden = false;
       } finally {
         if (!screen || !screen.hidden) setButtonLoading(submitBtn, false);
@@ -1193,7 +1731,7 @@ function initLogin() {
     toggleBtn.addEventListener("click", () => {
       const show = pwInput.type === "password";
       pwInput.type = show ? "text" : "password";
-      toggleBtn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      toggleBtn.setAttribute("aria-label", show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
     });
 
     forgotBtn.addEventListener("click", openReset);
@@ -1220,36 +1758,36 @@ function initResetModal() {
     const pw = resetPw.value.trim();
     const confirm = resetPwConfirm.value.trim();
     if (!oldPw) {
-      resetError.textContent = "Please enter your current password.";
+      resetError.textContent = "ใส่รหัสผ่านปัจจุบันก่อนนะ";
       resetError.hidden = false;
       return;
     }
     if (!pw || pw !== confirm) {
-      resetError.textContent = "Passwords do not match.";
+      resetError.textContent = "รหัสผ่านใหม่ไม่ตรงกัน";
       resetError.hidden = false;
       return;
     }
     resetError.hidden = true;
-    setButtonLoading(resetSubmitBtn, true, "Saving...");
+    setButtonLoading(resetSubmitBtn, true, "กำลังบันทึก...");
     try {
       const res = await changePassword(oldPw, pw);
       if (res.success) {
         // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
         clearToken();
         closeReset();
-        await appAlert("Password updated. Please sign in again.", { title: "Password updated" });
+        await appAlert("เปลี่ยนรหัสแล้ว เข้าสู่ระบบใหม่ได้นะ", { title: "เปลี่ยนรหัสแล้ว" });
         showLogin();
         return;
       }
       if (res.error === "wrong_password") {
-        resetError.textContent = "Current password is incorrect.";
+        resetError.textContent = "รหัสผ่านปัจจุบันไม่ถูก";
       } else {
-        resetError.textContent = "Could not update password. Please try again.";
+        resetError.textContent = "เปลี่ยนรหัสไม่สำเร็จ ลองอีกครั้ง";
       }
       resetError.hidden = false;
     } catch (err) {
       console.warn("changePassword failed:", err);
-      resetError.textContent = "Could not update password. Please try again.";
+      resetError.textContent = "เปลี่ยนรหัสไม่สำเร็จ ลองอีกครั้ง";
       resetError.hidden = false;
     } finally {
       if (!resetOverlay || !resetOverlay.hidden) setButtonLoading(resetSubmitBtn, false);
@@ -1262,7 +1800,7 @@ function initResetModal() {
       const field = document.getElementById(btn.dataset.resetToggle);
       const show = field.type === "password";
       field.type = show ? "text" : "password";
-      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      btn.setAttribute("aria-label", show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
     });
   });
 
@@ -1293,6 +1831,12 @@ function initials(name) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function statusBadgeHtml(openStatus) {
+  if (!openStatus) return "";
+  const hint = isResumableVisitStatus(openStatus) ? " · กดเพื่อทำต่อ" : "";
+  return `<span class="draft-badge draft-badge--inline ${visitStatusBadgeClass(openStatus)}">${escapeHtml(visitStatusLabel(openStatus))}${hint}</span>`;
+}
+
 function initHome() {
   const tbody = document.getElementById("customersTableBody");
   const tableCard = document.getElementById("customersTableBody").closest(".customers-table-card");
@@ -1300,6 +1844,7 @@ function initHome() {
   const emptyState = document.getElementById("customersEmptyState");
   const searchInput = document.getElementById("searchInput");
   const tableScroll = tableCard.querySelector(".table-scroll");
+  const cardList = document.getElementById("customersCardList");
   const startChoice = document.getElementById("homeStartChoice");
   const searchPanel = document.getElementById("homeSearchPanel");
   const chooseNewCustomerBtn = document.getElementById("chooseNewCustomerBtn");
@@ -1344,13 +1889,21 @@ function initHome() {
     }, { passive: true });
   }
 
-  function renderSummary() {
-    summary.hidden = true;
-    summary.innerHTML = "";
+  function renderSummary(mode, count) {
+    if (!summary) return;
+    if (!count) {
+      summary.hidden = true;
+      summary.innerHTML = "";
+      return;
+    }
+    summary.hidden = false;
+    summary.innerHTML = mode === "recent"
+      ? `ลูกค้าล่าสุด <strong>${count}</strong> คน · พิมพ์เบอร์เพื่อค้นหา`
+      : `พบ <strong>${count}</strong> คน`;
   }
 
   function openProfile(customer) {
-    searchRequestSeq += 1; // cancel any in-flight search render before navigating away
+    searchRequestSeq += 1;
     state.currentCustomer = customer;
     state.customerFlow = "old";
     state.currentCustomerHistory = null;
@@ -1358,9 +1911,6 @@ function initHome() {
   }
 
   function openService(customer) {
-    // ทุกคิวต้องผ่าน Step 3 (สร้าง Visit) ก่อนเปิดฟอร์ม Consultation เสมอตามสเปก — ห้ามเปิด modal
-    // เลือกฟอร์ม (Step 4) ตรง ๆ จากตรงนี้ เพราะ state.visitContext จะไม่ถูกตั้งค่า (ตั้งค่าเฉพาะใน
-    // createVisit.js) ทำให้กด Next/บันทึกแบบร่างในฟอร์มแล้วเงียบ ๆ ไม่มีอะไรเกิดขึ้นหรือเด้งกลับ home
     state.currentCustomer = customer;
     state.customerFlow = "old";
     state.currentCustomerHistory = null;
@@ -1369,72 +1919,17 @@ function initHome() {
     show("createVisit");
   }
 
-  function render(rows, mode = "search") {
-    visibleCustomers = rows || [];
-    renderSummary();
-    const qPhone = normalizePhone(searchInput.value);
+  function emptyGuideHtml() {
+    return `
+      <div class="empty-guide">
+        <p class="empty-guide-title">พิมพ์เบอร์โทรเพื่อค้นหา</p>
+        <p class="empty-guide-sub">อย่างน้อย 3 ตัว เช่น <strong>081</strong> หรือ <strong>089</strong></p>
+      </div>`;
+  }
 
-    if (mode === "search" && qPhone.length < 3) {
-      table.hidden = true;
-      emptyState.hidden = false;
-      emptyState.innerHTML = `กรอกเบอร์โทรศัพท์อย่างน้อย 3 หลักเพื่อค้นหา Customer Profile`;
-      return;
-    }
-
-    if (visibleCustomers.length === 0) {
-      table.hidden = true;
-      emptyState.hidden = false;
-      emptyState.innerHTML = mode === "recent"
-        ? "ยังไม่มี Customer Profile ล่าสุด"
-        : `ไม่พบ Customer Profile จากเบอร์ "${escapeHtml(searchInput.value.trim())}"`;
-      return;
-    }
-    table.hidden = false;
-    emptyState.hidden = true;
-
-    tbody.innerHTML = visibleCustomers.map((c) => {
-      const visitsCount = Number(c.visitsCount || 0);
-      const sub = visitsCount > 0 && c.lastTechnique && c.lastTechnique !== "-"
-        ? `<span class="cust-sub">${escapeHtml(c.lastTechnique)}</span>` : "";
-      const lineCell = c.line
-        ? `${ICON_LINE}<span>@${escapeHtml(c.line)}</span>`
-        : `<span class="cell-empty">—</span>`;
-      const lastVisit = visitsCount === 0
-        ? `<span class="cell-empty">New customer</span>`
-        : `${ICON_CAL}<span>${escapeHtml(formatDateShort(c.lastVisitDate))}</span>`;
-      return `
-      <tr data-id="${c.customerId}" tabindex="0" role="button" aria-label="Open customer profile">
-        <td class="cell-customer">
-          <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
-          <span class="cust-meta">
-            <span class="cust-name">${escapeHtml(c.nickname || c.fullName)}</span>
-            ${sub}
-          </span>
-        </td>
-        <td><span class="cell-ico">${ICON_PHONE}<span>${escapeHtml(c.phoneDisplay)}</span></span></td>
-        <td><span class="cell-ico">${lineCell}</span></td>
-        <td><span class="cell-ico">${lastVisit}</span></td>
-        <td><span class="cell-visits">${ICON_STAR}<span><strong>${visitsCount}</strong> visit${visitsCount === 1 ? "" : "s"}</span></span></td>
-        <td class="cell-actions">
-          <div class="row-menu">
-            <button type="button" class="row-menu-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Actions">
-              ${ICON_MORE}
-            </button>
-            <div class="row-menu-popover" role="menu" hidden>
-              <button type="button" class="row-menu-item" role="menuitem" data-action="view">
-                ${ICON_VIEW}<span>View profile</span>
-              </button>
-              <button type="button" class="row-menu-item" role="menuitem" data-action="service">
-                ${ICON_SERVICE}<span>New service</span>
-              </button>
-            </div>
-          </div>
-        </td>
-      </tr>`;
-    }).join("");
-
+  function bindRowMenu(root, getCustomer) {
     function closeAllMenus() {
-      tbody.querySelectorAll(".row-menu").forEach((menu) => {
+      root.querySelectorAll(".row-menu").forEach((menu) => {
         menu.classList.remove("is-open");
         const pop = menu.querySelector(".row-menu-popover");
         const trigger = menu.querySelector(".row-menu-trigger");
@@ -1443,49 +1938,47 @@ function initHome() {
       });
     }
 
-    tbody.querySelectorAll("tr").forEach((tr) => {
-      const customer = visibleCustomers.find((c) => c.customerId === tr.dataset.id);
-      const menu = tr.querySelector(".row-menu");
-      const trigger = tr.querySelector(".row-menu-trigger");
-      const popover = tr.querySelector(".row-menu-popover");
-      if (!menu || !trigger || !popover) return;
+    root.querySelectorAll("[data-id]").forEach((el) => {
+      const customer = getCustomer(el.dataset.id);
+      const menu = el.querySelector(".row-menu");
+      const trigger = el.querySelector(".row-menu-trigger");
+      const popover = el.querySelector(".row-menu-popover");
 
-      tr.addEventListener("click", (e) => {
+      el.addEventListener("click", (e) => {
         if (e.target.closest(".row-menu")) return;
         if (tableDragStarted) return;
         if (customer) openProfile(customer);
       });
-      tr.addEventListener("keydown", (e) => {
+      el.addEventListener("keydown", (e) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.target.closest(".row-menu")) return;
         e.preventDefault();
         if (customer) openProfile(customer);
       });
 
+      if (!menu || !trigger || !popover) return;
+
       trigger.addEventListener("click", (e) => {
         e.stopPropagation();
         const willOpen = popover.hidden;
         closeAllMenus();
-        if (willOpen) {
-          menu.classList.add("is-open");
-          popover.hidden = false;
-          trigger.setAttribute("aria-expanded", "true");
-
-          // ลอย dropdown ออกจากกรอบ table-scroll เพื่อไม่ให้ overflow ตัดเมนู
-          const triggerRect = trigger.getBoundingClientRect();
-          const popoverRect = popover.getBoundingClientRect();
-          const gap = 6;
-          const left = Math.min(
-            window.innerWidth - popoverRect.width - 12,
-            Math.max(12, triggerRect.right - popoverRect.width)
-          );
-          const spaceBelow = window.innerHeight - triggerRect.bottom;
-          const top = spaceBelow >= popoverRect.height + gap
-            ? triggerRect.bottom + gap
-            : triggerRect.top - popoverRect.height - gap;
-          popover.style.left = `${left}px`;
-          popover.style.top = `${Math.max(12, top)}px`;
-        }
+        if (!willOpen) return;
+        menu.classList.add("is-open");
+        popover.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        const triggerRect = trigger.getBoundingClientRect();
+        const popoverRect = popover.getBoundingClientRect();
+        const gap = 6;
+        const left = Math.min(
+          window.innerWidth - popoverRect.width - 12,
+          Math.max(12, triggerRect.right - popoverRect.width)
+        );
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+        const top = spaceBelow >= popoverRect.height + gap
+          ? triggerRect.bottom + gap
+          : triggerRect.top - popoverRect.height - gap;
+        popover.style.left = `${left}px`;
+        popover.style.top = `${Math.max(12, top)}px`;
       });
 
       popover.querySelectorAll("[data-action]").forEach((btn) => {
@@ -1500,8 +1993,115 @@ function initHome() {
     });
   }
 
+  function actionsMenuHtml() {
+    return `
+      <div class="row-menu">
+        <button type="button" class="row-menu-trigger" aria-haspopup="true" aria-expanded="false" aria-label="เมนู">
+          ${ICON_MORE}
+        </button>
+        <div class="row-menu-popover" role="menu" hidden>
+          <button type="button" class="row-menu-item" role="menuitem" data-action="view">
+            ${ICON_VIEW}<span>ดูโปรไฟล์</span>
+          </button>
+          <button type="button" class="row-menu-item" role="menuitem" data-action="service">
+            ${ICON_SERVICE}<span>เริ่มบริการ</span>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  function render(rows, mode = "search") {
+    visibleCustomers = rows || [];
+    const qPhone = normalizePhone(searchInput.value);
+
+    if (cardList) {
+      cardList.innerHTML = "";
+      cardList.hidden = true;
+    }
+
+    if (mode === "search" && qPhone.length < 3 && !visibleCustomers.length) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = emptyGuideHtml();
+      renderSummary(mode, 0);
+      return;
+    }
+
+    if (mode === "search" && qPhone.length < 3) {
+      // recent list while typing < 3
+    }
+
+    if (visibleCustomers.length === 0) {
+      table.hidden = true;
+      emptyState.hidden = false;
+      emptyState.innerHTML = mode === "recent"
+        ? `<div class="empty-guide"><p class="empty-guide-title">ยังไม่มีลูกค้าล่าสุด</p><p class="empty-guide-sub">พิมพ์เบอร์เพื่อค้นหา หรือเพิ่มลูกค้าใหม่จากหน้าแรก</p></div>`
+        : `<div class="empty-guide"><p class="empty-guide-title">ไม่พบลูกค้า</p><p class="empty-guide-sub">ลองเช็คเบอร์อีกครั้ง: “${escapeHtml(searchInput.value.trim())}”</p></div>`;
+      renderSummary(mode, 0);
+      return;
+    }
+
+    table.hidden = false;
+    emptyState.hidden = true;
+    renderSummary(mode, visibleCustomers.length);
+
+    tbody.innerHTML = visibleCustomers.map((c) => {
+      const visitsCount = Number(c.visitsCount || 0);
+      const statusBadge = statusBadgeHtml(c.openVisitStatus);
+      const sub = visitsCount > 0 && c.lastTechnique && c.lastTechnique !== "-"
+        ? `<span class="cust-sub">${escapeHtml(c.lastTechnique)}</span>` : "";
+      const lineCell = c.line
+        ? `${ICON_LINE}<span>@${escapeHtml(c.line)}</span>`
+        : `<span class="cell-empty">—</span>`;
+      const lastVisit = visitsCount === 0
+        ? `<span class="cell-empty">ลูกค้าใหม่</span>`
+        : `${ICON_CAL}<span>${escapeHtml(formatDateShort(c.lastVisitDate))}</span>`;
+      return `
+      <tr data-id="${c.customerId}" tabindex="0" role="button" aria-label="เปิดโปรไฟล์ลูกค้า">
+        <td class="cell-customer">
+          <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
+          <span class="cust-meta">
+            <span class="cust-name">${escapeHtml(c.nickname || c.fullName)}${statusBadge}</span>
+            ${sub}
+          </span>
+        </td>
+        <td><span class="cell-ico">${ICON_PHONE}<span>${escapeHtml(c.phoneDisplay)}</span></span></td>
+        <td><span class="cell-ico">${lineCell}</span></td>
+        <td><span class="cell-ico">${lastVisit}</span></td>
+        <td><span class="cell-visits">${ICON_STAR}<span><strong>${visitsCount}</strong> ครั้ง</span></span></td>
+        <td class="cell-actions">${actionsMenuHtml()}</td>
+      </tr>`;
+    }).join("");
+
+    if (cardList) {
+      cardList.hidden = false;
+      cardList.innerHTML = visibleCustomers.map((c) => {
+        const visitsCount = Number(c.visitsCount || 0);
+        const statusBadge = statusBadgeHtml(c.openVisitStatus);
+        const lastVisit = visitsCount === 0
+          ? "ลูกค้าใหม่"
+          : formatDateShort(c.lastVisitDate);
+        return `
+        <article class="cust-card" data-id="${c.customerId}" tabindex="0" role="button" aria-label="เปิดโปรไฟล์ลูกค้า">
+          <div class="cust-card-main">
+            <span class="avatar">${escapeHtml(initials(c.nickname || c.fullName))}</span>
+            <div class="cust-meta">
+              <span class="cust-name">${escapeHtml(c.nickname || c.fullName)}${statusBadge}</span>
+              <span class="cust-sub">${escapeHtml(c.phoneDisplay)}</span>
+              <span class="cust-sub">${escapeHtml(lastVisit)} · ${visitsCount} ครั้ง</span>
+            </div>
+          </div>
+          <div class="cust-card-actions">${actionsMenuHtml()}</div>
+        </article>`;
+      }).join("");
+      bindRowMenu(cardList, (id) => visibleCustomers.find((c) => c.customerId === id));
+    }
+
+    bindRowMenu(tbody, (id) => visibleCustomers.find((c) => c.customerId === id));
+  }
+
   function closeAllOpenMenus() {
-    tbody.querySelectorAll(".row-menu.is-open").forEach((menu) => {
+    document.querySelectorAll(".row-menu.is-open").forEach((menu) => {
       menu.classList.remove("is-open");
       const pop = menu.querySelector(".row-menu-popover");
       const trigger = menu.querySelector(".row-menu-trigger");
@@ -1525,6 +2125,7 @@ function initHome() {
       return;
     }
     table.hidden = true;
+    if (cardList) cardList.hidden = true;
     emptyState.hidden = false;
     emptyState.textContent = "กำลังค้นหา...";
     try {
@@ -1534,15 +2135,14 @@ function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("searchCustomers failed:", e);
-      emptyState.innerHTML = `ค้นหาลูกค้าไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryLoadCustomersBtn">ลองใหม่</button>`;
-      const retryBtn = document.getElementById("retryLoadCustomersBtn");
-      if (retryBtn) retryBtn.addEventListener("click", runPhoneSearch);
-      return;
+      emptyState.innerHTML = `ค้นหาไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryLoadCustomersBtn">ลองอีกครั้ง</button>`;
+      document.getElementById("retryLoadCustomersBtn")?.addEventListener("click", runPhoneSearch);
     }
   }
 
   async function loadRecentCustomers(requestId = ++searchRequestSeq) {
     table.hidden = true;
+    if (cardList) cardList.hidden = true;
     emptyState.hidden = false;
     emptyState.textContent = "กำลังโหลดลูกค้าล่าสุด...";
     try {
@@ -1552,17 +2152,23 @@ function initHome() {
     } catch (e) {
       if (requestId !== searchRequestSeq) return;
       console.warn("listRecentCustomers failed:", e);
-      emptyState.innerHTML = `โหลดลูกค้าล่าสุดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryRecentCustomersBtn">ลองใหม่</button>`;
-      const retryBtn = document.getElementById("retryRecentCustomersBtn");
-      if (retryBtn) retryBtn.addEventListener("click", () => loadRecentCustomers());
+      emptyState.innerHTML = `โหลดไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryRecentCustomersBtn">ลองอีกครั้ง</button>`;
+      document.getElementById("retryRecentCustomersBtn")?.addEventListener("click", () => loadRecentCustomers());
     }
   }
 
   searchInput.addEventListener("input", () => setTimeout(runPhoneSearch, 0));
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runPhoneSearch();
+    }
+  });
 
   function showStartChoice() {
     startChoice.hidden = false;
     searchPanel.hidden = true;
+    if (searchBackBtn) searchBackBtn.hidden = true;
   }
 
   function showSearchPanel(options = {}) {
@@ -1570,10 +2176,12 @@ function initHome() {
     const shouldPreserveSearch = options.preserveSearch === true;
     startChoice.hidden = true;
     searchPanel.hidden = false;
+    if (searchBackBtn) searchBackBtn.hidden = false;
     if (!shouldPreserveSearch) {
       searchInput.value = "";
       visibleCustomers = [];
     }
+    requestAnimationFrame(() => searchInput.focus());
     if (shouldLoadRecent) {
       if (shouldPreserveSearch && normalizePhone(searchInput.value).length >= 3) {
         render(visibleCustomers, "search");
@@ -1589,7 +2197,6 @@ function initHome() {
   }
 
   chooseNewCustomerBtn.addEventListener("click", () => {
-    // ลูกค้าใหม่: สร้างลูกค้าเข้าฐานข้อมูลก่อน แล้วจึงเลือกบริการ (แยกตัวตนออกจากฟอร์มคอนเซ้นต์)
     state.currentCustomer = null;
     state.customerFlow = "new";
     state.currentCustomerHistory = null;
@@ -1598,8 +2205,6 @@ function initHome() {
     show("newCustomer");
   });
 
-  // ลูกค้าเก่า: ต้องเลือกก่อนถึงจะเข้าค้นหาได้ (Step 1 ตามสเปก Flow การรับลูกค้า) — กันไม่ให้เห็นตาราง
-  // ลูกค้าทั้งหมดตั้งแต่แรกเข้า
   chooseOldCustomerBtn.addEventListener("click", showSearchPanel);
   searchBackBtn.addEventListener("click", showStartChoice);
 
@@ -1611,7 +2216,7 @@ function initHome() {
     showStartChoice();
     searchInput.value = "";
     visibleCustomers = [];
-    renderSummary();
+    renderSummary("search", 0);
   });
 }
 </script>
@@ -1657,7 +2262,7 @@ function initNewCustomer() {
 
   function render() {
     container.innerHTML = `
-      <p class="choose-lead">กรอกข้อมูลลูกค้าใหม่เพื่อสร้าง Customer Profile</p>
+      <p class="choose-lead">กรอกข้อมูลลูกค้าใหม่เพื่อสร้างโปรไฟล์</p>
 
       <label class="field-label">ชื่อ–นามสกุลจริง <span class="required-star">*</span></label>
       <input type="text" id="ncFullName" class="input" placeholder="เช่น มาลี ใจดี" autocomplete="off">
@@ -1668,7 +2273,7 @@ function initNewCustomer() {
       <label class="field-label">เบอร์โทรศัพท์ <span class="required-star">*</span></label>
       <input type="tel" id="ncPhone" class="input" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="off">
       <label class="field-label">LINE ID (ถ้ามี)</label>
-      <input type="text" id="ncLine" class="input" placeholder="Optional" autocomplete="off">
+      <input type="text" id="ncLine" class="input" placeholder="ไม่บังคับ" autocomplete="off">
       <div id="ncWarning"></div>
 
       <div class="form-section-title">ยืนยันข้อมูลส่วนตัว</div>
@@ -1697,7 +2302,7 @@ function initNewCustomer() {
       </div>
       <p class="muted small">กล้ามเนื้อคิ้ว: ยังไม่ได้ประเมิน (จะประเมินหลังเช็ดคิ้ว/วัดทรงจริงในฟอร์ม 1 หรือ 2 ครั้งแรก)</p>
 
-      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">Create Customer &amp; Continue</button>
+      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">สร้างลูกค้าแล้วไปต่อ</button>
     `;
 
     ["ncFullName", "ncNickname", "ncDob", "ncPhone", "ncLine"].forEach((id) => {
@@ -1759,18 +2364,18 @@ function initNewCustomer() {
       existing = await findCustomerByPhone(draft.phone);
     } catch (e) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
     if (existing) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
       document.getElementById("ncWarning").innerHTML = `
         <div class="dup-warning">
-          ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
-          Please use the existing customer instead of creating a duplicate.
-          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">Open this customer</button>
+          ⚠ เบอร์นี้มีในระบบแล้ว: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
+          ใช้โปรไฟล์เดิมดีกว่า อย่าสร้างซ้ำ
+          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">เปิดลูกค้าคนนี้</button>
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
@@ -1789,14 +2394,14 @@ function initNewCustomer() {
       });
     } catch (e) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
-      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้าง Customer Profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้างลูกค้าไม่สำเร็จ ลองอีกครั้ง</div>`;
       return;
     }
     if (!res.success) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
-      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้างลูกค้าไม่สำเร็จ อาจมีเบอร์นี้เพิ่งถูกเพิ่ม ลองอีกครั้ง</div>`;
       return;
     }
 
@@ -1832,6 +2437,15 @@ function initNewCustomer() {
 </script>
 <script>
 // ==== js/screens/customerProfile.js ====
+// customerProfile.js — Customer Profile (hero + stats + skin panel + visit cards)
+
+
+
+
+
+
+
+
 function ageFromDob(dobStr) {
   if (!dobStr) return null;
   const dob = new Date(dobStr);
@@ -1843,11 +2457,19 @@ function ageFromDob(dobStr) {
   return age;
 }
 
-// ระยะเวลาจากวันที่มารับบริการล่าสุดถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (ตามสเปก "ครั้งที่มารับบริการล่าสุด (คำนวณเดือน)")
-function monthsSince(ts) {
+function formatMonthYear(ts) {
   if (!ts) return "-";
-  const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
-  return months === 0 ? "เดือนนี้" : `${months} เดือนที่แล้ว`;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "-";
+  const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  return `${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function initials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 function withTimeout(promise, ms, message) {
@@ -1885,24 +2507,34 @@ function shouldResumeAtTechFields(visit, draft) {
   );
 }
 
+function resolveResumeStep(visit, draft) {
+  const saved = Number(draft?.formStepIndex);
+  if (Number.isFinite(saved) && saved >= 0) return saved;
+  if (shouldResumeAtTechFields(visit, draft)) return 5;
+  return 0;
+}
+
 function isResumableVisit(visit) {
   return isResumableVisitStatus(visit?.status);
 }
 
-function visitFormBadge(visit) {
-  const label = formTypeLabel(visit?.formType);
-  return label ? `<span class="draft-badge draft-badge--inline">${escapeHtml(label)}</span>` : "";
+function serviceTypeBadge(visit) {
+  const label = visit?.serviceType || "Visit";
+  const kind = visit?.serviceType === "เติมสี" ? "touchup" : "brow";
+  return `<span class="cp-pill cp-pill--${kind}">${escapeHtml(label)}</span>`;
 }
 
-function visitStatusBadge(visit) {
+function formTypeBadge(visit) {
+  const label = formTypeLabel(visit?.formType);
+  if (!label) return "";
+  const kind = visit?.formType === "form3" ? "form3" : visit?.formType === "form2" ? "form2" : "form1";
+  return `<span class="cp-pill cp-pill--${kind}">${escapeHtml(label)}</span>`;
+}
+
+function statusBadge(visit) {
   const status = normalizeVisitStatus(visit?.status);
   if (!status) return "";
-  const className = status === "completed"
-    ? "is-completed"
-    : status === "not_served"
-      ? "is-not-served"
-      : "";
-  return `<span class="draft-badge draft-badge--inline ${className}">${escapeHtml(visitStatusLabel(status))}</span>`;
+  return `<span class="cp-pill cp-pill--status ${visitStatusBadgeClass(status)}">${escapeHtml(visitStatusLabel(status))}</span>`;
 }
 
 function resumeDraftVisit(visit) {
@@ -1920,6 +2552,7 @@ function resumeDraftVisit(visit) {
   state.formType = formType;
   state.resetVisitDraft();
   Object.assign(state.visitDraft, raw);
+  delete state.visitDraft.formStepIndex;
 
   state.visitDraft.existingBeforePhotoUrl = visit.beforePhotoUrl || state.visitDraft.existingBeforePhotoUrl || "";
   state.visitDraft.existingAfterPhotoUrl = visit.afterPhotoUrl || state.visitDraft.existingAfterPhotoUrl || "";
@@ -1938,24 +2571,25 @@ function resumeDraftVisit(visit) {
   coalesceDraftValue(state.visitDraft, "redness", visit.redness);
   coalesceDraftValue(state.visitDraft, "adherence", visit.adherence);
 
-  show(shouldResumeAtTechFields(visit, state.visitDraft) ? "techFields" : screenForFormType(formType));
+  const step = resolveResumeStep(visit, raw);
+  state.formStepIndex = step;
+  show(step >= 5 ? "techFields" : screenForFormType(formType));
 }
 
 function initCustomerProfile() {
   const profileCard = document.getElementById("profileCard");
+  const profileStats = document.getElementById("profileStats");
   const skinCard = document.getElementById("skinProfileCard");
-  const historySummary = document.getElementById("historySummary");
+  const historyCount = document.getElementById("historyCount");
   const historyList = document.getElementById("historyList");
   const addVisitBtn = document.getElementById("addVisitBtn");
   const backBtn = document.getElementById("customerProfileBackBtn");
 
-  // object เดียวคงที่ตลอดอายุโมดูล (mutate ด้วย key เอา ห้าม reassign เป็น {} ใหม่) เพราะ bindFieldEvents
-  // ผูก event delegation ไว้กับ reference นี้ตอน init ครั้งเดียว — ดูคำเตือนแบบเดียวกันใน state.js
   const skinEditDraft = {};
   let isEditingSkin = false;
 
-  addVisitBtn.addEventListener("click", () => show("createVisit"));
-  backBtn.addEventListener("click", () => {
+  addVisitBtn?.addEventListener("click", () => show("createVisit"));
+  backBtn?.addEventListener("click", () => {
     if (state.customerFlow === "old") {
       show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true }, pushHistory: false });
       return;
@@ -1963,33 +2597,49 @@ function initCustomerProfile() {
     show("home", { pushHistory: false });
   });
 
+  function skinField(label, value) {
+    return `
+      <div class="cp-field">
+        <span class="cp-field-label">${escapeHtml(label)}</span>
+        <strong class="cp-field-value">${escapeHtml(value || "-")}</strong>
+      </div>`;
+  }
+
   function skinSummaryHtml(sp) {
     sp = sp || {};
+    const muscle = sp.muscle
+      ? `${sp.muscle}${sp.muscleEvaluatedAt ? ` · ${formatDate(sp.muscleEvaluatedAt)}` : ""}`
+      : "ยังไม่ได้ประเมิน";
     return `
-      <div class="detail-row"><div class="detail-label">ลักษณะผิวโดยรวม</div><div class="detail-value">${escapeHtml(sp.skinType || "-")}</div></div>
-      <div class="detail-row"><div class="detail-label">ลักษณะเส้นขน</div><div class="detail-value">${escapeHtml(sp.hairLook || "-")}</div></div>
-      <div class="detail-row"><div class="detail-label">ความหนาแน่นเส้นขน</div><div class="detail-value">${escapeHtml(sp.hairDensity || "-")}</div></div>
-      <div class="detail-row"><div class="detail-label">ทรงคิ้ว</div><div class="detail-value">${(sp.browShape || []).join(", ") || "-"}</div></div>
-      <div class="detail-row">
-        <div class="detail-label">กล้ามเนื้อคิ้ว</div>
-        <div class="detail-value">${sp.muscle ? escapeHtml(sp.muscle) + (sp.muscleEvaluatedAt ? ` (ประเมินล่าสุด ${formatDate(sp.muscleEvaluatedAt)})` : "") : "ยังไม่ได้ประเมิน"}${sp.muscleNote ? `<br><span class="muted small">${escapeHtml(sp.muscleNote)}</span>` : ""}</div>
+      <div class="cp-panel-head">
+        <h3 class="cp-section-title">ผิว &amp; คิ้ว</h3>
+        <button type="button" class="cp-edit-link" id="skinEditBtn">แก้ไข</button>
       </div>
-      <button type="button" class="icon-btn icon-btn--flush" id="skinEditBtn">แก้ไขประวัติผิวและคิ้ว</button>
-    `;
+      <div class="cp-skin-grid">
+        ${skinField("ประเภทผิว", sp.skinType)}
+        ${skinField("ลักษณะขน", sp.hairLook)}
+        ${skinField("ความหนาแน่น", sp.hairDensity)}
+        ${skinField("ทรงคิ้ว", (sp.browShape || []).join(", "))}
+        ${skinField("กล้ามเนื้อคิ้ว", muscle)}
+        ${sp.muscleNote ? skinField("โน้ตกล้ามเนื้อ", sp.muscleNote) : skinField("โน้ตกล้ามเนื้อ", "-")}
+      </div>`;
   }
 
   function skinEditHtml() {
     return `
+      <div class="cp-panel-head">
+        <h3 class="cp-section-title">ผิว &amp; คิ้ว</h3>
+      </div>
       <div class="step-group">
-        <div class="step-group-title">ลักษณะผิวโดยรวม</div>
+        <div class="step-group-title">ประเภทผิว</div>
         ${radioField("skinType", OPTIONS.skinType, skinEditDraft)}
       </div>
       <div class="step-group">
-        <div class="step-group-title">ลักษณะเส้นขน</div>
+        <div class="step-group-title">ลักษณะขน</div>
         ${radioField("hairLook", OPTIONS.hairLook, skinEditDraft)}
       </div>
       <div class="step-group">
-        <div class="step-group-title">ความหนาแน่นเส้นขน</div>
+        <div class="step-group-title">ความหนาแน่น</div>
         ${radioField("hairDensity", OPTIONS.hairDensity, skinEditDraft)}
       </div>
       <div class="step-group">
@@ -1999,15 +2649,17 @@ function initCustomerProfile() {
       <div class="row-actions">
         <button type="button" class="btn btn-outline" id="skinCancelBtn">ยกเลิก</button>
         <button type="button" class="btn btn-primary" id="skinSaveBtn">บันทึก</button>
-      </div>
-    `;
+      </div>`;
   }
 
   function renderSkinCard(c) {
     skinCard.innerHTML = isEditingSkin ? skinEditHtml() : skinSummaryHtml(c.skinProfile);
     if (isEditingSkin) {
-      document.getElementById("skinCancelBtn").addEventListener("click", () => { isEditingSkin = false; renderSkinCard(c); });
-      document.getElementById("skinSaveBtn").addEventListener("click", async (e) => {
+      document.getElementById("skinCancelBtn")?.addEventListener("click", () => {
+        isEditingSkin = false;
+        renderSkinCard(c);
+      });
+      document.getElementById("skinSaveBtn")?.addEventListener("click", async (e) => {
         e.currentTarget.disabled = true;
         const payload = { ...skinEditDraft };
         await saveSkinProfile(c.customerId, payload);
@@ -2016,7 +2668,7 @@ function initCustomerProfile() {
         renderSkinCard(c);
       });
     } else {
-      document.getElementById("skinEditBtn").addEventListener("click", () => {
+      document.getElementById("skinEditBtn")?.addEventListener("click", () => {
         Object.keys(skinEditDraft).forEach((k) => delete skinEditDraft[k]);
         Object.assign(skinEditDraft, c.skinProfile || {});
         skinEditDraft.browShape = [...(c.skinProfile?.browShape || [])];
@@ -2026,6 +2678,81 @@ function initCustomerProfile() {
     }
   }
 
+  function renderHero(c) {
+    const age = ageFromDob(c.dob);
+    const displayName = c.fullName || c.nickname || "Customer";
+    const metaBits = [];
+    if (c.nickname && c.fullName && c.nickname !== c.fullName) {
+      metaBits.push(`ชื่อเล่น: ${escapeHtml(c.nickname)}`);
+    }
+    if (c.dob) metaBits.push(`${escapeHtml(c.dob)}${age != null ? ` (${age} ปี)` : ""}`);
+    if (c.line) metaBits.push(`LINE @${escapeHtml(c.line)}`);
+
+    profileCard.innerHTML = `
+      <span class="cp-avatar" aria-hidden="true">${escapeHtml(initials(c.nickname || displayName))}</span>
+      <div class="cp-hero-text">
+        <div class="cp-hero-name">${escapeHtml(displayName)}</div>
+        ${metaBits.length ? `<div class="cp-hero-meta">${metaBits.join(" · ")}</div>` : ""}
+        <div class="cp-hero-ids">
+          <span>${escapeHtml(c.customerId || "-")}</span>
+          <span>${escapeHtml(c.phoneDisplay || c.phone || "-")}</span>
+        </div>
+      </div>`;
+  }
+
+  function renderStats(history) {
+    const latest = (history && history[0]) || null;
+    const techVisit = (history || []).find((v) => v.technique) || latest;
+    const total = history.length;
+    profileStats.hidden = false;
+    profileStats.innerHTML = `
+      <div class="cp-stat">
+        <strong class="cp-stat-value">${total}</strong>
+        <span class="cp-stat-label">จำนวนครั้ง</span>
+      </div>
+      <div class="cp-stat">
+        <strong class="cp-stat-value">${escapeHtml(formatMonthYear(latest?.visitDate))}</strong>
+        <span class="cp-stat-label">ครั้งล่าสุด</span>
+      </div>
+      <div class="cp-stat">
+        <strong class="cp-stat-value">${escapeHtml(techVisit?.technique || "—")}</strong>
+        <span class="cp-stat-label">เทคนิค</span>
+      </div>`;
+  }
+
+  function visitCardHtml(v) {
+    v = enrichVisitForDisplay(v);
+    const hasDetails = Boolean(v.technique || v.colorUsed || v.intensity || v.note);
+    return `
+      <article class="cp-visit${isResumableVisit(v) ? " is-resumable" : ""}" data-id="${escapeHtml(v.serviceId)}" role="button" tabindex="0">
+        <div class="cp-visit-top">
+          <div class="cp-visit-pills">
+            ${serviceTypeBadge(v)}
+            ${formTypeBadge(v)}
+            ${statusBadge(v)}
+          </div>
+          <time class="cp-visit-date">${escapeHtml(formatDate(v.visitDate))}</time>
+        </div>
+        ${hasDetails ? `
+        <div class="cp-visit-grid">
+          <div class="cp-field">
+            <span class="cp-field-label">เทคนิค</span>
+            <strong class="cp-field-value">${escapeHtml(v.technique || "—")}</strong>
+          </div>
+          <div class="cp-field">
+            <span class="cp-field-label">สี</span>
+            <strong class="cp-field-value">${escapeHtml(v.colorUsed || "—")}</strong>
+          </div>
+          <div class="cp-field">
+            <span class="cp-field-label">ความเข้ม</span>
+            <strong class="cp-field-value">${escapeHtml(v.intensity || "—")}</strong>
+          </div>
+        </div>` : ""}
+        ${v.note ? `<p class="cp-visit-note">${escapeHtml(v.note)}</p>` : ""}
+        ${isResumableVisit(v) ? `<p class="cp-visit-hint">กดเพื่อทำต่อจากขั้นที่ค้างไว้</p>` : ""}
+      </article>`;
+  }
+
   bindFieldEvents(skinCard, skinEditDraft, () => {});
 
   onEnter("customerProfile", async () => {
@@ -2033,65 +2760,47 @@ function initCustomerProfile() {
     if (!c) { show("home"); return; }
     isEditingSkin = false;
 
-    const age = ageFromDob(c.dob);
-    profileCard.innerHTML = `
-      <div class="pname">${escapeHtml(c.fullName || c.nickname)}</div>
-      <div class="pmeta">
-        ${c.nickname ? `ชื่อเล่น: ${escapeHtml(c.nickname)} &nbsp;·&nbsp; ` : ""}${c.dob ? `${escapeHtml(c.dob)}${age !== null ? ` (${age} ปี)` : ""} &nbsp;·&nbsp; ` : ""}☎ ${escapeHtml(c.phoneDisplay)}${c.line ? " &nbsp;·&nbsp; LINE: " + escapeHtml(c.line) : ""}
-      </div>
-      <div class="pmeta">${escapeHtml(c.customerId)}</div>
-    `;
-
+    renderHero(c);
     renderSkinCard(c);
+    profileStats.hidden = true;
+    profileStats.innerHTML = "";
+    if (historyCount) historyCount.textContent = "";
+    historyList.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
 
-    historySummary.hidden = true;
-    historyList.innerHTML = `<div class="empty-hint">Loading history...</div>`;
     let history = [];
     try {
-      history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "โหลดประวัตินานเกินไป กรุณาลองเปิดใหม่อีกครั้ง");
+      history = await withTimeout(getHistoryByCustomer(c.customerId), 8000, "History took too long — please try again");
       state.currentCustomerHistory = history;
     } catch (e) {
       console.warn("getHistoryByCustomer failed:", e);
-      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryHistoryBtn">ลองใหม่</button></div>`;
-      const retryBtn = document.getElementById("retryHistoryBtn");
-      if (retryBtn) retryBtn.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
+      historyList.innerHTML = `<div class="empty-hint">โหลดประวัติไม่สำเร็จ — ${escapeHtml((e && e.message) || String(e))}<br><button type="button" class="btn btn-primary mt-12" id="retryHistoryBtn">ลองอีกครั้ง</button></div>`;
+      document.getElementById("retryHistoryBtn")?.addEventListener("click", () => show("customerProfile", { pushHistory: false }));
       return;
+    }
+
+    renderStats(history);
+    if (historyCount) {
+      historyCount.textContent = history.length ? `${history.length} ครั้ง` : "ยังไม่มี";
     }
 
     if (history.length === 0) {
-      historyList.innerHTML = `<div class="empty-hint">No service history yet</div>`;
+      historyList.innerHTML = `<div class="empty-hint">ยังไม่มีประวัติบริการ</div>`;
       return;
     }
 
-    // สรุปย่อตามสเปก: "ครั้งที่มารับบริการล่าสุด (คำนวณเดือน)" + "เทคนิคที่ทำ" ก่อนรายการเต็มด้านล่าง
-    historySummary.hidden = false;
-    historySummary.innerHTML = `
-      <div class="detail-row"><div class="detail-label">ครั้งที่มารับบริการล่าสุด</div><div class="detail-value">${escapeHtml(monthsSince(history[0].visitDate))}</div></div>
-      <div class="detail-row"><div class="detail-label">เทคนิคที่ทำ</div><div class="detail-value">${escapeHtml(history[0].technique || "-")}</div></div>
-    `;
+    historyList.innerHTML = history.map(visitCardHtml).join("");
 
-    historyList.innerHTML = history.map((v) => `
-      <div class="history-item" data-id="${v.serviceId}">
-        <span class="hdate">${formatDate(v.visitDate)}</span>
-        <span class="htype ${v.serviceType === "เติมสี" ? "touchup" : ""}">${escapeHtml(v.serviceType)}</span>
-        ${visitFormBadge(v)}
-        ${visitStatusBadge(v)}
-        <div class="hdetail">
-          Technique: ${escapeHtml(v.technique || "-")} · Color: ${escapeHtml(v.colorUsed || "-")}<br>
-          Intensity: ${escapeHtml(v.intensity || "-")}
-          ${v.note ? `<br>Note: ${escapeHtml(v.note)}` : ""}
-          ${isResumableVisit(v) ? `<br><b>กดเพื่อแก้ไขต่อ</b>` : ""}
-        </div>
-      </div>
-    `).join("");
-
-    historyList.querySelectorAll(".history-item").forEach((el) => {
-      el.addEventListener("click", () => {
+    historyList.querySelectorAll(".cp-visit").forEach((el) => {
+      const open = () => {
         const visit = history.find((h) => h.serviceId === el.dataset.id);
-        if (isResumableVisit(visit)) {
-          resumeDraftVisit(visit);
-        } else {
-          show("visitDetail", { data: visit });
+        if (isResumableVisit(visit)) resumeDraftVisit(visit);
+        else show("visitDetail", { data: visit });
+      };
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
         }
       });
     });
@@ -2100,45 +2809,142 @@ function initCustomerProfile() {
 </script>
 <script>
 // ==== js/screens/visitDetail.js ====
-// visitDetail.js — หน้าดูรายละเอียดประวัติการเข้ารับบริการแบบอ่านอย่างเดียว (แก้ไขไม่ได้)
-// เปิดจากการกดรายการใน customerProfile.js (ส่ง visit object มาทาง show("visitDetail", { data: visit }))
+// visitDetail.js — read-only visit details (opened from customer profile)
 
 
 
 
 
-const FIELD_LABELS = {
-  hadBrowBefore: "เคยสักคิ้วมาก่อนหรือไม่",
-  oldMarkLook: "ลักษณะรอยเก่าที่เห็นในปัจจุบัน",
-  oldMarkTone: "โทนสีรอยเดิม",
-  fixPoints: "จุดที่ต้องการแก้ไขจากรอยเดิม",
-  browHairLook: "ลักษณะขนคิ้ว",
-  browHairDensity: "ความแน่นของขนคิ้ว",
-  skinType: "ประเภทผิว",
-  hasScar: "ผิวบริเวณคิ้วมีแผลเป็นหรือไม่",
-  scarCause: "สาเหตุแผลเป็น",
-  desiredArea: "จุดที่ต้องการ",
-  irritation7d: "ผิวระคายเคืองบริเวณคิ้วภายใน 7 วัน",
-  irritationDetail: "รายละเอียดความระคายเคือง",
-  allergyInfo: "มีอาการแพ้/ข้อมูลสำคัญที่ต้องแจ้งช่างหรือไม่",
-  allergyDetail: "รายละเอียดอาการแพ้",
-  concerns: "ปัญหาหลักที่กังวล",
-  desiredOverview: "ภาพรวมที่ต้องการ",
-  desiredFeel: "ฟีลคิ้วที่ต้องการ",
-  notWanted: "สิ่งที่ไม่อยากได้เด็ดขาด",
-  dontWant: "สิ่งที่ไม่อยากได้เด็ดขาด",
-  adjustFromLast: "สิ่งที่อยากปรับจากครั้งก่อน",
-  touchupPrice: "ค่าเติมสี (บาท)",
-  colorChoice: "สีที่เลือก"
-};
+
+
+const SKIP_RAW_KEYS = new Set([
+  "formStepIndex",
+  "visitSessionKey",
+  "beforePhotoDataUrl",
+  "afterPhotoDataUrl",
+  "signatureCustomerDataUrl",
+  "existingBeforePhotoUrl",
+  "existingAfterPhotoUrl",
+  "existingSignatureCustomerUrl",
+  "mixRatioParts"
+]);
+
+/** Form fields grouped for display — covers Form 1 / 2 / 3 + post-service */
+const DETAIL_SECTIONS = [
+  {
+    title: "เช็คสุขภาพ",
+    fields: [
+      ["hasScar", "แผลเป็นบริเวณคิ้ว"],
+      ["scarCause", "สาเหตุแผล"],
+      ["scarCauseOther", "สาเหตุแผล (อื่น ๆ)"],
+      ["irritation7d", "ระคายเคืองใน 7 วัน"],
+      ["irritationDetail", "รายละเอียดระคายเคือง"],
+      ["allergyInfo", "แพ้ / ข้อมูลสำคัญ"],
+      ["allergyDetail", "รายละเอียดการแพ้"]
+    ]
+  },
+  {
+    title: "ความต้องการ",
+    fields: [
+      ["hadBrowBefore", "เคยสักคิ้วมาก่อน"],
+      ["oldMarkLook", "ลักษณะงานเก่า"],
+      ["oldMarkLookOther", "ลักษณะงานเก่า (อื่น ๆ)"],
+      ["oldMarkTone", "โทนงานเก่า"],
+      ["oldMarkToneOther", "โทนงานเก่า (อื่น ๆ)"],
+      ["fixPoints", "จุดที่อยากแก้"],
+      ["fixPointsOther", "จุดที่อยากแก้ (อื่น ๆ)"],
+      ["concerns", "กังวลหลัก"],
+      ["concernsOther", "กังวล (อื่น ๆ)"],
+      ["desiredOverview", "ลุคที่อยากได้"],
+      ["desiredOverviewOther", "ลุคที่อยากได้ (อื่น ๆ)"],
+      ["desiredFeel", "ความรู้สึกที่อยากได้"],
+      ["desiredArea", "บริเวณที่อยากได้"],
+      ["notWanted", "สิ่งที่ไม่ต้องการ"],
+      ["notWantedOther", "สิ่งที่ไม่ต้องการ (อื่น ๆ)"],
+      ["dontWant", "สิ่งที่ไม่ต้องการ"],
+      ["adjustFromLast", "ปรับจากครั้งก่อน"],
+      ["satisfaction", "ความพึงพอใจหลังลอก"],
+      ["colorRetention", "สีติดอยู่"],
+      ["wantsMoreChange", "อยากปรับเพิ่ม"],
+      ["changeItems", "สิ่งที่อยากปรับ"],
+      ["changeItemsOther", "สิ่งที่อยากปรับ (อื่น ๆ)"],
+      ["colorChoice", "สีที่เลือก"],
+      ["intensity", "ความเข้มเป้าหมาย"],
+      ["touchupPrice", "ราคาเติมสี"]
+    ]
+  },
+  {
+    title: "ออกแบบ",
+    fields: [
+      ["technique", "เทคนิค"],
+      ["prevTechnique", "เทคนิคครั้งก่อน"],
+      ["muscle", "กล้ามเนื้อคิ้ว"],
+      ["muscleNote", "โน้ตกล้ามเนื้อ"],
+      ["shapeDesign", "ทรงที่ออกแบบ"],
+      ["shapeDesignOther", "ทรง (อื่น ๆ)"],
+      ["shapeDesignNote", "โน้ตทรง"],
+      ["prevShapeDesign", "ทรงครั้งก่อน"],
+      ["browGuard", "บราวการ์ด"],
+      ["prevColorUsed", "สีครั้งก่อน"]
+    ]
+  },
+  {
+    title: "Consent",
+    fields: [
+      ["customerInfoConfirmed", "ยืนยันข้อมูลลูกค้า"],
+      ["preServiceAgree", "ยินยอมก่อนทำ"],
+      ["finalAgree", "ยินยอมสุดท้าย"],
+      ["agreedAt", "เซ็นเมื่อ"]
+    ]
+  },
+  {
+    title: "หลังทำ",
+    fields: [
+      ["redness", "แดงของผิว"],
+      ["adherence", "สีติด"]
+    ]
+  }
+];
+
+function hasValue(v) {
+  if (v === undefined || v === null || v === "") return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  return true;
+}
 
 function fmtValue(v) {
   if (Array.isArray(v)) return v.length ? v.join(", ") : "-";
+  if (v === true) return "ใช่";
+  if (v === false) return "ไม่";
+  if (v === "agreed") return "ยินยอม";
+  if (typeof v === "number" && v > 1e11) return formatDate(v);
   if (v === undefined || v === null || v === "") return "-";
+  if (typeof v === "object") {
+    try { return JSON.stringify(v); } catch (e) { return String(v); }
+  }
   return String(v);
 }
 
+function displayField(raw, key) {
+  let value = raw[key];
+  if (!hasValue(value)) return null;
+
+  if (Array.isArray(value)) {
+    value = value.map((item) => {
+      if (!isOtherOption(item)) return item;
+      const other = raw[key + "Other"];
+      return hasValue(other) ? other : optionDisplayLabel(item);
+    });
+  } else if (isOtherOption(value)) {
+    const other = raw[key + "Other"];
+    if (hasValue(other)) value = other;
+    else value = optionDisplayLabel(value);
+  }
+  return value;
+}
+
 function row(label, value) {
+  if (!hasValue(value)) return "";
   return `
     <div class="detail-row">
       <div class="detail-label">${escapeHtml(label)}</div>
@@ -2146,96 +2952,159 @@ function row(label, value) {
     </div>`;
 }
 
-function photoBox(url) {
-  return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
+function photoBox(url, emptyLabel = "ไม่มีรูป") {
+  return `<div class="photo-slot">${url ? `<img src="${escapeHtml(url)}" alt="">` : `<span class="muted small">${escapeHtml(emptyLabel)}</span>`}</div>`;
+}
+
+function sectionHtml(title, rowsHtml) {
+  if (!rowsHtml) return "";
+  return `
+    <div class="step-group">
+      <div class="step-group-title">${escapeHtml(title)}</div>
+      <div class="box-quiet">${rowsHtml}</div>
+    </div>`;
+}
+
+function firstValue(...candidates) {
+  for (const v of candidates) {
+    if (hasValue(v)) return v;
+  }
+  return null;
+}
+
+function formatMixRatioParts(parts) {
+  if (!parts || typeof parts !== "object") return null;
+  const entries = Object.entries(parts).filter(([, n]) => Number(n) > 0);
+  if (!entries.length) return null;
+  return entries.map(([color, n]) => `${color} ${n}`).join(" · ");
+}
+
+function sectionRows(raw, fields) {
+  return fields.map(([key, label]) => row(label, displayField(raw, key))).join("");
 }
 
 function initVisitDetail() {
   const body = document.getElementById("visitDetailBody");
 
   async function handleExportPdf(visit, btn) {
+    const idle = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = "Generating PDF...";
+    btn.textContent = "กำลังสร้าง PDF...";
     try {
       const res = await exportConsentPdf(visit.serviceId);
       if (res && res.success && res.url) {
-        await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
-          title: "Export PDF",
+        await appAlert(`PDF พร้อมแล้ว\n${res.filename || ""}`, {
+          title: "ส่งออก PDF",
           okText: "เปิด PDF"
         });
         window.open(res.url, "_blank", "noopener");
         return;
       }
-      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "Export PDF" });
+      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "ส่งออก PDF" });
     } catch (err) {
-      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "Export PDF" });
+      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "ส่งออก PDF" });
     } finally {
       btn.disabled = false;
-      btn.textContent = "Export Consent Form (PDF)";
+      btn.innerHTML = idle;
     }
   }
 
   onEnter("visitDetail", (visit) => {
     if (!visit) {
-      body.innerHTML = `<div class="empty-hint">ไม่พบข้อมูลประวัตินี้</div>`;
+      body.innerHTML = `<div class="empty-hint">ไม่พบคิวนี้</div>`;
       return;
     }
-    const raw = visit.rawAnswers || {};
-    const rawRows = Object.keys(FIELD_LABELS)
-      .filter((key) => raw[key] !== undefined && raw[key] !== null && raw[key] !== "" && !(Array.isArray(raw[key]) && raw[key].length === 0))
-      .map((key) => row(FIELD_LABELS[key], raw[key]))
+    visit = enrichVisitForDisplay(visit);
+    const raw = (visit.rawAnswers && typeof visit.rawAnswers === "object") ? visit.rawAnswers : {};
+
+    const metaRows = [
+      row("สถานะ", visitStatusLabel(visit.status) || visit.status),
+      row("รหัสคิว", visit.serviceId),
+      row("รหัสจอง Zerva", visit.zervaBookingId),
+      row("นัดหมาย", visit.visitDate ? `${formatDate(visit.visitDate)}${visit.timeSlot ? ` ${visit.timeSlot}` : ""}` : null),
+      row("บริการ", visit.serviceType),
+      row("ฟอร์ม", formTypeLabel(visit.formType)),
+      visit.notServedReason ? row("เหตุผลที่ไม่ได้รับบริการ", visit.notServedReason) : ""
+    ].join("");
+
+    const summaryRows = [
+      row("เทคนิค", firstValue(visit.technique, displayField(raw, "technique"), raw.prevTechnique)),
+      row("สีที่ใช้", firstValue(visit.colorUsed, displayField(raw, "colorChoice"), raw.prevColorUsed)),
+      row("ความเข้ม", firstValue(visit.intensity, displayField(raw, "intensity"))),
+      row("กล้ามเนื้อคิ้ว", firstValue(visit.muscle, displayField(raw, "muscle"))),
+      row("โน้ตกล้ามเนื้อ", displayField(raw, "muscleNote")),
+      row("ทรง", firstValue(visit.shapeDesign, displayField(raw, "shapeDesign"), raw.prevShapeDesign)),
+      row("โน้ตทรง", displayField(raw, "shapeDesignNote")),
+      row("บราวการ์ด", firstValue(visit.browGuard, displayField(raw, "browGuard"))),
+      row("อัตราส่วนสี", firstValue(visit.mixRatio, formatMixRatioParts(raw.mixRatioParts))),
+      row("ผิวแดง", firstValue(visit.redness, displayField(raw, "redness"))),
+      row("สีติด", firstValue(visit.adherence, displayField(raw, "adherence"))),
+      row("ความพึงพอใจ", firstValue(visit.satisfaction, displayField(raw, "satisfaction"))),
+      row("สีติดอยู่", firstValue(visit.colorRetention, displayField(raw, "colorRetention"))),
+      row("อยากปรับเพิ่ม", firstValue(visit.wantsMoreChange, displayField(raw, "wantsMoreChange"))),
+      row("สิ่งที่อยากปรับ", firstValue(visit.changeItems, displayField(raw, "changeItems"))),
+      row("วิเคราะห์ช่าง", visit.analysis),
+      row("โน้ต", visit.note)
+    ].join("");
+
+    const formSections = DETAIL_SECTIONS.map((section) =>
+      sectionHtml(section.title, sectionRows(raw, section.fields))
+    ).join("");
+
+    const knownKeys = new Set(DETAIL_SECTIONS.flatMap((s) => s.fields.map(([k]) => k)));
+    const extraRows = Object.keys(raw)
+      .filter((key) =>
+        !SKIP_RAW_KEYS.has(key) &&
+        !knownKeys.has(key) &&
+        !key.endsWith("Other") &&
+        !/photo|signature|Signature/i.test(key)
+      )
+      .filter((key) => hasValue(raw[key]))
+      .map((key) => row(key, displayField(raw, key)))
       .join("");
+
+    const beforeUrl = visit.beforePhotoUrl || raw.existingBeforePhotoUrl;
+    const afterUrl = visit.afterPhotoUrl || raw.existingAfterPhotoUrl;
+    const sigUrl = visit.signatureCustomerUrl || raw.existingSignatureCustomerUrl;
+    const hasPhotos = Boolean(beforeUrl || afterUrl);
+    const hasSig = Boolean(sigUrl);
 
     body.innerHTML = `
       <div class="box-quiet">
-        <b>${escapeHtml(visit.serviceType || "-")}</b>${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""} &nbsp;·&nbsp; ${formatDate(visit.visitDate)}
+        <b>${escapeHtml(visit.serviceType || formTypeLabel(visit.formType) || "คิว")}</b>
+        ${formTypeLabel(visit.formType) ? ` &nbsp;·&nbsp; ${escapeHtml(formTypeLabel(visit.formType))}` : ""}
+        &nbsp;·&nbsp; ${escapeHtml(formatDate(visit.visitDate))}
       </div>
+
+      ${sectionHtml("ข้อมูลคิว", metaRows)}
+      ${sectionHtml("สรุปงาน", summaryRows)}
 
       ${isCompletedVisitStatus(visit.status) ? `
-      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">Export Consent Form (PDF)</button>
+      <button type="button" class="btn btn-outline btn-block visit-export-btn" id="visitExportPdfBtn">${withIcon("file", "ส่งออกใบยินยอม (PDF)")}</button>
       ` : ""}
 
+      ${formSections}
+      ${extraRows ? sectionHtml("คำตอบอื่น ๆ", extraRows) : ""}
+
+      ${hasPhotos ? `
       <div class="step-group">
-        <div class="step-group-title">รูป Before / After</div>
+        <div class="step-group-title">รูปก่อน / หลัง</div>
         <div class="photo-row">
-          ${photoBox(visit.beforePhotoUrl)}
-          ${photoBox(visit.afterPhotoUrl)}
+          ${photoBox(beforeUrl, "ยังไม่มีรูปก่อน")}
+          ${photoBox(afterUrl, "ยังไม่มีรูปหลัง")}
         </div>
-      </div>
-
-      <div class="step-group">
-        <div class="step-group-title">สรุปบริการ</div>
-        ${row("เทคนิค", visit.technique)}
-        ${row("สีที่ใช้", visit.colorUsed)}
-        ${row("ความเข้ม", visit.intensity)}
-        ${visit.muscle ? row("กล้ามเนื้อคิ้ว", visit.muscle) : ""}
-        ${visit.shapeDesign ? row("ทรงที่ออกแบบ", visit.shapeDesign) : ""}
-        ${visit.browGuard ? row("การกันคิ้ว", visit.browGuard) : ""}
-        ${visit.analysis ? row("ผลการวิเคราะห์จากช่าง", visit.analysis) : ""}
-        ${visit.satisfaction ? row("ความพึงพอใจกับผลลัพธ์หลังลอก", visit.satisfaction) : ""}
-        ${visit.colorRetention ? row("การติดสีโดยรวม", visit.colorRetention) : ""}
-        ${visit.wantsMoreChange ? row("มีสิ่งที่ต้องการแก้ไขเพิ่มเติมหรือไม่", visit.wantsMoreChange) : ""}
-        ${(visit.changeItems || []).length ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", visit.changeItems.join(", ")) : ""}
-        ${visit.mixRatio ? row("สัดส่วนสีที่ใช้", visit.mixRatio) : ""}
-        ${visit.redness ? row("ความแดงผิว", visit.redness) : ""}
-        ${visit.adherence ? row("ความติดสี", visit.adherence) : ""}
-        ${!isCompletedVisitStatus(visit.status) && visitStatusLabel(visit.status) ? row("สถานะ", visitStatusLabel(visit.status)) : ""}
-        ${visit.note ? row("หมายเหตุ", visit.note) : ""}
-      </div>
-
-      ${rawRows ? `
-      <div class="step-group">
-        <div class="step-group-title">รายละเอียดจากแบบฟอร์มที่ลูกค้ากรอก</div>
-        ${rawRows}
       </div>` : ""}
 
+      ${hasSig || hasPhotos ? `
       <div class="step-group">
         <div class="step-group-title">ลายเซ็น</div>
         <div class="photo-row">
-          <div class="photo-slot photo-slot-sig">${visit.signatureCustomerUrl ? `<img src="${visit.signatureCustomerUrl}">` : `<span class="muted small">ไม่มี</span>`}</div>
+          <div class="photo-slot photo-slot-sig">${sigUrl
+            ? `<img src="${escapeHtml(sigUrl)}" alt="ลายเซ็นลูกค้า">`
+            : `<span class="muted small">ยังไม่มีลายเซ็นลูกค้า</span>`}</div>
           <div class="photo-slot photo-slot-sig"><span class="muted small">(ชนิสตา ศุภสุข)</span></div>
         </div>
-      </div>
+      </div>` : ""}
     `;
 
     const exportBtn = document.getElementById("visitExportPdfBtn");
@@ -2310,10 +3179,10 @@ function initCreateVisit() {
       const openVisit = history.find((v) => normalizeVisitStatus(v.status) === "in_progress");
       if (openVisit) {
         const proceed = await appConfirm(
-          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่\n\nVisit ${openVisit.serviceId}\nสร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}\n\nอาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง ถ้าสร้าง Visit ใหม่ Visit เก่าจะยังค้างอยู่และต้องกลับไปปิดเองทีหลัง`,
+          `ลูกค้าคนนี้มีคิวที่ยังไม่ปิดอยู่\n\nคิว ${openVisit.serviceId}\nสร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}\n\nอาจเป็นครั้งก่อนที่กรอกค้างไว้ ถ้าสร้างคิวใหม่ คิวเก่าจะยังค้างอยู่`,
           {
-            title: "มี Visit ที่ยังไม่ปิด",
-            okText: "สร้าง Visit ใหม่",
+            title: "มีคิวค้างอยู่",
+            okText: "สร้างคิวใหม่",
             cancelText: "กลับไปเช็คก่อน"
           }
         );
@@ -2333,6 +3202,7 @@ function initCreateVisit() {
     };
     state.visitContext = null;
     state.resetVisitDraft();
+    state.formStepIndex = 0;
     state.formType = null;
     state.serviceType = null;
     continueBtn.disabled = false;
@@ -2353,6 +3223,9 @@ function initCreateVisit() {
     selectedSlot = null;
     slotButtons.forEach((b) => b.classList.remove("is-selected"));
     customSlotBtn.classList.remove("is-selected");
+    // ค่าเริ่มต้นที่ร้านใช้บ่อย — ลดการกดซ้ำ
+    const defaultSlot = document.querySelector('[data-time-slot="10:30"]');
+    if (defaultSlot) selectSlot("10:30");
     state.pendingVisitMeta = null;
     document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
     continueBtn.disabled = false;
@@ -2457,11 +3330,12 @@ async function chooseForm({ serviceType, formType, screenId, buttonId }) {
     };
     state.pendingVisitMeta = null;
     state.resetVisitDraft();
+    state.formStepIndex = 0;
     closeServiceTypeModal({ force: true });
     show(screenId);
   } catch (e) {
     console.warn("createVisit after form selection failed:", e);
-    await appAlert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "สร้าง Visit ไม่สำเร็จ" });
+    await appAlert("สร้างคิวไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "สร้างคิวไม่สำเร็จ" });
   } finally {
     setChoosingDisabled(false);
   }
@@ -2506,8 +3380,8 @@ function initServiceType() {
 </script>
 <script>
 // ==== js/screens/formOne.js ====
-// formOne.js — Form 1: สักคิ้วครั้งแรก (ใช้กับลูกค้าที่ไม่มีรอยสักคิ้วเดิมที่มีผลต่อการออกแบบ)
-// ส่วนที่ 1 ความต้องการ → ส่วนที่ 2 การออกแบบ → ส่วนที่ 3 สรุป+consent+เซ็น → ต่อที่หน้าบันทึกหลังทำ (screen-techFields)
+// formOne.js — Form 1: สักคิ้วครั้งแรก
+// Wizard 5 ขั้น: ข้อมูลลูกค้า → สุขภาพ → ความต้องการ → การออกแบบ → ยืนยัน → techFields
 
 
 
@@ -2517,6 +3391,10 @@ function initServiceType() {
 
 
 
+import {
+  mountFormChrome, setFooterWizardMode, wireCancelButton,
+  customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
+} from "../formWizard.js?v=20260808ae";
 
 function consentBlocksHtml() {
   return CONSENT_BLOCKS.map((b) => `
@@ -2530,18 +3408,20 @@ function consentBlocksHtml() {
 function formOneSummaryValues(draft) {
   return {
     technique: draft.technique || "-",
-    desiredOverview: draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"),
+    desiredOverview: draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่น ๆ") : (draft.desiredOverview || "-"),
     colorChoice: draft.colorChoice || "-",
-    shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"),
-    notWanted: (draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-",
+    shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่น ๆ") : (draft.shapeDesign || "-"),
+    notWanted: (draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่น ๆ") : v)).join(", ") || "-",
     intensity: draft.intensity || "-"
   };
 }
 
 function initFormOne() {
   const container = document.getElementById("form1Body");
+  const chromeEl = document.getElementById("form1Chrome");
   const nextBtn = document.getElementById("form1NextBtn");
-  const backBtn = document.getElementById("form1BackBtn");
+  const prevBtn = document.getElementById("form1PrevBtn");
+  const stepMetaEl = document.getElementById("form1StepMeta");
   let pad = null;
 
   function photoSlot(key, label) {
@@ -2578,13 +3458,16 @@ function initFormOne() {
     });
   }
 
-  function render() {
-    const draft = state.visitDraft;
-    const summary = formOneSummaryValues(draft);
-    container.innerHTML = `
-      ${visitHeaderHtml()}
-      ${readinessBlockHtml(draft)}
+  function stepCustomerHtml(draft) {
+    return customerConfirmStepHtml(draft);
+  }
 
+  function stepHealthHtml(draft) {
+    return readinessBlockHtml(draft);
+  }
+
+  function stepNeedsHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 1 — ความต้องการของลูกค้า</div>
       <div class="step-group">
         <div class="step-group-title">ปัญหาหลักที่กังวล <span class="required-star">*</span></div>
@@ -2617,16 +3500,19 @@ function initFormOne() {
           <input type="checkbox" id="f1PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
           <span>${escapeHtml(PRE_SERVICE_AGREE_TEXT)}</span>
         </label>
-      </div>
+      </div>`;
+  }
 
+  function stepDesignHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 2 — การออกแบบ</div>
       <div class="step-group">
-        <div class="step-group-title">ประวัติผิวและคิ้วจาก Customer Profile</div>
+        <div class="step-group-title">ประวัติผิวและคิ้วจากโปรไฟล์</div>
         ${skinProfileReadOnlyHtml()}
       </div>
       <div class="step-group">
-        <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("before", "Before")}</div>
+        <div class="step-group-title">รูปก่อนทำ <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("before", "ก่อนทำ")}</div>
       </div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือก</div>
@@ -2645,8 +3531,12 @@ function initFormOne() {
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
         ${radioField("browGuard", OPTIONS.browGuard, draft)}
-      </div>
+      </div>`;
+  }
 
+  function stepConfirmHtml(draft) {
+    const summary = formOneSummaryValues(draft);
+    return `
       <div class="form-section-title">ส่วนที่ 3 — สรุปข้อมูลก่อนเริ่มทำ</div>
       <div class="box-quiet">
         <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value" data-summary-key="technique">${escapeHtml(summary.technique)}</div></div>
@@ -2656,7 +3546,6 @@ function initFormOne() {
         <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value" data-summary-key="notWanted">${escapeHtml(summary.notWanted)}</div></div>
         <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value" data-summary-key="intensity">${escapeHtml(summary.intensity)}</div></div>
       </div>
-
       <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
       <div class="step-group" data-radio-key="finalAgree">
         <label class="agree-row">
@@ -2664,81 +3553,137 @@ function initFormOne() {
           <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
         </label>
       </div>
-
       <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
       <div class="sig-wrap"><canvas id="f1SigCanvas"></canvas></div>
-      <div class="sig-actions"><button id="f1SigClearBtn" type="button">ล้างลายเซ็น</button></div>
-    `;
+      <div class="sig-actions"><button id="f1SigClearBtn" type="button">ล้างลายเซ็น</button></div>`;
+  }
 
-    pad = createSignaturePad(document.getElementById("f1SigCanvas"));
-    document.getElementById("f1SigClearBtn").addEventListener("click", () => pad.clear());
+  function stepHtml(step, draft) {
+    if (step === 0) return stepCustomerHtml(draft);
+    if (step === 1) return stepHealthHtml(draft);
+    if (step === 2) return stepNeedsHtml(draft);
+    if (step === 3) return stepDesignHtml(draft);
+    return stepConfirmHtml(draft);
+  }
 
-    document.getElementById("f1PreAgree").addEventListener("change", (e) => {
-      draft.preServiceAgree = e.target.checked;
-      e.target.closest(".field-error")?.classList.remove("field-error");
+  function render() {
+    const draft = state.visitDraft;
+    const step = Math.max(0, Math.min(state.formStepIndex || 0, LAST_CONSULT_STEP));
+    state.formStepIndex = step;
+    pad = null;
+
+    mountFormChrome(chromeEl, step);
+    container.innerHTML = stepHtml(step, draft);
+    setFooterWizardMode(prevBtn, nextBtn, stepMetaEl, { stepIndex: step });
+    container.scrollTop = 0;
+
+    if (step === 0) bindCustomerConfirm(container, draft);
+
+    if (step === 2) {
+      document.getElementById("f1PreAgree")?.addEventListener("change", (e) => {
+        draft.preServiceAgree = e.target.checked;
+        e.target.closest(".field-error")?.classList.remove("field-error");
+      });
+    }
+
+    if (step === 3) {
+      container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+        inputEl.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = await readFileAsDataUrl(file);
+          render();
+        });
+      });
+    }
+
+    if (step === 4) {
+      pad = createSignaturePad(document.getElementById("f1SigCanvas"));
+      document.getElementById("f1SigClearBtn")?.addEventListener("click", () => pad.clear());
+    }
+  }
+
+  if (container) {
+    bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
+      bindReadinessToggle(container, state.visitDraft, changedRadioName);
+      updateSummary();
     });
 
-    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
-      inputEl.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const dataUrl = await readFileAsDataUrl(file);
-        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
-        render();
+    container.addEventListener("input", (e) => {
+      if (e.target.dataset.textKey || e.target.dataset.otherKey) updateSummary();
+    });
+
+    ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+      container.addEventListener(evt, (e) => {
+        e.target.closest(".field-error")?.classList.remove("field-error");
       });
     });
   }
-
-  bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
-    bindReadinessToggle(container, state.visitDraft, changedRadioName);
-    updateSummary();
-  });
-
-  container.addEventListener("input", (e) => {
-    if (e.target.dataset.textKey || e.target.dataset.otherKey) updateSummary();
-  });
-
-  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
-    container.addEventListener(evt, (e) => {
-      const errEl = e.target.closest(".field-error");
-      if (errEl) errEl.classList.remove("field-error");
-    });
-  });
 
   function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
   function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
   function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
 
-  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
-  wireNotServedButton(document.getElementById("form1NotServedBtn"));
-  wireDraftSaveButton(document.getElementById("form1DraftBtn"));
-
-  nextBtn.addEventListener("click", async () => {
-    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+  function validateStep(step) {
     clearFieldErrors();
     const draft = state.visitDraft;
+    if (step === 0) {
+      return scrollToFirstError(!draft.customerInfoConfirmed ? flagError('[data-check-key="customerInfoConfirmed"]') : null);
+    }
+    if (step === 1) {
+      return scrollToFirstError(
+        !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null,
+        draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null,
+        draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null,
+        !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null,
+        draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null,
+        !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null,
+        draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null
+      );
+    }
+    if (step === 2) {
+      return scrollToFirstError(
+        !(draft.concerns || []).length ? flagError('[data-chip-key="concerns"]') : null,
+        !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null,
+        !draft.intensity ? flagError('[data-radio-key="intensity"]') : null,
+        !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null
+      );
+    }
+    if (step === 3) {
+      return scrollToFirstError(!hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null);
+    }
+    if (step === 4) {
+      const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+      return scrollToFirstError(
+        !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null,
+        (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null
+      );
+    }
+    return true;
+  }
 
-    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
-    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
-    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
-    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
-    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
-    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
-    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
-    const concernsEl = !(draft.concerns || []).length ? flagError('[data-chip-key="concerns"]') : null;
-    const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
-    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
-    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
-    const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
-    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
-    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
+  prevBtn?.addEventListener("click", () => {
+    if ((state.formStepIndex || 0) <= 0) return;
+    state.formStepIndex -= 1;
+    render();
+  });
+  wireCancelButton(document.getElementById("form1CancelBtn"));
+  wireDraftSaveButton(document.getElementById("form1DraftBtn"));
 
-    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, concernsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
-    if (!noErrors) return;
+  nextBtn?.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    const step = state.formStepIndex || 0;
+    if (!validateStep(step)) return;
 
+    if (step < LAST_CONSULT_STEP) {
+      state.formStepIndex = step + 1;
+      render();
+      return;
+    }
+
+    const draft = state.visitDraft;
     nextBtn.disabled = true;
-    if (!pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
+    if (pad && !pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
     draft.agreedAt = Date.now();
 
     try {
@@ -2746,19 +3691,26 @@ function initFormOne() {
         await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
       }
     } catch (e) {
-      // เช็ก/บันทึกกล้ามเนื้อคิ้วพลาดไม่ควรบล็อกไม่ให้ไปหน้าถัดไป (แก้ค่านี้ทีหลังใน Customer Profile ได้)
       console.warn("updateMuscleEvaluation failed:", e);
     }
 
+    state.formStepIndex = 5;
+    nextBtn.disabled = false;
     show("techFields");
   });
 
-  onEnter("form1", render);
+  onEnter("form1", () => {
+    if (state.formStepIndex == null || state.formStepIndex > LAST_CONSULT_STEP) {
+      state.formStepIndex = state.formStepIndex === 5 ? LAST_CONSULT_STEP : 0;
+    }
+    render();
+  });
 }
 </script>
 <script>
 // ==== js/screens/formTwo.js ====
-// formTwo.js — Form 2: สักทับรอยเก่า (ลูกค้ามีสี/ทรงเดิมที่มีผลต่อการออกแบบ แต่ไม่ใช่การกลับมาเติมสีของ pyne.studio)
+// formTwo.js — Form 2: สักทับรอยเก่า
+// Wizard 5 ขั้น: ข้อมูลลูกค้า → สุขภาพ → ความต้องการ → การออกแบบ → ยืนยัน → techFields
 
 
 
@@ -2768,6 +3720,10 @@ function initFormOne() {
 
 
 
+import {
+  mountFormChrome, setFooterWizardMode, wireCancelButton,
+  customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
+} from "../formWizard.js?v=20260808ae";
 
 function consentBlocksHtml() {
   const blocks = [CONSENT_BLOCKS[0], FORM2_EXTRA_CONSENT_BLOCK, ...CONSENT_BLOCKS.slice(1)];
@@ -2781,8 +3737,10 @@ function consentBlocksHtml() {
 
 function initFormTwo() {
   const container = document.getElementById("form2Body");
+  const chromeEl = document.getElementById("form2Chrome");
   const nextBtn = document.getElementById("form2NextBtn");
-  const backBtn = document.getElementById("form2BackBtn");
+  const prevBtn = document.getElementById("form2PrevBtn");
+  const stepMetaEl = document.getElementById("form2StepMeta");
   let pad = null;
 
   function photoSlot(key, label) {
@@ -2811,12 +3769,8 @@ function initFormTwo() {
       </div>`;
   }
 
-  function render() {
-    const draft = state.visitDraft;
-    container.innerHTML = `
-      ${visitHeaderHtml()}
-      ${readinessBlockHtml(draft)}
-
+  function stepNeedsHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 1 — ประเมินรอยเดิมและความต้องการ</div>
       <div class="step-group">
         <div class="step-group-title">ลักษณะรอยเก่าที่เห็นในปัจจุบัน <span class="required-star">*</span></div>
@@ -2857,16 +3811,19 @@ function initFormTwo() {
           <input type="checkbox" id="f2PreAgree" ${draft.preServiceAgree ? "checked" : ""}>
           <span>${escapeHtml(PRE_SERVICE_AGREE_TEXT)}</span>
         </label>
-      </div>
+      </div>`;
+  }
 
+  function stepDesignHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 2 — การออกแบบ</div>
       <div class="step-group">
-        <div class="step-group-title">ประวัติผิวและคิ้วจาก Customer Profile</div>
+        <div class="step-group-title">ประวัติผิวและคิ้วจากโปรไฟล์</div>
         ${skinProfileReadOnlyHtml()}
       </div>
       <div class="step-group">
-        <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("before", "Before")}</div>
+        <div class="step-group-title">รูปก่อนทำ <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("before", "ก่อนทำ")}</div>
       </div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือก</div>
@@ -2885,21 +3842,23 @@ function initFormTwo() {
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
         ${radioField("browGuard", OPTIONS.browGuard, draft)}
-      </div>
+      </div>`;
+  }
 
+  function stepConfirmHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 3 — สรุปข้อมูลก่อนเริ่มทำ</div>
       <div class="box-quiet">
         <div class="detail-row"><div class="detail-label">เทคนิคที่เลือก</div><div class="detail-value">${escapeHtml(draft.technique || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ลักษณะรอยเก่า</div><div class="detail-value">${escapeHtml((draft.oldMarkLook || []).map((v) => (v === "Other" ? (draft.oldMarkLookOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">สีรอยเก่า</div><div class="detail-value">${escapeHtml(draft.oldMarkTone === "Other" ? (draft.oldMarkToneOther || "อื่นๆ") : (draft.oldMarkTone || "-"))}</div></div>
-        <div class="detail-row"><div class="detail-label">จุดที่ต้องการแก้ไข</div><div class="detail-value">${escapeHtml((draft.fixPoints || []).map((v) => (v === "Other" ? (draft.fixPointsOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value">${escapeHtml(draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่นๆ") : (draft.desiredOverview || "-"))}</div></div>
-        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value">${escapeHtml((draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่นๆ") : v)).join(", ") || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value">${escapeHtml(draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">ลักษณะรอยเก่า</div><div class="detail-value">${escapeHtml((draft.oldMarkLook || []).map((v) => (v === "Other" ? (draft.oldMarkLookOther || "อื่น ๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">สีรอยเก่า</div><div class="detail-value">${escapeHtml(draft.oldMarkTone === "Other" ? (draft.oldMarkToneOther || "อื่น ๆ") : (draft.oldMarkTone || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">จุดที่ต้องการแก้ไข</div><div class="detail-value">${escapeHtml((draft.fixPoints || []).map((v) => (v === "Other" ? (draft.fixPointsOther || "อื่น ๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ภาพรวมที่ต้องการ</div><div class="detail-value">${escapeHtml(draft.desiredOverview === "Other" ? (draft.desiredOverviewOther || "อื่น ๆ") : (draft.desiredOverview || "-"))}</div></div>
+        <div class="detail-row"><div class="detail-label">สิ่งที่ไม่อยากได้เด็ดขาด</div><div class="detail-value">${escapeHtml((draft.notWanted || []).map((v) => (v === "Other" ? (draft.notWantedOther || "อื่น ๆ") : v)).join(", ") || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">ทรงที่ออกแบบ</div><div class="detail-value">${escapeHtml(draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่น ๆ") : (draft.shapeDesign || "-"))}</div></div>
         <div class="detail-row"><div class="detail-label">สีที่เลือก</div><div class="detail-value">${escapeHtml(draft.colorChoice || "-")}</div></div>
         <div class="detail-row"><div class="detail-label">ระดับความเข้มหลังทำเสร็จวันนี้</div><div class="detail-value">${escapeHtml(draft.intensity || "-")}</div></div>
       </div>
-
       <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
       <div class="step-group" data-radio-key="finalAgree">
         <label class="agree-row">
@@ -2907,99 +3866,150 @@ function initFormTwo() {
           <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
         </label>
       </div>
-
       <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
       <div class="sig-wrap"><canvas id="f2SigCanvas"></canvas></div>
-      <div class="sig-actions"><button id="f2SigClearBtn" type="button">ล้างลายเซ็น</button></div>
-    `;
+      <div class="sig-actions"><button id="f2SigClearBtn" type="button">ล้างลายเซ็น</button></div>`;
+  }
 
-    pad = createSignaturePad(document.getElementById("f2SigCanvas"));
-    document.getElementById("f2SigClearBtn").addEventListener("click", () => pad.clear());
+  function stepHtml(step, draft) {
+    if (step === 0) return customerConfirmStepHtml(draft);
+    if (step === 1) return readinessBlockHtml(draft);
+    if (step === 2) return stepNeedsHtml(draft);
+    if (step === 3) return stepDesignHtml(draft);
+    return stepConfirmHtml(draft);
+  }
 
-    document.getElementById("f2PreAgree").addEventListener("change", (e) => {
-      draft.preServiceAgree = e.target.checked;
-      e.target.closest(".field-error")?.classList.remove("field-error");
-    });
+  function render() {
+    const draft = state.visitDraft;
+    const step = Math.max(0, Math.min(state.formStepIndex || 0, LAST_CONSULT_STEP));
+    state.formStepIndex = step;
+    pad = null;
+    mountFormChrome(chromeEl, step);
+    container.innerHTML = stepHtml(step, draft);
+    setFooterWizardMode(prevBtn, nextBtn, stepMetaEl, { stepIndex: step });
+    container.scrollTop = 0;
 
-    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
-      inputEl.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const dataUrl = await readFileAsDataUrl(file);
-        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
-        render();
+    if (step === 0) bindCustomerConfirm(container, draft);
+    if (step === 2) {
+      document.getElementById("f2PreAgree")?.addEventListener("change", (e) => {
+        draft.preServiceAgree = e.target.checked;
+        e.target.closest(".field-error")?.classList.remove("field-error");
       });
-    });
+    }
+    if (step === 3) {
+      container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+        inputEl.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = await readFileAsDataUrl(file);
+          render();
+        });
+      });
+    }
+    if (step === 4) {
+      pad = createSignaturePad(document.getElementById("f2SigCanvas"));
+      document.getElementById("f2SigClearBtn")?.addEventListener("click", () => pad.clear());
+    }
   }
 
   bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
     bindReadinessToggle(container, state.visitDraft, changedRadioName);
   });
 
-  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
-    container.addEventListener(evt, (e) => {
-      const errEl = e.target.closest(".field-error");
-      if (errEl) errEl.classList.remove("field-error");
+  if (container) {
+    ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+      container.addEventListener(evt, (e) => {
+        e.target.closest(".field-error")?.classList.remove("field-error");
+      });
     });
-  });
+  }
 
   function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
   function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
   function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
 
-  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
-  wireNotServedButton(document.getElementById("form2NotServedBtn"));
-  wireDraftSaveButton(document.getElementById("form2DraftBtn"));
-
-  nextBtn.addEventListener("click", async () => {
-    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+  function validateStep(step) {
     clearFieldErrors();
     const draft = state.visitDraft;
+    if (step === 0) {
+      return scrollToFirstError(!draft.customerInfoConfirmed ? flagError('[data-check-key="customerInfoConfirmed"]') : null);
+    }
+    if (step === 1) {
+      return scrollToFirstError(
+        !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null,
+        draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null,
+        draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null,
+        !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null,
+        draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null,
+        !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null,
+        draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null
+      );
+    }
+    if (step === 2) {
+      return scrollToFirstError(
+        !(draft.oldMarkLook || []).length ? flagError('[data-chip-key="oldMarkLook"]') : null,
+        !(draft.fixPoints || []).length ? flagError('[data-chip-key="fixPoints"]') : null,
+        !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null,
+        !draft.intensity ? flagError('[data-radio-key="intensity"]') : null,
+        !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null
+      );
+    }
+    if (step === 3) {
+      return scrollToFirstError(!hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null);
+    }
+    if (step === 4) {
+      const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+      return scrollToFirstError(
+        !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null,
+        (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null
+      );
+    }
+    return true;
+  }
 
-    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
-    const scarCauseEl = draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null;
-    const scarOtherEl = draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null;
-    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
-    const irritationDetailEl = draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null;
-    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
-    const allergyDetailEl = draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null;
-    const oldMarkEl = !(draft.oldMarkLook || []).length ? flagError('[data-chip-key="oldMarkLook"]') : null;
-    const fixPointsEl = !(draft.fixPoints || []).length ? flagError('[data-chip-key="fixPoints"]') : null;
-    const overviewEl = !draft.desiredOverview ? flagError('[data-chip-key="desiredOverview"]') : null;
-    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const preAgreeEl = !draft.preServiceAgree ? flagError('[data-check-key="preServiceAgree"]') : null;
-    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
-    const finalAgreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
-    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
-    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
+  prevBtn?.addEventListener("click", () => {
+    if ((state.formStepIndex || 0) <= 0) return;
+    state.formStepIndex -= 1;
+    render();
+  });
+  wireCancelButton(document.getElementById("form2CancelBtn"));
+  wireDraftSaveButton(document.getElementById("form2DraftBtn"));
 
-    const noErrors = scrollToFirstError(scarEl, scarCauseEl, scarOtherEl, irritationEl, irritationDetailEl, allergyEl, allergyDetailEl, oldMarkEl, fixPointsEl, overviewEl, intensityEl, preAgreeEl, beforeEl, finalAgreeEl, sigEl);
-    if (!noErrors) return;
-
+  nextBtn?.addEventListener("click", async () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    const step = state.formStepIndex || 0;
+    if (!validateStep(step)) return;
+    if (step < LAST_CONSULT_STEP) {
+      state.formStepIndex = step + 1;
+      render();
+      return;
+    }
+    const draft = state.visitDraft;
     nextBtn.disabled = true;
-    if (!pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
+    if (pad && !pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
     draft.agreedAt = Date.now();
-
     try {
-      if (draft.muscle) {
-        await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
-      }
+      if (draft.muscle) await updateMuscleEvaluation(state.currentCustomer.customerId, draft.muscle, draft.muscleNote || "");
     } catch (e) {
-      // เช็ก/บันทึกกล้ามเนื้อคิ้วพลาดไม่ควรบล็อกไม่ให้ไปหน้าถัดไป (แก้ค่านี้ทีหลังใน Customer Profile ได้)
       console.warn("updateMuscleEvaluation failed:", e);
     }
-
+    state.formStepIndex = 5;
+    nextBtn.disabled = false;
     show("techFields");
   });
 
-  onEnter("form2", render);
+  onEnter("form2", () => {
+    if (state.formStepIndex == null || state.formStepIndex > LAST_CONSULT_STEP) {
+      state.formStepIndex = state.formStepIndex === 5 ? LAST_CONSULT_STEP : 0;
+    }
+    render();
+  });
 }
 </script>
 <script>
 // ==== js/screens/formTouchup.js ====
-// formTouchup.js — Form 3 "เติมสีคิ้ว" ส่วนที่ 1-4 (ประวัติเดิม → ติดตามผล → ออกแบบ → สรุป+เซ็น)
-// ส่วนที่ 5 (บันทึกหลังทำ) อยู่ที่ techFields.js (ใช้ร่วมกับ Form 1/2)
-// ใช้กับลูกค้าเก่าที่เคยสักกับ pyne.studio เท่านั้น (Visit ถูกสร้างไว้แล้วตั้งแต่ Step 3 ก่อนเข้าหน้านี้)
+// formTouchup.js — Form 3 "เติมสีคิ้ว"
+// Wizard 5 ขั้น: ข้อมูลลูกค้า(+ประวัติ) → สุขภาพ → ติดตามผล+Before → การออกแบบ → ยืนยัน → techFields
 
 
 
@@ -3008,9 +4018,17 @@ function initFormTwo() {
 
 
 
+import {
+  formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto,
+  isOtherOption, selectionIncludesOther, TOUCHUP_ORIGINAL,
+  resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
+} from "../utils.js?v=20260808ae";
 
+import {
+  mountFormChrome, setFooterWizardMode, wireCancelButton,
+  customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
+} from "../formWizard.js?v=20260808ae";
 
-// ระยะเวลาจากวันที่สักครั้งแรกถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (คำนวณอัตโนมัติตามสเปก)
 function monthsSince(ts) {
   if (!ts) return "-";
   const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
@@ -3025,14 +4043,10 @@ function photoBoxReadOnly(url) {
   return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
 }
 
-// รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
-// ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
 function historyCtxFromRows(history) {
   const browVisits = history.filter(isCompletedBrowVisit);
   if (!browVisits.length) return null;
-  const first = browVisits[browVisits.length - 1];
-  const last = browVisits[0];
-  return { first, last };
+  return { first: browVisits[browVisits.length - 1], last: browVisits[0] };
 }
 
 async function loadHistoryCtx(customerId) {
@@ -3045,10 +4059,37 @@ async function loadHistoryCtx(customerId) {
   return historyCtxFromRows(history);
 }
 
+function applyTouchupDefaults(draft, ctx) {
+  if (!ctx) return;
+  if (!draft.prevTechnique) draft.prevTechnique = ctx.last.technique || null;
+  if (!draft.prevShapeDesign) draft.prevShapeDesign = ctx.last.shapeDesign || null;
+  if (!draft.prevColorUsed) draft.prevColorUsed = ctx.last.colorUsed || null;
+
+  if (!draft.technique) {
+    draft.technique = TOUCHUP_ORIGINAL.technique;
+  } else if (draft.technique === draft.prevTechnique) {
+    draft.technique = TOUCHUP_ORIGINAL.technique;
+  }
+
+  if (!draft.shapeDesign) {
+    draft.shapeDesign = TOUCHUP_ORIGINAL.shape;
+  } else if (draft.shapeDesign === draft.prevShapeDesign) {
+    draft.shapeDesign = TOUCHUP_ORIGINAL.shape;
+  }
+
+  if (!draft.colorChoice) {
+    draft.colorChoice = TOUCHUP_ORIGINAL.color;
+  } else if (draft.colorChoice === draft.prevColorUsed) {
+    draft.colorChoice = TOUCHUP_ORIGINAL.color;
+  }
+}
+
 function initFormTouchup() {
   const container = document.getElementById("touchupBody");
+  const chromeEl = document.getElementById("touchupChrome");
   const nextBtn = document.getElementById("tuNextBtn");
-  const backBtn = document.getElementById("touchupBackBtn");
+  const prevBtn = document.getElementById("touchupPrevBtn");
+  const stepMetaEl = document.getElementById("touchupStepMeta");
   let pad = null;
   let historyCtx = null;
 
@@ -3067,10 +4108,13 @@ function initFormTouchup() {
 
   function historyBlockHtml() {
     if (!historyCtx) {
-      return `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
+      return `
+        <div class="form-section-title">ส่วนที่ 1 — ระบบดึงประวัติเดิม</div>
+        <div class="empty-hint">ไม่พบประวัติเดิม</div>`;
     }
     const { first, last } = historyCtx;
     return `
+      <div class="form-section-title">ส่วนที่ 1 — ระบบดึงประวัติเดิม</div>
       <div class="box-quiet">
         ${row("วันที่สักครั้งแรก", formatDate(first.visitDate))}
         ${row("ระยะเวลาจากครั้งแรกถึงวันนี้", monthsSince(first.visitDate))}
@@ -3081,20 +4125,45 @@ function initFormTouchup() {
           ${photoBoxReadOnly(first.beforePhotoUrl)}
           ${photoBoxReadOnly(first.afterPhotoUrl)}
         </div>
-        <button type="button" class="icon-btn icon-btn--flush mt-8" id="tuViewLastBtn">ดูรายละเอียด ›</button>
+        <button type="button" class="btn btn-outline mt-8" data-open-history>ดูรายละเอียด</button>
       </div>`;
   }
 
-  function render() {
-    const draft = state.visitDraft;
+  function techniqueOptions() {
+    return [TOUCHUP_ORIGINAL.technique, ...OPTIONS.technique];
+  }
 
-    container.innerHTML = `
-      ${visitHeaderHtml()}
-      <div class="form-section-title">ส่วนที่ 1 — ประวัติเดิม</div>
-      ${historyBlockHtml()}
+  function techniqueLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.technique) {
+      return `เทคนิคเดิม: ${(historyCtx && historyCtx.last.technique) || state.visitDraft.prevTechnique || "-"}`;
+    }
+    return opt;
+  }
 
-      ${readinessBlockHtml(draft)}
+  function shapeOptions() {
+    return [TOUCHUP_ORIGINAL.shape, ...OPTIONS.touchupShape];
+  }
 
+  function shapeLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.shape) {
+      return `ทรงเดิม: ${(historyCtx && historyCtx.last.shapeDesign) || state.visitDraft.prevShapeDesign || "-"}`;
+    }
+    return opt === "Other" ? "อื่น ๆ" : opt;
+  }
+
+  function colorOptions() {
+    return [TOUCHUP_ORIGINAL.color, ...OPTIONS.colorChoice8];
+  }
+
+  function colorLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.color) {
+      return `สีเดิม: ${(historyCtx && historyCtx.last.colorUsed) || state.visitDraft.prevColorUsed || "-"}`;
+    }
+    return opt;
+  }
+
+  function stepNeedsHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 2 — ติดตามผลหลังลอก</div>
       <div class="step-group">
         <div class="step-group-title">ความพึงพอใจกับผลลัพธ์หลังลอก <span class="required-star">*</span></div>
@@ -3119,42 +4188,50 @@ function initFormTouchup() {
       </div>
       <div class="step-group">
         <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("before", "Before")}</div>
-      </div>
+        <div class="photo-row">${photoSlot("before", "ก่อนทำ")}</div>
+      </div>`;
+  }
 
+  function stepDesignHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 3 — การออกแบบ</div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือกใช้ครั้งนี้</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นเทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
-        ${radioField("technique", OPTIONS.technique, draft)}
+        ${radioField("technique", techniqueOptions(), draft, techniqueLabel)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
-        ${chipGroup("shapeDesign", OPTIONS.touchupShape, draft, false)}
+        ${radioField("shapeDesign", shapeOptions(), draft, shapeLabel)}
+        ${draft.shapeDesign === "Other" || isOtherOption(draft.shapeDesign)
+          ? `<input type="text" class="input other-input mt-8" data-other-key="shapeDesignOther" placeholder="ระบุ..." value="${escapeHtml(draft.shapeDesignOther || "")}">`
+          : ""}
       </div>
       <div class="step-group">
         <div class="step-group-title">สีที่ต้องการ</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นสีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
-        ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
+        ${radioField("colorChoice", colorOptions(), draft, colorLabel)}
       </div>
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
         ${radioField("browGuard", OPTIONS.browGuard, draft)}
-      </div>
+      </div>`;
+  }
 
+  function stepConfirmHtml(draft) {
+    const changeLabel = (draft.changeItems || [])
+      .map((v) => (isOtherOption(v) ? (draft.changeItemsOther || "อื่น ๆ") : v))
+      .join(", ");
+    return `
       <div class="form-section-title">ส่วนที่ 4 — สรุปข้อมูลก่อนเริ่มทำ</div>
       <div class="box-quiet">
         ${row("การติดสีโดยรวม", draft.colorRetention)}
         ${draft.wantsMoreChange === "มี" && (draft.changeItems || []).length
-          ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", (draft.changeItems || []).map((v) => (v === "Other" ? (draft.changeItemsOther || "อื่นๆ") : v)).join(", "))
+          ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", changeLabel)
           : ""}
-        ${row("เทคนิคที่เลือก", draft.technique || (historyCtx && historyCtx.last.technique))}
-        ${row("ทรงที่ออกแบบ", draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || (historyCtx && historyCtx.last.shapeDesign)))}
-        ${row("สีที่เลือก", draft.colorChoice || (historyCtx && historyCtx.last.colorUsed))}
+        ${row("เทคนิคที่เลือก", resolveTouchupTechnique(draft))}
+        ${row("ทรงที่ออกแบบ", resolveTouchupShape(draft))}
+        ${row("สีที่เลือก", resolveTouchupColor(draft))}
         ${row("ระดับความเข้มหลังทำเสร็จวันนี้", draft.intensity)}
       </div>
-
       <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
       <div class="step-group" data-radio-key="finalAgree">
         <label class="agree-row">
@@ -3162,144 +4239,165 @@ function initFormTouchup() {
           <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
         </label>
       </div>
-
       <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
       <div class="sig-wrap"><canvas id="tuSigCanvas"></canvas></div>
-      <div class="sig-actions"><button id="tuSigClearBtn" type="button">ล้างลายเซ็น</button></div>
-    `;
+      <div class="sig-actions"><button id="tuSigClearBtn" type="button">ล้างลายเซ็น</button></div>`;
+  }
 
-    pad = createSignaturePad(document.getElementById("tuSigCanvas"));
-    document.getElementById("tuSigClearBtn").addEventListener("click", () => pad.clear());
+  function stepHtml(step, draft) {
+    if (step === 0) return customerConfirmStepHtml(draft, { extraHtml: historyBlockHtml() });
+    if (step === 1) return readinessBlockHtml(draft);
+    if (step === 2) return stepNeedsHtml(draft);
+    if (step === 3) return stepDesignHtml(draft);
+    return stepConfirmHtml(draft);
+  }
 
-    const viewLastBtn = document.getElementById("tuViewLastBtn");
-    if (viewLastBtn) {
-      viewLastBtn.addEventListener("click", () => show("visitDetail", { data: historyCtx.last }));
-    }
+  function render() {
+    const draft = state.visitDraft;
+    const step = Math.max(0, Math.min(state.formStepIndex || 0, LAST_CONSULT_STEP));
+    state.formStepIndex = step;
+    pad = null;
+    mountFormChrome(chromeEl, step);
+    container.innerHTML = stepHtml(step, draft);
+    setFooterWizardMode(prevBtn, nextBtn, stepMetaEl, { stepIndex: step });
+    container.scrollTop = 0;
 
-    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
-      inputEl.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const dataUrl = await readFileAsDataUrl(file);
-        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
-        render();
+    if (step === 0) bindCustomerConfirm(container, draft);
+    if (step === 2) {
+      container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+        inputEl.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = await readFileAsDataUrl(file);
+          render();
+        });
       });
-    });
+    }
+    if (step === 4) {
+      pad = createSignaturePad(document.getElementById("tuSigCanvas"));
+      document.getElementById("tuSigClearBtn")?.addEventListener("click", () => pad.clear());
+    }
   }
 
   bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
     bindReadinessToggle(container, state.visitDraft, changedRadioName);
-    // ต้อง toggle DOM ตรง ๆ ห้าม re-render ทั้ง container เพราะจะล้างลายเซ็น/รูปที่เพิ่งใส่
     if (changedRadioName === "wantsMoreChange") {
       const block = document.getElementById("changeItemsBlock");
       if (block) block.hidden = state.visitDraft.wantsMoreChange !== "มี";
     }
+    if (changedRadioName === "shapeDesign") {
+      render();
+    }
   });
 
-  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
-    container.addEventListener(evt, (e) => {
-      const errEl = e.target.closest(".field-error");
-      if (errEl) errEl.classList.remove("field-error");
+  if (container) {
+    ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+      container.addEventListener(evt, (e) => {
+        e.target.closest(".field-error")?.classList.remove("field-error");
+      });
     });
-  });
-
-  function clearFieldErrors() {
-    container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
-  }
-  function flagError(selector) {
-    const el = container.querySelector(selector);
-    if (el) el.classList.add("field-error");
-    return el;
-  }
-  function scrollToFirstError(...els) {
-    const first = els.find(Boolean);
-    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
-    return !first;
   }
 
-  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
-  wireNotServedButton(document.getElementById("touchupNotServedBtn"));
-  wireDraftSaveButton(document.getElementById("touchupDraftBtn"));
+  function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
+  function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
+  function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
 
-  nextBtn.addEventListener("click", () => {
-    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
-
+  function validateStep(step) {
     clearFieldErrors();
     const draft = state.visitDraft;
-    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
-    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
-    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
-    const satisfactionEl = !draft.satisfaction ? flagError('[data-radio-key="satisfaction"]') : null;
-    const retentionEl = !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null;
-    const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
-    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
-    const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
-    const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
-    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
-    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
-
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, changeItemsEl, agreeEl, sigEl);
-    if (!noErrors) return;
-
-    if (!pad.isEmpty()) {
-      draft.signatureCustomerDataUrl = pad.toDataURL();
+    if (step === 0) {
+      return scrollToFirstError(!draft.customerInfoConfirmed ? flagError('[data-check-key="customerInfoConfirmed"]') : null);
     }
+    if (step === 1) {
+      return scrollToFirstError(
+        !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null,
+        draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null,
+        draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null,
+        !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null,
+        draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null,
+        !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null,
+        draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null
+      );
+    }
+    if (step === 2) {
+      return scrollToFirstError(
+        !draft.satisfaction ? flagError('[data-radio-key="satisfaction"]') : null,
+        !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null,
+        !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null,
+        !draft.intensity ? flagError('[data-radio-key="intensity"]') : null,
+        draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null,
+        !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null
+      );
+    }
+    if (step === 3) {
+      return scrollToFirstError(
+        isOtherOption(draft.shapeDesign) && !draft.shapeDesignOther?.trim() ? flagError('[data-other-key="shapeDesignOther"]') : null
+      );
+    }
+    if (step === 4) {
+      const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+      return scrollToFirstError(
+        !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null,
+        (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null
+      );
+    }
+    return true;
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    if ((state.formStepIndex || 0) <= 0) return;
+    state.formStepIndex -= 1;
+    render();
+  });
+  wireCancelButton(document.getElementById("touchupCancelBtn"));
+  wireDraftSaveButton(document.getElementById("touchupDraftBtn"));
+
+  nextBtn?.addEventListener("click", () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    const step = state.formStepIndex || 0;
+    if (!validateStep(step)) return;
+    if (step < LAST_CONSULT_STEP) {
+      state.formStepIndex = step + 1;
+      render();
+      return;
+    }
+    const draft = state.visitDraft;
+    if (pad && !pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
     draft.agreedAt = Date.now();
-    // เก็บค่าเดิมจากประวัติไว้ใน draft ให้ techFields.js (ส่วนที่ 5) ใช้ fallback ตอนสร้าง payload
-    // โดยไม่ต้อง fetch ประวัติซ้ำอีกรอบ — เผื่อกรณีช่างไม่ได้เลือกค่าใหม่ในส่วนที่ 3 (ไม่บังคับตอบ)
     if (historyCtx) {
       draft.prevTechnique = historyCtx.last.technique || null;
       draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
       draft.prevColorUsed = historyCtx.last.colorUsed || null;
-      if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
-      if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
-        draft.shapeDesign = historyCtx.last.shapeDesign;
-      }
-      if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     }
+    state.formStepIndex = 5;
     show("techFields");
   });
 
   onEnter("formTouchup", async () => {
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
+    if (state.formStepIndex == null || state.formStepIndex > LAST_CONSULT_STEP) {
+      state.formStepIndex = state.formStepIndex === 5 ? LAST_CONSULT_STEP : 0;
+    }
     historyCtx = null;
     const cached = Array.isArray(state.currentCustomerHistory) && state.currentCustomerHistory.some((v) => v.customerId === c.customerId)
       ? historyCtxFromRows(state.currentCustomerHistory)
       : null;
-    if (cached) {
-      historyCtx = cached;
-    } else {
-      container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
-    }
+    if (cached) historyCtx = cached;
+    else container.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
     try {
       if (!historyCtx) historyCtx = await loadHistoryCtx(c.customerId);
     } catch (e) {
       historyCtx = null;
-      container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;
-      return;
     }
-    if (!historyCtx) {
-      container.innerHTML = `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
-      return;
-    }
-    const draft = state.visitDraft;
-    if (!draft.prevTechnique) draft.prevTechnique = historyCtx.last.technique || null;
-    if (!draft.prevShapeDesign) draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
-    if (!draft.prevColorUsed) draft.prevColorUsed = historyCtx.last.colorUsed || null;
-    if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
-    if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
-      draft.shapeDesign = historyCtx.last.shapeDesign;
-    }
-    if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
+    applyTouchupDefaults(state.visitDraft, historyCtx);
     render();
   });
 }
 </script>
 <script>
 // ==== js/screens/techFields.js ====
-// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูป After, ลายเซ็นช่าง)
+// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูปหลังทำ, ลายเซ็นช่าง)
 // เหมือนกันทุกฟอร์มตามสเปก ("กติกากลางของทั้ง 3 ฟอร์ม") จึงมีหน้าเดียวใช้ร่วมกัน แยกแค่ payload ตอนบันทึก
 
 
@@ -3308,11 +4406,17 @@ function initFormTouchup() {
 
 
 
+import {
+  readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther,
+  resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
+} from "../utils.js?v=20260808ae";
+
 
 
 
 function initTechFields() {
   const body = document.getElementById("techBody");
+  const chromeEl = document.getElementById("techChrome");
   const draftBtn = document.getElementById("tuSaveDraftBtn");
   const closeBtn = document.getElementById("tuSaveCloseBtn");
 
@@ -3331,8 +4435,9 @@ function initTechFields() {
 
   function render() {
     const draft = state.visitDraft;
+    state.formStepIndex = 5;
+    mountVisitStripOnly(chromeEl);
     body.innerHTML = `
-      ${visitHeaderHtml()}
       <div class="step-group">
         <div class="step-group-title">สัดส่วนสีที่ใช้ <span class="required-star">*</span></div>
         ${mixRatioField("mixRatioParts", OPTIONS.mixColors, draft)}
@@ -3349,8 +4454,8 @@ function initTechFields() {
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">รูป After <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("after", "After")}</div>
+        <div class="step-group-title">รูปหลังทำ <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("after", "หลังทำ")}</div>
       </div>
 
       <div class="step-group">
@@ -3376,8 +4481,12 @@ function initTechFields() {
   bindFieldEvents(body, state.visitDraft, () => {});
   bindMixRatioEvents(body, state.visitDraft);
 
-  document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
-  wireNotServedButton(document.getElementById("techNotServedBtn"));
+  document.getElementById("techBackBtn")?.addEventListener("click", () => {
+    state.formStepIndex = LAST_CONSULT_STEP;
+    const screenId = state.formType === "form3" ? "formTouchup" : (state.formType || "form1");
+    show(screenId);
+  });
+  wireCancelButton(document.getElementById("techCancelBtn"));
 
   function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
@@ -3389,12 +4498,13 @@ function initTechFields() {
   }
 
   function missingRequiredBeforeClose(draft) {
-    if (!hasDraftPhoto(draft, "before")) return "รูป Before";
-    if (!draft.finalAgree) return "Consent";
+    if (!hasDraftPhoto(draft, "before")) return "รูปก่อนทำ";
+    if (!hasDraftPhoto(draft, "after")) return "รูปหลังทำ";
+    if (!draft.finalAgree) return "ใบยินยอม";
     if (!(draft.signatureCustomerDataUrl || draft.existingSignatureCustomerUrl)) return "ลายเซ็นลูกค้า";
     if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
     if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
-    if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
+    if (draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
     if (draft.irritation7d === "มี" && !draft.irritationDetail?.trim()) return "รายละเอียดความระคายเคือง";
     if (draft.allergyInfo === "มี" && !draft.allergyDetail?.trim()) return "รายละเอียดอาการแพ้/ข้อมูลสำคัญ";
     if (state.formType === "form1") {
@@ -3461,11 +4571,11 @@ function initTechFields() {
       formType: state.formType,
       status,
       visitDate: state.visitContext.visitDate || Date.now(),
-      technique: draft.technique || draft.prevTechnique || null,
-      colorUsed: draft.colorChoice || draft.prevColorUsed || null,
+      technique: resolveTouchupTechnique(draft) || draft.prevTechnique || null,
+      colorUsed: resolveTouchupColor(draft) || draft.prevColorUsed || null,
       intensity: draft.intensity || null,
       muscle: draft.muscle || null,
-      shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || draft.prevShapeDesign || null),
+      shapeDesign: resolveTouchupShape(draft) || draft.prevShapeDesign || null,
       browGuard: draft.browGuard || null,
       satisfaction: draft.satisfaction || null,
       colorRetention: draft.colorRetention || null,
@@ -3488,13 +4598,18 @@ function initTechFields() {
         ...buildPayload("draft"),
         beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
         signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+        rawAnswers: {
+          ...draft,
+          formStepIndex: state.formStepIndex ?? 5,
+          beforePhotoDataUrl: undefined,
+          afterPhotoDataUrl: undefined
+        }
       };
       await saveVisit(payload);
       await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
-      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกร่างไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
       setDraftSaveLoading(draftBtn, false);
     }
@@ -3511,7 +4626,7 @@ function initTechFields() {
     const afterEl = !hasDraftPhoto(draft, "after") ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
     if (missingBeforeClose) {
-      await appAlert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`, { title: "ข้อมูลยังไม่ครบ" });
+      await appAlert(`ยังปิดคิวไม่ได้ — ยังขาด: ${missingBeforeClose}`, { title: "ข้อมูลยังไม่ครบ" });
       return;
     }
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
@@ -3531,14 +4646,15 @@ function initTechFields() {
       // "อัปเดตแถวเดิม" แทนสร้างแถวใหม่ — ถ้า state.visitContext หลุดไปคนละตัวจาก race/reload กลางทาง
       // (เช่น รีเฟรชหน้าระหว่างกรอกฟอร์ม) payload.serviceId จะไม่ตรงกับแถวเดิมในชีต แล้วได้ Visit ซ้อนกัน
       // เช็คซ้ำตรงนี้กันเคสที่ visitContext หายไประหว่างทาง
-      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จาก Customer Profile");
+      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จากโปรไฟล์ลูกค้า");
 
       const res = await saveVisit(payload);
       state.lastSavedServiceId = res.serviceId;
+      showToast("บันทึกคิวแล้ว", { tone: "ok" });
       show("confirmation");
     } catch (e) {
       console.warn("saveVisit (close) failed:", e);
-      await appAlert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกไม่สำเร็จ ลองเช็คเน็ตอีกครั้ง ข้อมูลในหน้านี้ยังอยู่", { title: "บันทึกไม่สำเร็จ" });
       closeBtn.disabled = false;
     }
   });
@@ -3555,23 +4671,23 @@ function initConfirmation() {
 
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
-    exportBtn.textContent = "Generating PDF...";
+    exportBtn.textContent = "กำลังสร้าง PDF...";
     try {
       const res = await exportConsentPdf(state.lastSavedServiceId);
       if (res && res.success && res.url) {
         await appAlert(`สร้าง PDF เรียบร้อยแล้ว\n${res.filename || ""}`, {
-          title: "Export PDF",
+          title: "ส่งออก PDF",
           okText: "เปิด PDF"
         });
         window.open(res.url, "_blank", "noopener");
         return;
       }
-      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "Export PDF" });
+      await appAlert((res && (res.note || res.error)) || "สร้าง PDF ไม่สำเร็จ", { title: "ส่งออก PDF" });
     } catch (err) {
-      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "Export PDF" });
+      await appAlert(`สร้าง PDF ไม่สำเร็จ — ${err.message || err}`, { title: "ส่งออก PDF" });
     } finally {
       exportBtn.disabled = false;
-      exportBtn.textContent = "Export Consent Form (PDF)";
+      exportBtn.textContent = "ส่งออกใบยินยอม (PDF)";
     }
   });
 
@@ -3582,58 +4698,71 @@ function initConfirmation() {
 
   onEnter("confirmation", () => {
     const c = state.currentCustomer;
-    summaryEl.textContent = `Saved ${state.serviceType} visit for ${c ? (c.nickname || c.fullName) : ""} (ID ${state.lastSavedServiceId})`;
+    const name = c ? (c.nickname || c.fullName) : "";
+    summaryEl.textContent = `บันทึกคิว ${state.serviceType || ""} ของ ${name} แล้ว (รหัส ${state.lastSavedServiceId})`;
   });
 }
 </script>
 <script>
 // ==== js/main.js ====
+function safeInit(name, fn) {
+  try {
+    fn();
+  } catch (e) {
+    console.error(`[pyne] ${name} failed:`, e);
+  }
+}
+
+// โชว์ฟอร์ม login ก่อน inits อื่น — กันค้างที่ splash โลโก้ถ้ามี init พัง
 initDialogs();
-initShell();
-initLogin();
-initHome();
-initNewCustomer();
-initCustomerProfile();
-initVisitDetail();
-initCreateVisit();
-initServiceType();
-initFormOne();
-initFormTwo();
-initFormTouchup();
-initTechFields();
-initConfirmation();
+safeInit("initLogin", initLogin);
+
+safeInit("initShell", initShell);
+safeInit("initHistorySheet", initHistorySheet);
+safeInit("initHome", initHome);
+safeInit("initNewCustomer", initNewCustomer);
+safeInit("initCustomerProfile", initCustomerProfile);
+safeInit("initVisitDetail", initVisitDetail);
+safeInit("initCreateVisit", initCreateVisit);
+safeInit("initServiceType", initServiceType);
+safeInit("initFormOne", initFormOne);
+safeInit("initFormTwo", initFormTwo);
+safeInit("initFormTouchup", initFormTouchup);
+safeInit("initTechFields", initTechFields);
+safeInit("initConfirmation", initConfirmation);
 
 // เปิดหน้าใดหน้าหนึ่งตรง ๆ ได้ระหว่าง dev/testing เช่น
 // index.html?debugScreen=customerProfile&debugCustomer=C0001&debugServiceType=สักคิ้ว
-// ห่อด้วย async IIFE แทน top-level await เพราะไฟล์นี้จะถูกรวมเป็น <script> ธรรมดา
-// (ไม่ใช่ type=module) ตอนแปลงเป็น Apps Script — top-level await ใช้ไม่ได้ในสคริปต์ปกติ
 (async () => {
-  const params = new URLSearchParams(location.search);
-  const debugScreen = params.get("debugScreen");
-  const debugCustomerId = params.get("debugCustomer");
-  const debugServiceType = params.get("debugServiceType");
+  try {
+    const params = new URLSearchParams(location.search);
+    const debugScreen = params.get("debugScreen");
+    const debugCustomerId = params.get("debugCustomer");
+    const debugServiceType = params.get("debugServiceType");
 
-  // เช็ค session token (คุกกี้) กับเซิร์ฟเวอร์ทุกครั้งที่โหลดหน้า/refresh ใหม่ — ไม่เชื่อ flag ฝั่ง client เฉยๆ
-  const token = getToken();
-  const session = token ? await checkSession(token) : { valid: false };
+    const token = getToken();
+    const session = token ? await checkSession(token) : { valid: false };
 
-  // debug เจาะจงหน้า / หรือ session ยัง valid อยู่จริง → ข้าม login; ไม่เช่นนั้นโชว์ login
-  if (debugScreen || session.valid) {
-    hideLogin();
-  } else {
+    if (debugScreen || session.valid) {
+      hideLogin();
+    } else {
+      showLogin();
+    }
+
+    if (debugCustomerId) {
+      try {
+        state.currentCustomer = await getCustomer(debugCustomerId);
+      } catch (e) {
+        console.warn("debugCustomer: ต้อง login ก่อนถึงจะดึงข้อมูลลูกค้าได้", e);
+      }
+    }
+    if (debugServiceType) {
+      state.serviceType = debugServiceType;
+    }
+    show(debugScreen || "home", { pushHistory: false });
+  } catch (e) {
+    console.error("[pyne] boot failed:", e);
     showLogin();
   }
-
-  if (debugCustomerId) {
-    try {
-      state.currentCustomer = await getCustomer(debugCustomerId);
-    } catch (e) {
-      console.warn("debugCustomer: ต้อง login ก่อนถึงจะดึงข้อมูลลูกค้าได้", e);
-    }
-  }
-  if (debugServiceType) {
-    state.serviceType = debugServiceType;
-  }
-  show(debugScreen || "home", { pushHistory: false });
 })();
 </script>

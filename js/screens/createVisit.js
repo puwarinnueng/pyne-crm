@@ -1,12 +1,12 @@
 // createVisit.js — Step 3: เก็บข้อมูลนัดก่อนเลือกฟอร์ม
 // ยังไม่สร้างแถว ServiceHistory จนกว่าช่างจะเลือก Form 1/2/3 ใน modal ถัดไปสำเร็จ
 
-import { show, onEnter } from "../router.js";
-import { state } from "../state.js";
-import { getHistoryByCustomer } from "../mockApi.js";
-import { openServiceTypeModal } from "./serviceType.js";
-import { appConfirm } from "../dialogs.js";
-import { escapeHtml, formatDate, normalizeVisitStatus } from "../utils.js";
+import { show, onEnter } from "../router.js?v=20260808ae";
+import { state } from "../state.js?v=20260808ae";
+import { getHistoryByCustomer } from "../mockApi.js?v=20260808ae";
+import { openServiceTypeModal } from "./serviceType.js?v=20260808ae";
+import { appConfirm } from "../dialogs.js?v=20260808ae";
+import { escapeHtml, formatDate, normalizeVisitStatus } from "../utils.js?v=20260808ae";
 
 function pad2(n) { return String(n).padStart(2, "0"); }
 function todayDateValue() {
@@ -64,10 +64,10 @@ export function initCreateVisit() {
       const openVisit = history.find((v) => normalizeVisitStatus(v.status) === "in_progress");
       if (openVisit) {
         const proceed = await appConfirm(
-          `ลูกค้าคนนี้มี Visit ที่ยังไม่ปิดอยู่\n\nVisit ${openVisit.serviceId}\nสร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}\n\nอาจเป็นครั้งก่อนที่กรอกค้างไว้แล้วหลุดไปกลางทาง ถ้าสร้าง Visit ใหม่ Visit เก่าจะยังค้างอยู่และต้องกลับไปปิดเองทีหลัง`,
+          `ลูกค้าคนนี้มีคิวที่ยังไม่ปิดอยู่\n\nคิว ${openVisit.serviceId}\nสร้างเมื่อ ${formatDate(openVisit.createdAt || openVisit.visitDate)}\n\nอาจเป็นครั้งก่อนที่กรอกค้างไว้ ถ้าสร้างคิวใหม่ คิวเก่าจะยังค้างอยู่`,
           {
-            title: "มี Visit ที่ยังไม่ปิด",
-            okText: "สร้าง Visit ใหม่",
+            title: "มีคิวค้างอยู่",
+            okText: "สร้างคิวใหม่",
             cancelText: "กลับไปเช็คก่อน"
           }
         );
@@ -87,6 +87,7 @@ export function initCreateVisit() {
     };
     state.visitContext = null;
     state.resetVisitDraft();
+    state.formStepIndex = 0;
     state.formType = null;
     state.serviceType = null;
     continueBtn.disabled = false;
@@ -107,6 +108,9 @@ export function initCreateVisit() {
     selectedSlot = null;
     slotButtons.forEach((b) => b.classList.remove("is-selected"));
     customSlotBtn.classList.remove("is-selected");
+    // ค่าเริ่มต้นที่ร้านใช้บ่อย — ลดการกดซ้ำ
+    const defaultSlot = document.querySelector('[data-time-slot="10:30"]');
+    if (defaultSlot) selectSlot("10:30");
     state.pendingVisitMeta = null;
     document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
     continueBtn.disabled = false;

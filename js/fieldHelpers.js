@@ -1,22 +1,23 @@
 // fieldHelpers.js — ตัวช่วยสร้าง HTML ฟิลด์ฟอร์มแบบใช้ซ้ำได้ (chip / radio / text)
 // ใช้ร่วมกันระหว่าง formBrow.js และ techFields.js
 
-import { escapeHtml } from "./utils.js";
-import { appAlert } from "./dialogs.js";
+import { escapeHtml, isOtherOption, selectionIncludesOther, optionDisplayLabel } from "./utils.js?v=20260808ae";
+import { appAlert } from "./dialogs.js?v=20260808ae";
+import { OPTIONS } from "./data/options.js?v=20260808ae";
 
-export function radioField(key, options, draft) {
+export function radioField(key, options, draft, labelFn) {
   return `
     <div class="radio-row" data-radio-key="${key}">
       ${options.map((opt) => `
         <label class="native-choice">
           <input type="radio" name="${key}" value="${escapeHtml(opt)}" ${draft[key] === opt ? "checked" : ""}>
-          <span>${escapeHtml(opt)}</span>
+          <span>${escapeHtml(labelFn ? labelFn(opt) : optionDisplayLabel(opt))}</span>
         </label>
       `).join("")}
     </div>`;
 }
 
-// option ที่ชื่อ "Other" จะมีช่องกรอกข้อความต่อท้ายทันที (โชว์เฉพาะตอนติ๊กเลือก) — ค่าที่พิมพ์เก็บแยกไว้ที่ draft[`${key}Other`]
+// option ประเภท "อื่น ๆ" / "จุดอื่น ๆ" จะมีช่องกรอกข้อความต่อท้าย (โชว์ตอนติ๊กเลือก) — ค่าเก็บที่ draft[`${key}Other`]
 export function chipGroup(key, options, draft, multi) {
   const selected = multi ? (draft[key] || []) : [draft[key]].filter(Boolean);
   const otherKey = `${key}Other`;
@@ -24,12 +25,12 @@ export function chipGroup(key, options, draft, multi) {
   return `
     <div class="choice-grid" data-chip-key="${key}" data-chip-multi="${multi ? "1" : "0"}">
       ${options.map((opt) => {
-        const isOther = opt === "Other";
+        const isOther = isOtherOption(opt);
         const checked = selected.includes(opt);
         return `
           <label class="native-choice">
             <input type="${inputType}" ${multi ? "" : `name="${key}"`} data-chip-value="${escapeHtml(opt)}" ${checked ? "checked" : ""}>
-            <span>${isOther ? "อื่นๆ" : escapeHtml(opt)}</span>
+            <span>${escapeHtml(optionDisplayLabel(opt))}</span>
           </label>
           ${isOther ? `<input type="text" class="input other-input" data-other-key="${otherKey}" placeholder="ระบุ..." value="${escapeHtml(draft[otherKey] || "")}" ${checked ? "" : "hidden"}>` : ""}
         `;
@@ -63,7 +64,7 @@ export function mixRatioField(key, colorNames, draft) {
     <div class="mix-ratio-grid" data-mix-group="${key}">
       ${colorNames.map((name) => row(name, name, parts[name])).join("")}
       <div class="mix-row">
-        <input type="text" class="input mix-other-label" data-mix-other-label="${key}" placeholder="อื่นๆ ระบุ..." value="${escapeHtml(otherLabel)}">
+        <input type="text" class="input mix-other-label" data-mix-other-label="${key}" placeholder="อื่น ๆ ระบุ..." value="${escapeHtml(otherLabel)}">
         <input type="number" min="0" inputmode="numeric" class="input mix-input" data-mix-key="${key}" data-mix-color="__other__" value="${parts.__other__ === undefined || parts.__other__ === null || parts.__other__ === "" ? "" : escapeHtml(String(parts.__other__))}" placeholder="0">
         <span class="mix-unit">หยด</span>
       </div>
@@ -123,7 +124,7 @@ export function readinessBlockHtml(draft) {
       <div class="step-group-title">ผิวบริเวณคิ้วมีแผลเป็นหรือไม่ <span class="required-star">*</span></div>
       ${radioField("hasScar", ["ไม่มี", "มี"], draft)}
       <div id="scarCauseBlock" ${draft.hasScar === "มี" ? "" : "hidden"}>
-        ${chipGroup("scarCause", ["จากรอยเก่า", "Other"], draft, true)}
+        ${chipGroup("scarCause", OPTIONS.scarCause, draft, true)}
       </div>
     </div>
     <div class="step-group">
@@ -177,7 +178,7 @@ export function bindFieldEvents(container, draft, onChange) {
       }
       const otherInput = chipGroupEl.querySelector("[data-other-key]");
       if (otherInput) {
-        otherInput.hidden = multi ? !draft[key].includes("Other") : draft[key] !== "Other";
+        otherInput.hidden = !selectionIncludesOther(draft[key]);
       }
       onChange();
       return;

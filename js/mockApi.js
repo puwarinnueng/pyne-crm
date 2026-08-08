@@ -4,14 +4,33 @@
 // ตามชื่อฟังก์ชันเดียวกันนี้ แล้วเปลี่ยนจุดเรียกใช้ในหน้าจอ js/screens/*.js จาก import ที่นี่
 // เป็น wrapper ที่เรียก google.script.run แทน (โครงสร้างพารามิเตอร์/ผลลัพธ์ไม่ต้องเปลี่ยน)
 
-import { db } from "./data/mockData.js";
-import { AUTH_CONFIG } from "./data/authConfig.js";
-import { getToken, sessionExpired } from "./session.js";
+import { db } from "./data/mockData.js?v=20260808ae";
+import { AUTH_CONFIG } from "./data/authConfig.js?v=20260808ae";
+import { getToken, sessionExpired } from "./session.js?v=20260808ae";
+import { isResumableVisitStatus, normalizeVisitStatus } from "./utils.js?v=20260808ae";
 
 const DELAY = 250; // จำลอง network latency ให้เห็น loading state จริง
 
 function wait(ms = DELAY) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function visitActivityAt(visit) {
+  return Number(visit?.updatedAt || visit?.createdAt || visit?.visitDate) || 0;
+}
+
+function withCustomerVisitStats(customer, visits) {
+  const sorted = [...(visits || [])].sort((a, b) => visitActivityAt(b) - visitActivityAt(a));
+  const lastVisit = sorted[0] || null;
+  const openVisit = sorted.find((v) => isResumableVisitStatus(v.status)) || null;
+  return {
+    ...customer,
+    visitsCount: sorted.length,
+    lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+    lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
+    lastVisitStatus: lastVisit ? normalizeVisitStatus(lastVisit.status) : null,
+    openVisitStatus: openVisit ? normalizeVisitStatus(openVisit.status) : null
+  };
 }
 
 // เก็บ username/password ที่เปลี่ยนผ่านหน้า Reset password ไว้ใน localStorage (เฉพาะ local/dev)
@@ -101,13 +120,18 @@ export async function searchCustomers(query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return [];
   const qPhone = normalizePhone(query);
-  const { customers } = db.get();
-  return customers.filter((c) => {
-    const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
-    const lineHit = (c.line || "").toLowerCase().includes(q);
-    const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
-    return nameHit || lineHit || phoneHit;
-  });
+  const { customers, serviceHistory } = db.get();
+  return customers
+    .filter((c) => {
+      const nameHit = `${c.fullName || ""} ${c.nickname || ""}`.toLowerCase().includes(q);
+      const lineHit = (c.line || "").toLowerCase().includes(q);
+      const phoneHit = qPhone.length >= 3 && c.phoneNormalized.includes(qPhone);
+      return nameHit || lineHit || phoneHit;
+    })
+    .map((c) => withCustomerVisitStats(
+      c,
+      serviceHistory.filter((v) => v.customerId === c.customerId)
+    ));
 }
 
 export async function listRecentCustomers(limit) {
@@ -115,35 +139,24 @@ export async function listRecentCustomers(limit) {
   requireSession(getToken());
   const max = limit || 10;
   const { customers, serviceHistory } = db.get();
-  const statsByCustomerId = {};
+  const visitsByCustomerId = {};
 
   serviceHistory.forEach((visit) => {
     const customerId = visit.customerId;
     if (!customerId) return;
-    const current = statsByCustomerId[customerId] || {
-      visitsCount: 0,
-      lastVisit: null,
-      lastActivityAt: 0
-    };
-    const activityAt = Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
-    current.visitsCount += 1;
-    if (!current.lastVisit || activityAt > current.lastActivityAt) {
-      current.lastVisit = visit;
-      current.lastActivityAt = activityAt;
-    }
-    statsByCustomerId[customerId] = current;
+    if (!visitsByCustomerId[customerId]) visitsByCustomerId[customerId] = [];
+    visitsByCustomerId[customerId].push(visit);
   });
 
   return customers
     .map((c) => {
-      const stats = statsByCustomerId[c.customerId] || null;
-      const lastVisit = stats && stats.lastVisit ? stats.lastVisit : null;
+      const visits = visitsByCustomerId[c.customerId] || [];
+      const enriched = withCustomerVisitStats(c, visits);
       return {
-        ...c,
-        visitsCount: stats ? stats.visitsCount : 0,
-        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
-        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
-        lastActivityAt: stats ? stats.lastActivityAt : (Number(c.createdAt) || 0)
+        ...enriched,
+        lastActivityAt: visits.length
+          ? Math.max(...visits.map(visitActivityAt))
+          : (Number(c.createdAt) || 0)
       };
     })
     .sort((a, b) => (b.lastActivityAt || 0) - (a.lastActivityAt || 0))
@@ -181,18 +194,10 @@ export async function listCustomersWithStats() {
   requireSession(getToken());
   const { customers, serviceHistory } = db.get();
   return customers
-    .map((c) => {
-      const visits = serviceHistory
-        .filter((v) => v.customerId === c.customerId)
-        .sort((a, b) => b.visitDate - a.visitDate);
-      const lastVisit = visits[0] || null;
-      return {
-        ...c,
-        visitsCount: visits.length,
-        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
-        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-"
-      };
-    })
+    .map((c) => withCustomerVisitStats(
+      c,
+      serviceHistory.filter((v) => v.customerId === c.customerId)
+    ))
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -286,14 +291,6 @@ export async function getCustomer(customerId) {
   return customers.find((c) => c.customerId === customerId) || null;
 }
 
-function normalizeVisitStatus(status) {
-  const key = String(status || "").trim();
-  if (key === "กำลังดำเนินการ") return "in_progress";
-  if (key === "เสร็จสิ้น") return "completed";
-  if (key === "ไม่ได้รับบริการ") return "not_served";
-  return key;
-}
-
 function compareVisitsForHistory(a, b) {
   const resumable = (visit) => ["draft", "in_progress"].includes(normalizeVisitStatus(visit?.status)) ? 1 : 0;
   const activityTime = (visit) => Number(visit?.updatedAt || visit?.createdAt || visit?.visitDate) || 0;
@@ -339,7 +336,7 @@ export async function createVisit({ customerId, zervaBookingId, visitDate, timeS
   return { success: true, visitId, visit };
 }
 
-// ปิด Visit ด้วยสถานะ "not_served" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
+// ปิด Visit ด้วยสถานะ "not_served" — บังคับกรอกเหตุผล ไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูปหลังทำ
 export async function closeVisitNotServed(visitId, reason) {
   await wait(200);
   requireSession(getToken());

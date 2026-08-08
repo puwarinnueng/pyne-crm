@@ -3,10 +3,10 @@
 // production (gas/) เทียบกับแท็บ Config ของ Sheet ผ่าน login()/changePassword() — ดู gas/Code.gs
 // สถานะ login จริงคือ session token ที่เซิร์ฟเวอร์ออกให้ (ดู js/session.js) ไม่ใช่ flag ฝั่ง client เฉยๆ
 
-import { login, logout, changePassword } from "../mockApi.js";
-import { getToken, setToken, clearToken } from "../session.js";
-import { show } from "../router.js";
-import { appAlert } from "../dialogs.js";
+import { login, logout, changePassword } from "../mockApi.js?v=20260808ae";
+import { getToken, setToken, clearToken } from "../session.js?v=20260808ae";
+import { show } from "../router.js?v=20260808ae";
+import { appAlert } from "../dialogs.js?v=20260808ae";
 
 let screen, form, userInput, pwInput, errorEl, submitBtn;
 let resetOverlay, resetForm, resetOldPw, resetPw, resetPwConfirm, resetError;
@@ -15,7 +15,7 @@ function setLoginLoading(isLoading) {
   if (!submitBtn) return;
   if (!submitBtn.dataset.readyText) submitBtn.dataset.readyText = submitBtn.textContent;
   submitBtn.disabled = isLoading;
-  submitBtn.textContent = isLoading ? "Signing in..." : submitBtn.dataset.readyText;
+  submitBtn.textContent = isLoading ? "กำลังเข้าสู่ระบบ..." : submitBtn.dataset.readyText;
 }
 
 function setButtonLoading(button, isLoading, loadingText) {
@@ -96,12 +96,12 @@ export function initLogin() {
       const username = userInput.value.trim();
       const password = pwInput.value;
       if (!username || !password) {
-        errorEl.textContent = "Please enter your username and password.";
+        errorEl.textContent = "ใส่อีเมลกับรหัสผ่านก่อนนะ";
         errorEl.hidden = false;
         return;
       }
       errorEl.hidden = true;
-      setButtonLoading(submitBtn, true, "Signing in...");
+      setButtonLoading(submitBtn, true, "กำลังเข้าสู่ระบบ...");
       try {
         const res = await login(username, password);
         if (res.success) {
@@ -112,11 +112,11 @@ export function initLogin() {
           show("home");
           return;
         }
-        errorEl.textContent = "Invalid username or password.";
+        errorEl.textContent = "อีเมลหรือรหัสผ่านไม่ถูก";
         errorEl.hidden = false;
       } catch (err) {
         console.warn("login failed:", err);
-        errorEl.textContent = "Could not sign in. Please try again.";
+        errorEl.textContent = "เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้ง";
         errorEl.hidden = false;
       } finally {
         if (!screen || !screen.hidden) setButtonLoading(submitBtn, false);
@@ -126,7 +126,7 @@ export function initLogin() {
     toggleBtn.addEventListener("click", () => {
       const show = pwInput.type === "password";
       pwInput.type = show ? "text" : "password";
-      toggleBtn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      toggleBtn.setAttribute("aria-label", show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
     });
 
     forgotBtn.addEventListener("click", openReset);
@@ -153,36 +153,36 @@ function initResetModal() {
     const pw = resetPw.value.trim();
     const confirm = resetPwConfirm.value.trim();
     if (!oldPw) {
-      resetError.textContent = "Please enter your current password.";
+      resetError.textContent = "ใส่รหัสผ่านปัจจุบันก่อนนะ";
       resetError.hidden = false;
       return;
     }
     if (!pw || pw !== confirm) {
-      resetError.textContent = "Passwords do not match.";
+      resetError.textContent = "รหัสผ่านใหม่ไม่ตรงกัน";
       resetError.hidden = false;
       return;
     }
     resetError.hidden = true;
-    setButtonLoading(resetSubmitBtn, true, "Saving...");
+    setButtonLoading(resetSubmitBtn, true, "กำลังบันทึก...");
     try {
       const res = await changePassword(oldPw, pw);
       if (res.success) {
         // เปลี่ยนรหัสผ่านสำเร็จ = เพิกถอน session เดิมเสมอ (ฝั่งเซิร์ฟเวอร์ทำไปแล้ว) ต้อง login ใหม่ด้วยรหัสใหม่
         clearToken();
         closeReset();
-        await appAlert("Password updated. Please sign in again.", { title: "Password updated" });
+        await appAlert("เปลี่ยนรหัสแล้ว เข้าสู่ระบบใหม่ได้นะ", { title: "เปลี่ยนรหัสแล้ว" });
         showLogin();
         return;
       }
       if (res.error === "wrong_password") {
-        resetError.textContent = "Current password is incorrect.";
+        resetError.textContent = "รหัสผ่านปัจจุบันไม่ถูก";
       } else {
-        resetError.textContent = "Could not update password. Please try again.";
+        resetError.textContent = "เปลี่ยนรหัสไม่สำเร็จ ลองอีกครั้ง";
       }
       resetError.hidden = false;
     } catch (err) {
       console.warn("changePassword failed:", err);
-      resetError.textContent = "Could not update password. Please try again.";
+      resetError.textContent = "เปลี่ยนรหัสไม่สำเร็จ ลองอีกครั้ง";
       resetError.hidden = false;
     } finally {
       if (!resetOverlay || !resetOverlay.hidden) setButtonLoading(resetSubmitBtn, false);
@@ -195,7 +195,7 @@ function initResetModal() {
       const field = document.getElementById(btn.dataset.resetToggle);
       const show = field.type === "password";
       field.type = show ? "text" : "password";
-      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      btn.setAttribute("aria-label", show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
     });
   });
 

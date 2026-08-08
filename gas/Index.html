@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
 <base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Pyne Studio CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
 <?!= include('Stylesheet'); ?>
 </head>
 <body>
@@ -14,21 +17,21 @@
     <div class="login-logo">
       <img src="<?!= LOGO_DATA_URI ?>" alt="Pyne Studio">
     </div>
-    <form class="login-card" id="loginForm" novalidate hidden>
+    <form class="login-card" id="loginForm" novalidate>
       <div class="login-field">
-        <input type="email" id="loginUsername" class="login-input" placeholder="Email" autocomplete="username" required>
+        <input type="email" id="loginUsername" class="login-input" placeholder="อีเมล" autocomplete="username" required>
       </div>
       <div class="login-field">
-        <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="current-password" required>
-        <button type="button" class="login-eye" id="loginTogglePw" aria-label="Show password">
+        <input type="password" id="loginPassword" class="login-input" placeholder="รหัสผ่าน" autocomplete="current-password" required>
+        <button type="button" class="login-eye" id="loginTogglePw" aria-label="แสดงรหัสผ่าน">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
       <div class="login-forgot">
-        <button type="button" class="login-forgot-link" id="loginForgot">Forgot password?</button>
+        <button type="button" class="login-forgot-link" id="loginForgot">ลืมรหัสผ่าน?</button>
       </div>
-      <p class="login-error" id="loginError" hidden>Please enter your username and password.</p>
-      <button type="submit" class="login-submit">Sign In</button>
+      <p class="login-error" id="loginError" hidden>ใส่อีเมลกับรหัสผ่านก่อนนะ</p>
+      <button type="submit" class="login-submit">เข้าสู่ระบบ</button>
     </form>
     <p class="login-copyright">© 2025 Pyne Studio</p>
   </div>
@@ -37,36 +40,36 @@
 <!-- ===================== RESET PASSWORD MODAL ===================== -->
 <div class="reset-overlay" id="resetOverlay" hidden>
   <form class="reset-card" id="resetForm" novalidate>
-    <button type="button" class="reset-close" id="resetClose" aria-label="Close">
+    <button type="button" class="reset-close" id="resetClose" aria-label="ปิด">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <h2 class="reset-title">Reset new password</h2>
-    <p class="reset-sub">Enter your current password, then choose a new one.</p>
+    <h2 class="reset-title">ตั้งรหัสผ่านใหม่</h2>
+    <p class="reset-sub">ใส่รหัสผ่านเดิม แล้วตั้งรหัสใหม่</p>
 
     <div class="login-field">
-      <input type="password" id="resetOldPw" class="login-input" placeholder="Current password" autocomplete="current-password">
-      <button type="button" class="login-eye" data-reset-toggle="resetOldPw" aria-label="Show password">
+      <input type="password" id="resetOldPw" class="login-input" placeholder="รหัสผ่านปัจจุบัน" autocomplete="current-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetOldPw" aria-label="แสดงรหัสผ่าน">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
     <div class="login-field">
-      <input type="password" id="resetPw" class="login-input" placeholder="New password" autocomplete="new-password">
-      <button type="button" class="login-eye" data-reset-toggle="resetPw" aria-label="Show password">
+      <input type="password" id="resetPw" class="login-input" placeholder="รหัสผ่านใหม่" autocomplete="new-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetPw" aria-label="แสดงรหัสผ่าน">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
     <div class="login-field">
-      <input type="password" id="resetPwConfirm" class="login-input" placeholder="Confirm new password" autocomplete="new-password">
-      <button type="button" class="login-eye" data-reset-toggle="resetPwConfirm" aria-label="Show password">
+      <input type="password" id="resetPwConfirm" class="login-input" placeholder="ยืนยันรหัสผ่านใหม่" autocomplete="new-password">
+      <button type="button" class="login-eye" data-reset-toggle="resetPwConfirm" aria-label="แสดงรหัสผ่าน">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
-    <p class="login-error" id="resetError" hidden>Passwords do not match.</p>
+    <p class="login-error" id="resetError" hidden>รหัสผ่านใหม่ไม่ตรงกัน</p>
 
-    <button type="submit" class="login-submit">Save new password</button>
+    <button type="submit" class="login-submit">บันทึกรหัสใหม่</button>
     <button type="button" class="reset-back" id="resetBack">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      <span>Back to sign in</span>
+      <span>กลับไปเข้าสู่ระบบ</span>
     </button>
   </form>
 </div>
@@ -76,7 +79,7 @@
   <form class="app-dialog" id="appDialog" novalidate>
     <div class="app-dialog-head">
       <h2 class="app-dialog-title" id="appDialogTitle">แจ้งเตือน</h2>
-      <button type="button" class="app-dialog-close" id="appDialogClose" aria-label="Close">×</button>
+      <button type="button" class="app-dialog-close" id="appDialogClose" aria-label="ปิด">×</button>
     </div>
     <div class="app-dialog-body" id="appDialogBody"></div>
     <label class="app-dialog-field" id="appDialogField" hidden>
@@ -85,8 +88,8 @@
     </label>
     <p class="login-error app-dialog-error" id="appDialogError" hidden></p>
     <div class="app-dialog-actions">
-      <button type="button" class="btn btn-outline" id="appDialogCancel">Cancel</button>
-      <button type="submit" class="btn btn-primary" id="appDialogOk">OK</button>
+      <button type="button" class="btn btn-outline" id="appDialogCancel">ยกเลิก</button>
+      <button type="submit" class="btn btn-primary" id="appDialogOk">ตกลง</button>
     </div>
   </form>
 </div>
@@ -99,9 +102,9 @@
       <img src="<?!= LOGO_DATA_URI ?>" alt="Pyne Studio" class="logo-img">
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="sidebar-nav-item active" data-nav="home" aria-label="Customers" title="Customers">
+      <a href="#" class="sidebar-nav-item active" data-nav="home" aria-label="ลูกค้า" title="ลูกค้า">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>Customers</span>
+        <span>ลูกค้า</span>
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -117,11 +120,11 @@
         <div class="user-menu-popover" id="userMenuPopover" hidden>
           <button class="user-menu-item" type="button" data-action="reset">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Reset password</span>
+            <span>เปลี่ยนรหัสผ่าน</span>
           </button>
           <button class="user-menu-item user-menu-item-danger" type="button" data-action="logout">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span>Log out</span>
+            <span>ออกจากระบบ</span>
           </button>
         </div>
       </div>
@@ -135,15 +138,15 @@
       <div class="mobile-logo">
         <img src="<?!= LOGO_DATA_URI ?>" alt="Pyne Studio" class="logo-img">
       </div>
-      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu" aria-expanded="false">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="เปิดเมนู" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <nav class="mobile-dropdown" id="mobileDropdown" hidden>
         <div class="mobile-menu-head">
           <span class="mobile-menu-title">Menu</span>
-          <button class="mobile-menu-close" id="mobileMenuClose" type="button" aria-label="Close menu">×</button>
+          <button class="mobile-menu-close" id="mobileMenuClose" type="button" aria-label="ปิดเมนู">×</button>
         </div>
-        <a href="#" class="mobile-dropdown-item active" data-nav="home">Customers</a>
+        <a href="#" class="mobile-dropdown-item active" data-nav="home">ลูกค้า</a>
 
         <div class="mobile-menu-account">
           <div class="mobile-account-user">
@@ -155,11 +158,11 @@
           </div>
           <button class="mobile-account-item" type="button" data-account-action="reset">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Reset password</span>
+            <span>เปลี่ยนรหัสผ่าน</span>
           </button>
           <button class="mobile-account-item mobile-account-item-danger" type="button" data-account-action="logout">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span>Log out</span>
+            <span>ออกจากระบบ</span>
           </button>
         </div>
       </nav>
@@ -172,15 +175,19 @@
       <section class="screen" id="screen-home">
         <header class="page-header">
           <div>
-            <h1 class="page-title">Customers</h1>
-            <p class="page-subtitle">Manage your client database</p>
+            <h1 class="page-title">ลูกค้า</h1>
+            <p class="page-subtitle">ดูและค้นหาลูกค้า</p>
           </div>
+          <button type="button" class="btn btn-outline page-header-back" id="homeSearchBackBtn" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            <span>กลับ</span>
+          </button>
         </header>
 
         <div class="customers-page">
           <!-- Step 1: เริ่มบริการ — ลูกค้าใหม่หรือลูกค้าเก่า (ตามสเปก Flow การรับลูกค้า) -->
           <div id="homeStartChoice">
-            <p class="choose-lead">เริ่มบริการ — ลูกค้าใหม่หรือลูกค้าเก่า?</p>
+            <p class="choose-lead">เริ่มบริการ — ลูกค้าใหม่ หรือลูกค้าเก่า?</p>
             <div class="service-choices">
               <button class="service-card" id="chooseNewCustomerBtn" type="button">
                 <span class="service-card-icon">
@@ -188,7 +195,7 @@
                 </span>
                 <span class="service-card-text">
                   <span class="service-card-title">ลูกค้าใหม่</span>
-                  <span class="service-card-sub">สร้าง Customer Profile ใหม่</span>
+                  <span class="service-card-sub">เปิดโปรไฟล์ใหม่</span>
                 </span>
                 <span class="service-card-arrow">›</span>
               </button>
@@ -198,7 +205,7 @@
                 </span>
                 <span class="service-card-text">
                   <span class="service-card-title">ลูกค้าเก่า</span>
-                  <span class="service-card-sub">ค้นหาจากเบอร์โทรศัพท์ที่จองผ่าน Zerva</span>
+                  <span class="service-card-sub">ค้นหาจากเบอร์ใน Zerva</span>
                 </span>
                 <span class="service-card-arrow">›</span>
               </button>
@@ -207,11 +214,10 @@
 
           <!-- Step 2 (ลูกค้าเก่า): ค้นหาจากเบอร์โทร -->
           <div id="homeSearchPanel" hidden>
-            <button class="back-link" id="homeSearchBackBtn" type="button">‹ กลับ</button>
-            <div class="toolbar-row">
+            <div class="toolbar-row home-search-toolbar">
               <div class="search-bar-wrap">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="searchInput" class="input search-input" placeholder="ค้นหาด้วยเบอร์โทรศัพท์...">
+                <input type="text" id="searchInput" class="input search-input" placeholder="ค้นหาจากเบอร์ เช่น 081...">
               </div>
             </div>
 
@@ -222,12 +228,12 @@
                 <table class="customers-table">
                   <thead>
                     <tr>
-                      <th>Customer</th>
-                      <th>Phone</th>
+                      <th>ลูกค้า</th>
+                      <th>เบอร์</th>
                       <th>Line</th>
-                      <th>Last Visit</th>
-                      <th>Visits</th>
-                      <th class="th-actions">Actions</th>
+                      <th>ครั้งล่าสุด</th>
+                      <th>จำนวนครั้ง</th>
+                      <th class="th-actions">เมนู</th>
                     </tr>
                   </thead>
                   <tbody id="customersTableBody"></tbody>
@@ -235,6 +241,7 @@
               </div>
               <div id="customersEmptyState" class="empty-hint" hidden></div>
             </div>
+            <div id="customersCardList" class="customers-card-list" hidden></div>
           </div>
         </div>
       </section>
@@ -242,34 +249,56 @@
   <!-- ===================== 3. NEW CUSTOMER — Step 2 (ลูกค้าใหม่) ===================== -->
   <section class="screen" id="screen-newCustomer">
     <header class="topbar">
-      <button class="back-link" id="newCustomerBackBtn">‹ Back</button>
-      <h2 class="topbar-title">New Customer</h2>
+      <h2 class="topbar-title">ลูกค้าใหม่</h2>
+      <div class="topbar-actions">
+        <button type="button" class="btn btn-outline topbar-back-btn" id="newCustomerBackBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          <span>กลับ</span>
+        </button>
+      </div>
     </header>
     <div class="page-pad" id="newCustomerBody"></div>
   </section>
 
   <!-- ===================== 4. CUSTOMER PROFILE ===================== -->
   <section class="screen" id="screen-customerProfile">
-    <header class="topbar">
-      <button class="back-link" id="customerProfileBackBtn" type="button">‹ Back</button>
-      <h2 class="topbar-title">Customer Profile</h2>
+    <header class="topbar topbar--profile">
+      <div class="topbar-profile-inner">
+        <h2 class="topbar-title">โปรไฟล์ลูกค้า</h2>
+        <div class="cp-topbar-actions">
+          <button type="button" class="btn btn-outline cp-back-btn" id="customerProfileBackBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            <span>กลับ</span>
+          </button>
+          <button type="button" class="btn btn-primary cp-add-visit" id="addVisitBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>เพิ่มคิวใหม่</span>
+          </button>
+        </div>
+      </div>
     </header>
-    <div class="page-pad">
-      <div class="profile-card" id="profileCard"></div>
-      <button class="btn btn-primary btn-block mt-16" id="addVisitBtn">+ Add New Visit</button>
-      <h3 class="section-title">Skin &amp; Brow Profile</h3>
-      <div class="profile-card" id="skinProfileCard"></div>
-      <h3 class="section-title">Service History</h3>
-      <div class="box-quiet" id="historySummary" hidden></div>
-      <div id="historyList" class="history-list"></div>
+    <div class="page-pad cp-page">
+      <div class="cp-hero" id="profileCard"></div>
+      <div class="cp-stats" id="profileStats" hidden></div>
+      <div class="cp-panel" id="skinProfileCard"></div>
+      <div class="cp-history-head">
+        <h3 class="cp-section-title">ประวัติบริการ</h3>
+        <span class="cp-history-count" id="historyCount"></span>
+      </div>
+      <div id="historyList" class="cp-history-list"></div>
     </div>
   </section>
 
   <!-- ===================== 4b. VISIT DETAIL (อ่านอย่างเดียว แก้ไขไม่ได้) ===================== -->
   <section class="screen" id="screen-visitDetail">
     <header class="topbar">
-      <button class="back-link" data-back="customerProfile">‹ Back</button>
-      <h2 class="topbar-title">Visit Details</h2>
+      <h2 class="topbar-title">รายละเอียดคิว</h2>
+      <div class="topbar-actions">
+        <button type="button" class="btn btn-outline topbar-back-btn" data-back="customerProfile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          <span>กลับ</span>
+        </button>
+      </div>
     </header>
     <div class="page-pad" id="visitDetailBody"></div>
   </section>
@@ -277,16 +306,21 @@
   <!-- ===================== 4c. CREATE VISIT — Step 3 (ทุกคิวต้องสร้าง Visit ใหม่ก่อนเปิดฟอร์ม) ===================== -->
   <section class="screen" id="screen-createVisit">
     <header class="topbar">
-      <button class="back-link" id="createVisitBackBtn">‹ Back</button>
-      <h2 class="topbar-title">New Visit</h2>
+      <h2 class="topbar-title">เปิดคิวใหม่</h2>
+      <div class="topbar-actions">
+        <button type="button" class="btn btn-outline topbar-back-btn" id="createVisitBackBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          <span>กลับ</span>
+        </button>
+      </div>
     </header>
     <div class="page-pad">
       <div class="box-quiet" id="cvProfileBox"></div>
 
-      <label class="field-label">Zerva Booking ID <span class="required-star">*</span></label>
+      <label class="field-label">รหัสจอง Zerva <span class="required-star">*</span></label>
       <input type="text" id="cvZervaId" class="input" placeholder="เช่น ZB100123" autocomplete="off">
 
-      <label class="field-label">วันที่เข้ารับบริการ</label>
+      <label class="field-label">วันที่บริการ</label>
       <input type="date" id="cvDate" class="input">
 
       <label class="field-label">เวลานัด <span class="required-star">*</span></label>
@@ -299,24 +333,24 @@
       </div>
       <input type="time" id="cvCustomTime" class="input" hidden>
 
-      <button class="btn btn-primary btn-block mt-16" id="cvContinueBtn">Continue</button>
+      <button class="btn btn-primary btn-block mt-16" id="cvContinueBtn">ต่อไป</button>
     </div>
   </section>
 
-  <!-- ===================== 5. เลือกฟอร์ม Consultation — Step 4 (glass modal) ===================== -->
+  <!-- ===================== 5. เลือกฟอร์ม — Step 4 (glass modal) ===================== -->
   <div class="modal-overlay" id="serviceTypeModal" hidden>
     <div class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="serviceTypeModalTitle">
-      <button class="glass-modal-close" id="serviceTypeCloseBtn" type="button" aria-label="Close">×</button>
-      <h2 class="glass-modal-title" id="serviceTypeModalTitle">เลือกฟอร์ม Consultation</h2>
-      <p class="glass-modal-sub">เลือกฟอร์มให้ตรงกับสถานการณ์ของลูกค้า</p>
+      <button class="glass-modal-close" id="serviceTypeCloseBtn" type="button" aria-label="ปิด">×</button>
+      <h2 class="glass-modal-title" id="serviceTypeModalTitle">เลือกฟอร์ม</h2>
+      <p class="glass-modal-sub">เลือกฟอร์มให้ตรงกับเคสลูกค้า</p>
       <div class="service-choices">
         <button class="service-card" id="chooseForm1Btn">
           <span class="service-card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </span>
           <span class="service-card-text">
-            <span class="service-card-title">สักคิ้วครั้งแรก</span>
-            <span class="service-card-sub">ไม่มีรอยสักคิ้วเดิมที่มีผลต่อการออกแบบ</span>
+            <span class="service-card-title">ฟอร์ม 1 — สักคิ้วครั้งแรก</span>
+            <span class="service-card-sub">ยังไม่มีงานคิ้วเก่าที่กระทบดีไซน์</span>
           </span>
           <span class="service-card-arrow">›</span>
         </button>
@@ -325,8 +359,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </span>
           <span class="service-card-text">
-            <span class="service-card-title">สักทับรอยเก่า</span>
-            <span class="service-card-sub">มีสี/ทรงเดิมที่มีผลต่อการออกแบบ (ไม่ใช่รอยเดิมของ pyne.studio)</span>
+            <span class="service-card-title">ฟอร์ม 2 — ปิดงานเก่า</span>
+            <span class="service-card-sub">มีสี/ทรงเก่าที่กระทบดีไซน์ (ไม่ใช่งาน pyne)</span>
           </span>
           <span class="service-card-arrow">›</span>
         </button>
@@ -335,8 +369,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
           </span>
           <span class="service-card-text">
-            <span class="service-card-title">เติมสีคิ้ว</span>
-            <span class="service-card-sub">เคยสักกับ pyne.studio กลับมาติดตามผล/เติมสี</span>
+            <span class="service-card-title">ฟอร์ม 3 — เติมสี</span>
+            <span class="service-card-sub">ลูกค้าเก่า pyne มาเติมสี/ตามนัด</span>
           </span>
           <span class="service-card-arrow">›</span>
         </button>
@@ -345,66 +379,94 @@
   </div>
 
   <!-- ===================== 6. FORM 1 — สักคิ้วครั้งแรก ===================== -->
-  <section class="screen" id="screen-form1">
+  <section class="screen screen--form" id="screen-form1">
     <header class="topbar">
-      <button class="back-link" id="form1BackBtn">‹ Back</button>
-      <h2 class="topbar-title">Form 1 — สักคิ้วครั้งแรก</h2>
+      <h2 class="topbar-title">ฟอร์ม 1 — สักคิ้วครั้งแรก</h2>
       <div class="topbar-actions">
-        <button type="button" class="not-served-link" id="form1NotServedBtn">ไม่ได้รับบริการ</button>
-        <button type="button" class="draft-save-btn" id="form1DraftBtn">บันทึกแบบร่าง</button>
+        <button type="button" class="cancel-link" id="form1CancelBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+          ยกเลิก
+        </button>
+        <button type="button" class="draft-save-btn" id="form1DraftBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกร่าง</span></button>
       </div>
     </header>
+    <div class="form-chrome" id="form1Chrome"></div>
     <div class="page-pad" id="form1Body"></div>
-    <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="form1NextBtn">ถัดไป: บันทึกหลังทำ</button>
+    <footer class="footer-actions footer-actions--wizard">
+      <div class="footer-wizard-meta" id="form1StepMeta">ขั้นที่ 1 จาก 5</div>
+      <div class="footer-wizard-btns">
+        <button class="btn btn-outline" id="form1PrevBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>กลับ</span></button>
+        <button class="btn btn-primary" id="form1NextBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span>ถัดไป</span></button>
+      </div>
     </footer>
   </section>
 
   <!-- ===================== 7. FORM 2 — สักทับรอยเก่า ===================== -->
-  <section class="screen" id="screen-form2">
+  <section class="screen screen--form" id="screen-form2">
     <header class="topbar">
-      <button class="back-link" id="form2BackBtn">‹ Back</button>
-      <h2 class="topbar-title">Form 2 — สักทับรอยเก่า</h2>
+      <h2 class="topbar-title">ฟอร์ม 2 — ปิดงานเก่า</h2>
       <div class="topbar-actions">
-        <button type="button" class="not-served-link" id="form2NotServedBtn">ไม่ได้รับบริการ</button>
-        <button type="button" class="draft-save-btn" id="form2DraftBtn">บันทึกแบบร่าง</button>
+        <button type="button" class="cancel-link" id="form2CancelBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+          ยกเลิก
+        </button>
+        <button type="button" class="draft-save-btn" id="form2DraftBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกร่าง</span></button>
       </div>
     </header>
+    <div class="form-chrome" id="form2Chrome"></div>
     <div class="page-pad" id="form2Body"></div>
-    <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="form2NextBtn">ถัดไป: บันทึกหลังทำ</button>
+    <footer class="footer-actions footer-actions--wizard">
+      <div class="footer-wizard-meta" id="form2StepMeta">ขั้นที่ 1 จาก 5</div>
+      <div class="footer-wizard-btns">
+        <button class="btn btn-outline" id="form2PrevBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>กลับ</span></button>
+        <button class="btn btn-primary" id="form2NextBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span>ถัดไป</span></button>
+      </div>
     </footer>
   </section>
 
   <!-- ===================== 8. FORM 3 — เติมสีคิ้ว — ส่วนที่ 1-4 ===================== -->
-  <section class="screen" id="screen-formTouchup">
+  <section class="screen screen--form" id="screen-formTouchup">
     <header class="topbar">
-      <button class="back-link" id="touchupBackBtn">‹ Back</button>
-      <h2 class="topbar-title">Form 3 — เติมสีคิ้ว</h2>
+      <h2 class="topbar-title">ฟอร์ม 3 — เติมสี</h2>
       <div class="topbar-actions">
-        <button type="button" class="not-served-link" id="touchupNotServedBtn">ไม่ได้รับบริการ</button>
-        <button type="button" class="draft-save-btn" id="touchupDraftBtn">บันทึกแบบร่าง</button>
+        <button type="button" class="cancel-link" id="touchupCancelBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+          ยกเลิก
+        </button>
+        <button type="button" class="draft-save-btn" id="touchupDraftBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกร่าง</span></button>
       </div>
     </header>
+    <div class="form-chrome" id="touchupChrome"></div>
     <div class="page-pad" id="touchupBody"></div>
-    <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="tuNextBtn">ถัดไป: บันทึกหลังทำ</button>
+    <footer class="footer-actions footer-actions--wizard">
+      <div class="footer-wizard-meta" id="touchupStepMeta">ขั้นที่ 1 จาก 5</div>
+      <div class="footer-wizard-btns">
+        <button class="btn btn-outline" id="touchupPrevBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>กลับ</span></button>
+        <button class="btn btn-primary" id="tuNextBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span>ถัดไป</span></button>
+      </div>
     </footer>
   </section>
 
   <!-- ===================== 9. บันทึกหลังทำ — ใช้ร่วมกัน Form 1/2/3 ===================== -->
-  <section class="screen" id="screen-techFields">
+  <section class="screen screen--form" id="screen-techFields">
     <header class="topbar">
-      <button class="back-link" id="techBackBtn">‹ Back</button>
-      <h2 class="topbar-title" id="techTitle">บันทึกหลังทำ</h2>
+      <h2 class="topbar-title" id="techTitle">โน้ตหลังทำ</h2>
       <div class="topbar-actions">
-        <button type="button" class="not-served-link" id="techNotServedBtn">ไม่ได้รับบริการ</button>
-        <button type="button" class="draft-save-btn" id="tuSaveDraftBtn">บันทึกแบบร่าง</button>
+        <button type="button" class="btn btn-outline topbar-back-btn" id="techBackBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          <span>กลับ</span>
+        </button>
+        <button type="button" class="cancel-link" id="techCancelBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+          ยกเลิก
+        </button>
+        <button type="button" class="draft-save-btn" id="tuSaveDraftBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกร่าง</span></button>
       </div>
     </header>
+    <div class="form-chrome" id="techChrome"></div>
     <div class="page-pad" id="techBody"></div>
     <footer class="footer-actions">
-      <button class="btn btn-primary btn-block" id="tuSaveCloseBtn" type="button">บันทึกเสร็จและปิด Visit</button>
+      <button class="btn btn-primary btn-block" id="tuSaveCloseBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg><span>บันทึกและปิดคิว</span></button>
     </footer>
   </section>
 
@@ -412,14 +474,26 @@
   <section class="screen" id="screen-confirmation">
     <div class="confirm-wrap">
       <div class="confirm-check">✓</div>
-      <h2>Saved successfully</h2>
+      <h2>บันทึกสำเร็จ</h2>
       <p class="muted" id="confirmSummary"></p>
-      <button class="btn btn-outline btn-block" id="exportPdfBtn">Export Consent Form (PDF)</button>
-      <button class="btn btn-primary btn-block mt-12" id="backHomeBtn">Back to Home</button>
+      <button class="btn btn-outline btn-block" id="exportPdfBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>ส่งออกใบยินยอม (PDF)</span></button>
+      <button class="btn btn-primary btn-block mt-12" id="backHomeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>กลับหน้าแรก</span></button>
     </div>
   </section>
 
     </div>
+  </div>
+</div>
+
+
+<!-- ===================== HISTORY REFERENCE SHEET (read-only, stays on form) ===================== -->
+<div class="history-sheet-overlay" id="historySheetOverlay" hidden>
+  <div class="history-sheet" role="dialog" aria-modal="true" aria-labelledby="historySheetTitle">
+    <div class="history-sheet-head">
+      <h2 class="history-sheet-title" id="historySheetTitle">ข้อมูลเก่า</h2>
+      <button type="button" class="app-dialog-close" id="historySheetClose" aria-label="ปิด">×</button>
+    </div>
+    <div class="history-sheet-body" id="historySheetBody"></div>
   </div>
 </div>
 

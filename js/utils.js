@@ -30,11 +30,69 @@ export function normalizeVisitStatus(status) {
 
 export function visitStatusLabel(status) {
   const key = normalizeVisitStatus(status);
-  if (key === "draft") return "Draft";
-  if (key === "in_progress") return "In progress";
-  if (key === "completed") return "Completed";
-  if (key === "not_served") return "Not served";
+  if (key === "draft") return "แบบร่าง";
+  if (key === "in_progress") return "ทำค้างไว้";
+  if (key === "completed") return "เสร็จแล้ว";
+  if (key === "not_served") return "ไม่ได้รับบริการ";
   return key || "";
+}
+
+/** ค่าตัวเลือกที่ต้องเปิดช่องกรอกรายละเอียด (สเปก: อื่น ๆ / จุดอื่น ๆ) */
+export function isOtherOption(opt) {
+  return opt === "Other" || opt === "จุดอื่นๆ" || opt === "จุดอื่น ๆ" || opt === "อื่นๆ" || opt === "อื่น ๆ";
+}
+
+export function selectionIncludesOther(selected) {
+  const arr = Array.isArray(selected) ? selected : selected != null ? [selected] : [];
+  return arr.some(isOtherOption);
+}
+
+export function optionDisplayLabel(opt) {
+  if (opt === "Other" || opt === "อื่นๆ") return "อื่น ๆ";
+  return opt;
+}
+
+/** Form 3 — ค่า sentinel เมื่อเลือกใช้ข้อมูลครั้งเดิม */
+export const TOUCHUP_ORIGINAL = {
+  technique: "เทคนิคเดิม",
+  shape: "ทรงเดิม",
+  color: "สีเดิม"
+};
+
+export function resolveTouchupTechnique(draft) {
+  if (!draft) return null;
+  if (draft.technique === TOUCHUP_ORIGINAL.technique) {
+    return draft.prevTechnique || null;
+  }
+  return draft.technique || null;
+}
+
+export function resolveTouchupShape(draft) {
+  if (!draft) return null;
+  if (draft.shapeDesign === "Other" || isOtherOption(draft.shapeDesign)) {
+    return draft.shapeDesignOther || "อื่น ๆ";
+  }
+  if (draft.shapeDesign === TOUCHUP_ORIGINAL.shape) {
+    return draft.prevShapeDesign || null;
+  }
+  return draft.shapeDesign || null;
+}
+
+export function resolveTouchupColor(draft) {
+  if (!draft) return null;
+  if (draft.colorChoice === TOUCHUP_ORIGINAL.color) {
+    return draft.prevColorUsed || null;
+  }
+  return draft.colorChoice || null;
+}
+
+export function visitStatusBadgeClass(status) {
+  const key = normalizeVisitStatus(status);
+  if (key === "completed") return "is-completed";
+  if (key === "not_served") return "is-not-served";
+  if (key === "draft") return "is-draft";
+  if (key === "in_progress") return "is-in-progress";
+  return "";
 }
 
 export function isResumableVisitStatus(status) {
@@ -93,7 +151,7 @@ export function hasDraftPhoto(draft, key) {
 export function formTypeLabel(formType) {
   const key = String(formType || "").trim();
   if (key === "form1") return "สักคิ้วครั้งแรก";
-  if (key === "form2") return "สักทับรอยเก่า";
-  if (key === "form3") return "เติมสีคิ้ว";
+  if (key === "form2") return "ปิดงานเก่า";
+  if (key === "form3") return "เติมสี";
   return "";
 }

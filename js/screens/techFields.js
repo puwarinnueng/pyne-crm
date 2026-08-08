@@ -1,18 +1,24 @@
-// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูป After, ลายเซ็นช่าง)
+// techFields.js — ส่วนบันทึกหลังทำ ใช้ร่วมกันทั้ง Form 1/2/3 (สัดส่วนสีที่ใช้, ความแดงผิว, ความติดสี, รูปหลังทำ, ลายเซ็นช่าง)
 // เหมือนกันทุกฟอร์มตามสเปก ("กติกากลางของทั้ง 3 ฟอร์ม") จึงมีหน้าเดียวใช้ร่วมกัน แยกแค่ payload ตอนบันทึก
 
-import { show, onEnter } from "../router.js";
-import { state } from "../state.js";
-import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js";
-import { appAlert } from "../dialogs.js";
-import { OPTIONS } from "../data/options.js";
-import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js";
-import { readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
-import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js";
-import { promptAfterDraftSaved, setDraftSaveLoading, visitHeaderHtml, wireNotServedButton } from "../visitFlow.js";
+import { show, onEnter } from "../router.js?v=20260808ae";
+import { state } from "../state.js?v=20260808ae";
+import { saveVisit, uploadImage, ensureVisitFolder } from "../mockApi.js?v=20260808ae";
+import { appAlert } from "../dialogs.js?v=20260808ae";
+import { OPTIONS } from "../data/options.js?v=20260808ae";
+import { radioField, mixRatioField, formatMixRatio, bindFieldEvents, bindMixRatioEvents } from "../fieldHelpers.js?v=20260808ae";
+import {
+  readFileAsDataUrl, ensureVisitSessionKey, draftPhotoUrl, hasDraftPhoto, selectionIncludesOther,
+  resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
+} from "../utils.js?v=20260808ae";
+import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js?v=20260808ae";
+import { promptAfterDraftSaved, setDraftSaveLoading } from "../visitFlow.js?v=20260808ae";
+import { showToast } from "../toast.js?v=20260808ae";
+import { mountVisitStripOnly, wireCancelButton, LAST_CONSULT_STEP } from "../formWizard.js?v=20260808ae";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
+  const chromeEl = document.getElementById("techChrome");
   const draftBtn = document.getElementById("tuSaveDraftBtn");
   const closeBtn = document.getElementById("tuSaveCloseBtn");
 
@@ -31,8 +37,9 @@ export function initTechFields() {
 
   function render() {
     const draft = state.visitDraft;
+    state.formStepIndex = 5;
+    mountVisitStripOnly(chromeEl);
     body.innerHTML = `
-      ${visitHeaderHtml()}
       <div class="step-group">
         <div class="step-group-title">สัดส่วนสีที่ใช้ <span class="required-star">*</span></div>
         ${mixRatioField("mixRatioParts", OPTIONS.mixColors, draft)}
@@ -49,8 +56,8 @@ export function initTechFields() {
       </div>
 
       <div class="step-group">
-        <div class="step-group-title">รูป After <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("after", "After")}</div>
+        <div class="step-group-title">รูปหลังทำ <span class="required-star">*</span></div>
+        <div class="photo-row">${photoSlot("after", "หลังทำ")}</div>
       </div>
 
       <div class="step-group">
@@ -76,8 +83,12 @@ export function initTechFields() {
   bindFieldEvents(body, state.visitDraft, () => {});
   bindMixRatioEvents(body, state.visitDraft);
 
-  document.getElementById("techBackBtn").addEventListener("click", () => show(state.formType || "form1"));
-  wireNotServedButton(document.getElementById("techNotServedBtn"));
+  document.getElementById("techBackBtn")?.addEventListener("click", () => {
+    state.formStepIndex = LAST_CONSULT_STEP;
+    const screenId = state.formType === "form3" ? "formTouchup" : (state.formType || "form1");
+    show(screenId);
+  });
+  wireCancelButton(document.getElementById("techCancelBtn"));
 
   function clearFieldErrors() {
     body.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
@@ -89,12 +100,13 @@ export function initTechFields() {
   }
 
   function missingRequiredBeforeClose(draft) {
-    if (!hasDraftPhoto(draft, "before")) return "รูป Before";
-    if (!draft.finalAgree) return "Consent";
+    if (!hasDraftPhoto(draft, "before")) return "รูปก่อนทำ";
+    if (!hasDraftPhoto(draft, "after")) return "รูปหลังทำ";
+    if (!draft.finalAgree) return "ใบยินยอม";
     if (!(draft.signatureCustomerDataUrl || draft.existingSignatureCustomerUrl)) return "ลายเซ็นลูกค้า";
     if (!draft.hasScar || !draft.irritation7d || !draft.allergyInfo) return "ข้อมูลความพร้อมก่อนรับบริการ";
     if (draft.hasScar === "มี" && !(draft.scarCause || []).length) return "สาเหตุแผลเป็น";
-    if (draft.hasScar === "มี" && (draft.scarCause || []).includes("Other") && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
+    if (draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim()) return "รายละเอียดแผลเป็น";
     if (draft.irritation7d === "มี" && !draft.irritationDetail?.trim()) return "รายละเอียดความระคายเคือง";
     if (draft.allergyInfo === "มี" && !draft.allergyDetail?.trim()) return "รายละเอียดอาการแพ้/ข้อมูลสำคัญ";
     if (state.formType === "form1") {
@@ -161,11 +173,11 @@ export function initTechFields() {
       formType: state.formType,
       status,
       visitDate: state.visitContext.visitDate || Date.now(),
-      technique: draft.technique || draft.prevTechnique || null,
-      colorUsed: draft.colorChoice || draft.prevColorUsed || null,
+      technique: resolveTouchupTechnique(draft) || draft.prevTechnique || null,
+      colorUsed: resolveTouchupColor(draft) || draft.prevColorUsed || null,
       intensity: draft.intensity || null,
       muscle: draft.muscle || null,
-      shapeDesign: draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || draft.prevShapeDesign || null),
+      shapeDesign: resolveTouchupShape(draft) || draft.prevShapeDesign || null,
       browGuard: draft.browGuard || null,
       satisfaction: draft.satisfaction || null,
       colorRetention: draft.colorRetention || null,
@@ -188,13 +200,18 @@ export function initTechFields() {
         ...buildPayload("draft"),
         beforePhotoUrl, afterPhotoUrl, signatureCustomerUrl,
         signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
-        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined }
+        rawAnswers: {
+          ...draft,
+          formStepIndex: state.formStepIndex ?? 5,
+          beforePhotoDataUrl: undefined,
+          afterPhotoDataUrl: undefined
+        }
       };
       await saveVisit(payload);
       await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
-      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกร่างไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
       setDraftSaveLoading(draftBtn, false);
     }
@@ -211,7 +228,7 @@ export function initTechFields() {
     const afterEl = !hasDraftPhoto(draft, "after") ? flagError('.photo-slot[data-photo-key="after"]') : null;
     const firstError = mixEl || afterEl;
     if (missingBeforeClose) {
-      await appAlert(`ยังปิด Visit ไม่ได้ — ขาดข้อมูลบังคับ: ${missingBeforeClose}`, { title: "ข้อมูลยังไม่ครบ" });
+      await appAlert(`ยังปิดคิวไม่ได้ — ยังขาด: ${missingBeforeClose}`, { title: "ข้อมูลยังไม่ครบ" });
       return;
     }
     if (firstError) { firstError.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
@@ -231,14 +248,15 @@ export function initTechFields() {
       // "อัปเดตแถวเดิม" แทนสร้างแถวใหม่ — ถ้า state.visitContext หลุดไปคนละตัวจาก race/reload กลางทาง
       // (เช่น รีเฟรชหน้าระหว่างกรอกฟอร์ม) payload.serviceId จะไม่ตรงกับแถวเดิมในชีต แล้วได้ Visit ซ้อนกัน
       // เช็คซ้ำตรงนี้กันเคสที่ visitContext หายไประหว่างทาง
-      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จาก Customer Profile");
+      if (!payload.serviceId) throw new Error("ไม่พบ Visit ID — กรุณากลับไปเริ่มใหม่จากโปรไฟล์ลูกค้า");
 
       const res = await saveVisit(payload);
       state.lastSavedServiceId = res.serviceId;
+      showToast("บันทึกคิวแล้ว", { tone: "ok" });
       show("confirmation");
     } catch (e) {
       console.warn("saveVisit (close) failed:", e);
-      await appAlert("บันทึกไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง (ข้อมูลที่กรอกยังอยู่ในหน้านี้)", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกไม่สำเร็จ ลองเช็คเน็ตอีกครั้ง ข้อมูลในหน้านี้ยังอยู่", { title: "บันทึกไม่สำเร็จ" });
       closeBtn.disabled = false;
     }
   });

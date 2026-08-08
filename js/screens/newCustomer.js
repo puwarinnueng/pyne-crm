@@ -1,12 +1,12 @@
 // newCustomer.js — Step 2 (ลูกค้าใหม่): กรอกข้อมูลส่วนตัว 5 ฟิลด์ > ยืนยันข้อมูล > กรอกประวัติผิวและคิ้ว > สร้าง Customer Profile
 // flow: home > "+ New Customer" > หน้านี้ > สร้างลูกค้าเข้า DB > ไปหน้าสร้าง Visit (Step 3)
 
-import { show, onEnter } from "../router.js";
-import { state } from "../state.js";
-import { findCustomerByPhone, createCustomer, saveSkinProfile, confirmCustomerProfile } from "../mockApi.js";
-import { OPTIONS } from "../data/options.js";
-import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js";
-import { escapeHtml } from "../utils.js";
+import { show, onEnter } from "../router.js?v=20260808ae";
+import { state } from "../state.js?v=20260808ae";
+import { findCustomerByPhone, createCustomer, saveSkinProfile, confirmCustomerProfile } from "../mockApi.js?v=20260808ae";
+import { OPTIONS } from "../data/options.js?v=20260808ae";
+import { radioField, chipGroup, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
+import { escapeHtml } from "../utils.js?v=20260808ae";
 
 // state ชั่วคราวของหน้านี้เท่านั้น (ยังไม่ได้สร้าง customer จริงจนกว่าจะกด Continue) — ไม่ใช้ state.visitDraft
 // เพราะฟิลด์นี้เป็นของ Customer Profile ไม่ใช่ของ Visit
@@ -39,7 +39,7 @@ export function initNewCustomer() {
 
   function render() {
     container.innerHTML = `
-      <p class="choose-lead">กรอกข้อมูลลูกค้าใหม่เพื่อสร้าง Customer Profile</p>
+      <p class="choose-lead">กรอกข้อมูลลูกค้าใหม่เพื่อสร้างโปรไฟล์</p>
 
       <label class="field-label">ชื่อ–นามสกุลจริง <span class="required-star">*</span></label>
       <input type="text" id="ncFullName" class="input" placeholder="เช่น มาลี ใจดี" autocomplete="off">
@@ -50,7 +50,7 @@ export function initNewCustomer() {
       <label class="field-label">เบอร์โทรศัพท์ <span class="required-star">*</span></label>
       <input type="tel" id="ncPhone" class="input" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="off">
       <label class="field-label">LINE ID (ถ้ามี)</label>
-      <input type="text" id="ncLine" class="input" placeholder="Optional" autocomplete="off">
+      <input type="text" id="ncLine" class="input" placeholder="ไม่บังคับ" autocomplete="off">
       <div id="ncWarning"></div>
 
       <div class="form-section-title">ยืนยันข้อมูลส่วนตัว</div>
@@ -79,7 +79,7 @@ export function initNewCustomer() {
       </div>
       <p class="muted small">กล้ามเนื้อคิ้ว: ยังไม่ได้ประเมิน (จะประเมินหลังเช็ดคิ้ว/วัดทรงจริงในฟอร์ม 1 หรือ 2 ครั้งแรก)</p>
 
-      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">Create Customer &amp; Continue</button>
+      <button class="btn btn-primary btn-block mt-16" id="ncCreateBtn2">สร้างลูกค้าแล้วไปต่อ</button>
     `;
 
     ["ncFullName", "ncNickname", "ncDob", "ncPhone", "ncLine"].forEach((id) => {
@@ -141,18 +141,18 @@ export function initNewCustomer() {
       existing = await findCustomerByPhone(draft.phone);
     } catch (e) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
       document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
       return;
     }
     if (existing) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
       document.getElementById("ncWarning").innerHTML = `
         <div class="dup-warning">
-          ⚠ This phone number already exists: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
-          Please use the existing customer instead of creating a duplicate.
-          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">Open this customer</button>
+          ⚠ เบอร์นี้มีในระบบแล้ว: <b>${escapeHtml(existing.fullName || existing.nickname)}</b> (${escapeHtml(existing.phoneDisplay)})<br>
+          ใช้โปรไฟล์เดิมดีกว่า อย่าสร้างซ้ำ
+          <br><button class="btn btn-primary mt-8" id="ncUseExistingBtn" type="button">เปิดลูกค้าคนนี้</button>
         </div>`;
       document.getElementById("ncUseExistingBtn").addEventListener("click", () => {
         state.currentCustomer = existing;
@@ -171,14 +171,14 @@ export function initNewCustomer() {
       });
     } catch (e) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
-      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้าง Customer Profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>`;
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้างลูกค้าไม่สำเร็จ ลองอีกครั้ง</div>`;
       return;
     }
     if (!res.success) {
       createBtn2.disabled = false;
-      createBtn2.textContent = "Create Customer & Continue";
-      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ Could not create customer (this phone may have just been added). Please try again.</div>`;
+      createBtn2.textContent = "สร้างลูกค้าแล้วไปต่อ";
+      document.getElementById("ncWarning").innerHTML = `<div class="dup-warning">⚠ สร้างลูกค้าไม่สำเร็จ อาจมีเบอร์นี้เพิ่งถูกเพิ่ม ลองอีกครั้ง</div>`;
       return;
     }
 

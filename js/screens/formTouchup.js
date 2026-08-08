@@ -1,18 +1,24 @@
-// formTouchup.js — Form 3 "เติมสีคิ้ว" ส่วนที่ 1-4 (ประวัติเดิม → ติดตามผล → ออกแบบ → สรุป+เซ็น)
-// ส่วนที่ 5 (บันทึกหลังทำ) อยู่ที่ techFields.js (ใช้ร่วมกับ Form 1/2)
-// ใช้กับลูกค้าเก่าที่เคยสักกับ pyne.studio เท่านั้น (Visit ถูกสร้างไว้แล้วตั้งแต่ Step 3 ก่อนเข้าหน้านี้)
+// formTouchup.js — Form 3 "เติมสีคิ้ว"
+// Wizard 5 ขั้น: ข้อมูลลูกค้า(+ประวัติ) → สุขภาพ → ติดตามผล+Before → การออกแบบ → ยืนยัน → techFields
 
-import { show, onEnter } from "../router.js";
-import { state } from "../state.js";
-import { getHistoryByCustomer } from "../mockApi.js";
-import { OPTIONS } from "../data/options.js";
-import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js";
-import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js";
-import { createSignaturePad } from "../signaturePad.js";
-import { formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto } from "../utils.js";
-import { visitHeaderHtml, wireNotServedButton, wireDraftSaveButton } from "../visitFlow.js";
+import { show, onEnter } from "../router.js?v=20260808ae";
+import { state } from "../state.js?v=20260808ae";
+import { getHistoryByCustomer } from "../mockApi.js?v=20260808ae";
+import { OPTIONS } from "../data/options.js?v=20260808ae";
+import { INTENSITY_DISCLAIMER, FINAL_AGREEMENT_TEXT } from "../data/consentText.js?v=20260808ae";
+import { radioField, chipGroup, readinessBlockHtml, bindReadinessToggle, bindFieldEvents } from "../fieldHelpers.js?v=20260808ae";
+import { createSignaturePad } from "../signaturePad.js?v=20260808ae";
+import {
+  formatDate, escapeHtml, readFileAsDataUrl, isCompletedBrowVisit, draftPhotoUrl, hasDraftPhoto,
+  isOtherOption, selectionIncludesOther, TOUCHUP_ORIGINAL,
+  resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor
+} from "../utils.js?v=20260808ae";
+import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ae";
+import {
+  mountFormChrome, setFooterWizardMode, wireCancelButton,
+  customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
+} from "../formWizard.js?v=20260808ae";
 
-// ระยะเวลาจากวันที่สักครั้งแรกถึงวันนี้ ปัดเป็นจำนวนเดือนเต็ม (คำนวณอัตโนมัติตามสเปก)
 function monthsSince(ts) {
   if (!ts) return "-";
   const months = Math.max(0, Math.round((Date.now() - ts) / (1000 * 60 * 60 * 24 * 30)));
@@ -27,14 +33,10 @@ function photoBoxReadOnly(url) {
   return `<div class="photo-slot">${url ? `<img src="${url}">` : `<span class="muted small">ไม่มีรูป</span>`}</div>`;
 }
 
-// รอบแรกที่สักจริงกับร้าน = Visit สักคิ้วที่ปิดเสร็จแล้วตัวเก่าที่สุด
-// ล่าสุด = Visit สักคิ้วที่ปิดเสร็จแล้วตัวล่าสุด (ใช้เป็นค่าเดิมสำหรับเติมสี)
 function historyCtxFromRows(history) {
   const browVisits = history.filter(isCompletedBrowVisit);
   if (!browVisits.length) return null;
-  const first = browVisits[browVisits.length - 1];
-  const last = browVisits[0];
-  return { first, last };
+  return { first: browVisits[browVisits.length - 1], last: browVisits[0] };
 }
 
 async function loadHistoryCtx(customerId) {
@@ -47,10 +49,37 @@ async function loadHistoryCtx(customerId) {
   return historyCtxFromRows(history);
 }
 
+function applyTouchupDefaults(draft, ctx) {
+  if (!ctx) return;
+  if (!draft.prevTechnique) draft.prevTechnique = ctx.last.technique || null;
+  if (!draft.prevShapeDesign) draft.prevShapeDesign = ctx.last.shapeDesign || null;
+  if (!draft.prevColorUsed) draft.prevColorUsed = ctx.last.colorUsed || null;
+
+  if (!draft.technique) {
+    draft.technique = TOUCHUP_ORIGINAL.technique;
+  } else if (draft.technique === draft.prevTechnique) {
+    draft.technique = TOUCHUP_ORIGINAL.technique;
+  }
+
+  if (!draft.shapeDesign) {
+    draft.shapeDesign = TOUCHUP_ORIGINAL.shape;
+  } else if (draft.shapeDesign === draft.prevShapeDesign) {
+    draft.shapeDesign = TOUCHUP_ORIGINAL.shape;
+  }
+
+  if (!draft.colorChoice) {
+    draft.colorChoice = TOUCHUP_ORIGINAL.color;
+  } else if (draft.colorChoice === draft.prevColorUsed) {
+    draft.colorChoice = TOUCHUP_ORIGINAL.color;
+  }
+}
+
 export function initFormTouchup() {
   const container = document.getElementById("touchupBody");
+  const chromeEl = document.getElementById("touchupChrome");
   const nextBtn = document.getElementById("tuNextBtn");
-  const backBtn = document.getElementById("touchupBackBtn");
+  const prevBtn = document.getElementById("touchupPrevBtn");
+  const stepMetaEl = document.getElementById("touchupStepMeta");
   let pad = null;
   let historyCtx = null;
 
@@ -69,10 +98,13 @@ export function initFormTouchup() {
 
   function historyBlockHtml() {
     if (!historyCtx) {
-      return `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
+      return `
+        <div class="form-section-title">ส่วนที่ 1 — ระบบดึงประวัติเดิม</div>
+        <div class="empty-hint">ไม่พบประวัติเดิม</div>`;
     }
     const { first, last } = historyCtx;
     return `
+      <div class="form-section-title">ส่วนที่ 1 — ระบบดึงประวัติเดิม</div>
       <div class="box-quiet">
         ${row("วันที่สักครั้งแรก", formatDate(first.visitDate))}
         ${row("ระยะเวลาจากครั้งแรกถึงวันนี้", monthsSince(first.visitDate))}
@@ -83,20 +115,45 @@ export function initFormTouchup() {
           ${photoBoxReadOnly(first.beforePhotoUrl)}
           ${photoBoxReadOnly(first.afterPhotoUrl)}
         </div>
-        <button type="button" class="icon-btn icon-btn--flush mt-8" id="tuViewLastBtn">ดูรายละเอียด ›</button>
+        <button type="button" class="btn btn-outline mt-8" data-open-history>ดูรายละเอียด</button>
       </div>`;
   }
 
-  function render() {
-    const draft = state.visitDraft;
+  function techniqueOptions() {
+    return [TOUCHUP_ORIGINAL.technique, ...OPTIONS.technique];
+  }
 
-    container.innerHTML = `
-      ${visitHeaderHtml()}
-      <div class="form-section-title">ส่วนที่ 1 — ประวัติเดิม</div>
-      ${historyBlockHtml()}
+  function techniqueLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.technique) {
+      return `เทคนิคเดิม: ${(historyCtx && historyCtx.last.technique) || state.visitDraft.prevTechnique || "-"}`;
+    }
+    return opt;
+  }
 
-      ${readinessBlockHtml(draft)}
+  function shapeOptions() {
+    return [TOUCHUP_ORIGINAL.shape, ...OPTIONS.touchupShape];
+  }
 
+  function shapeLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.shape) {
+      return `ทรงเดิม: ${(historyCtx && historyCtx.last.shapeDesign) || state.visitDraft.prevShapeDesign || "-"}`;
+    }
+    return opt === "Other" ? "อื่น ๆ" : opt;
+  }
+
+  function colorOptions() {
+    return [TOUCHUP_ORIGINAL.color, ...OPTIONS.colorChoice8];
+  }
+
+  function colorLabel(opt) {
+    if (opt === TOUCHUP_ORIGINAL.color) {
+      return `สีเดิม: ${(historyCtx && historyCtx.last.colorUsed) || state.visitDraft.prevColorUsed || "-"}`;
+    }
+    return opt;
+  }
+
+  function stepNeedsHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 2 — ติดตามผลหลังลอก</div>
       <div class="step-group">
         <div class="step-group-title">ความพึงพอใจกับผลลัพธ์หลังลอก <span class="required-star">*</span></div>
@@ -121,42 +178,50 @@ export function initFormTouchup() {
       </div>
       <div class="step-group">
         <div class="step-group-title">รูป Before <span class="required-star">*</span></div>
-        <div class="photo-row">${photoSlot("before", "Before")}</div>
-      </div>
+        <div class="photo-row">${photoSlot("before", "ก่อนทำ")}</div>
+      </div>`;
+  }
 
+  function stepDesignHtml(draft) {
+    return `
       <div class="form-section-title">ส่วนที่ 3 — การออกแบบ</div>
       <div class="step-group">
         <div class="step-group-title">เทคนิคที่เลือกใช้ครั้งนี้</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นเทคนิคเดิม: ${escapeHtml((historyCtx && historyCtx.last.technique) || "-")}</p>
-        ${radioField("technique", OPTIONS.technique, draft)}
+        ${radioField("technique", techniqueOptions(), draft, techniqueLabel)}
       </div>
       <div class="step-group">
         <div class="step-group-title">ทรงที่ออกแบบ</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นทรงเดิม: ${escapeHtml((historyCtx && historyCtx.last.shapeDesign) || "-")}</p>
-        ${chipGroup("shapeDesign", OPTIONS.touchupShape, draft, false)}
+        ${radioField("shapeDesign", shapeOptions(), draft, shapeLabel)}
+        ${draft.shapeDesign === "Other" || isOtherOption(draft.shapeDesign)
+          ? `<input type="text" class="input other-input mt-8" data-other-key="shapeDesignOther" placeholder="ระบุ..." value="${escapeHtml(draft.shapeDesignOther || "")}">`
+          : ""}
       </div>
       <div class="step-group">
         <div class="step-group-title">สีที่ต้องการ</div>
-        <p class="muted small">ค่าเริ่มต้นเป็นสีเดิม: ${escapeHtml((historyCtx && historyCtx.last.colorUsed) || "-")}</p>
-        ${radioField("colorChoice", OPTIONS.colorChoice8, draft)}
+        ${radioField("colorChoice", colorOptions(), draft, colorLabel)}
       </div>
       <div class="step-group">
         <div class="step-group-title">การกันคิ้ว</div>
         ${radioField("browGuard", OPTIONS.browGuard, draft)}
-      </div>
+      </div>`;
+  }
 
+  function stepConfirmHtml(draft) {
+    const changeLabel = (draft.changeItems || [])
+      .map((v) => (isOtherOption(v) ? (draft.changeItemsOther || "อื่น ๆ") : v))
+      .join(", ");
+    return `
       <div class="form-section-title">ส่วนที่ 4 — สรุปข้อมูลก่อนเริ่มทำ</div>
       <div class="box-quiet">
         ${row("การติดสีโดยรวม", draft.colorRetention)}
         ${draft.wantsMoreChange === "มี" && (draft.changeItems || []).length
-          ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", (draft.changeItems || []).map((v) => (v === "Other" ? (draft.changeItemsOther || "อื่นๆ") : v)).join(", "))
+          ? row("สิ่งที่ต้องการแก้ไขเพิ่มเติม", changeLabel)
           : ""}
-        ${row("เทคนิคที่เลือก", draft.technique || (historyCtx && historyCtx.last.technique))}
-        ${row("ทรงที่ออกแบบ", draft.shapeDesign === "Other" ? (draft.shapeDesignOther || "อื่นๆ") : (draft.shapeDesign || (historyCtx && historyCtx.last.shapeDesign)))}
-        ${row("สีที่เลือก", draft.colorChoice || (historyCtx && historyCtx.last.colorUsed))}
+        ${row("เทคนิคที่เลือก", resolveTouchupTechnique(draft))}
+        ${row("ทรงที่ออกแบบ", resolveTouchupShape(draft))}
+        ${row("สีที่เลือก", resolveTouchupColor(draft))}
         ${row("ระดับความเข้มหลังทำเสร็จวันนี้", draft.intensity)}
       </div>
-
       <div class="step-group-title">ข้อตกลงและความยินยอม <span class="required-star">*</span></div>
       <div class="step-group" data-radio-key="finalAgree">
         <label class="agree-row">
@@ -164,137 +229,158 @@ export function initFormTouchup() {
           <span>${escapeHtml(FINAL_AGREEMENT_TEXT)}</span>
         </label>
       </div>
-
       <div class="step-group-title">ลายเซ็นลูกค้า <span class="required-star">*</span></div>
       <div class="sig-wrap"><canvas id="tuSigCanvas"></canvas></div>
-      <div class="sig-actions"><button id="tuSigClearBtn" type="button">ล้างลายเซ็น</button></div>
-    `;
+      <div class="sig-actions"><button id="tuSigClearBtn" type="button">ล้างลายเซ็น</button></div>`;
+  }
 
-    pad = createSignaturePad(document.getElementById("tuSigCanvas"));
-    document.getElementById("tuSigClearBtn").addEventListener("click", () => pad.clear());
+  function stepHtml(step, draft) {
+    if (step === 0) return customerConfirmStepHtml(draft, { extraHtml: historyBlockHtml() });
+    if (step === 1) return readinessBlockHtml(draft);
+    if (step === 2) return stepNeedsHtml(draft);
+    if (step === 3) return stepDesignHtml(draft);
+    return stepConfirmHtml(draft);
+  }
 
-    const viewLastBtn = document.getElementById("tuViewLastBtn");
-    if (viewLastBtn) {
-      viewLastBtn.addEventListener("click", () => show("visitDetail", { data: historyCtx.last }));
-    }
+  function render() {
+    const draft = state.visitDraft;
+    const step = Math.max(0, Math.min(state.formStepIndex || 0, LAST_CONSULT_STEP));
+    state.formStepIndex = step;
+    pad = null;
+    mountFormChrome(chromeEl, step);
+    container.innerHTML = stepHtml(step, draft);
+    setFooterWizardMode(prevBtn, nextBtn, stepMetaEl, { stepIndex: step });
+    container.scrollTop = 0;
 
-    container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
-      inputEl.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const dataUrl = await readFileAsDataUrl(file);
-        state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = dataUrl;
-        render();
+    if (step === 0) bindCustomerConfirm(container, draft);
+    if (step === 2) {
+      container.querySelectorAll("[data-photo-input]").forEach((inputEl) => {
+        inputEl.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          state.visitDraft[inputEl.dataset.photoInput + "PhotoDataUrl"] = await readFileAsDataUrl(file);
+          render();
+        });
       });
-    });
+    }
+    if (step === 4) {
+      pad = createSignaturePad(document.getElementById("tuSigCanvas"));
+      document.getElementById("tuSigClearBtn")?.addEventListener("click", () => pad.clear());
+    }
   }
 
   bindFieldEvents(container, state.visitDraft, (changedRadioName) => {
     bindReadinessToggle(container, state.visitDraft, changedRadioName);
-    // ต้อง toggle DOM ตรง ๆ ห้าม re-render ทั้ง container เพราะจะล้างลายเซ็น/รูปที่เพิ่งใส่
     if (changedRadioName === "wantsMoreChange") {
       const block = document.getElementById("changeItemsBlock");
       if (block) block.hidden = state.visitDraft.wantsMoreChange !== "มี";
     }
+    if (changedRadioName === "shapeDesign") {
+      render();
+    }
   });
 
-  ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
-    container.addEventListener(evt, (e) => {
-      const errEl = e.target.closest(".field-error");
-      if (errEl) errEl.classList.remove("field-error");
+  if (container) {
+    ["click", "input", "change", "mousedown", "touchstart"].forEach((evt) => {
+      container.addEventListener(evt, (e) => {
+        e.target.closest(".field-error")?.classList.remove("field-error");
+      });
     });
-  });
-
-  function clearFieldErrors() {
-    container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
-  }
-  function flagError(selector) {
-    const el = container.querySelector(selector);
-    if (el) el.classList.add("field-error");
-    return el;
-  }
-  function scrollToFirstError(...els) {
-    const first = els.find(Boolean);
-    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
-    return !first;
   }
 
-  backBtn.addEventListener("click", () => show(state.currentCustomer ? "customerProfile" : "home"));
-  wireNotServedButton(document.getElementById("touchupNotServedBtn"));
-  wireDraftSaveButton(document.getElementById("touchupDraftBtn"));
+  function clearFieldErrors() { container.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error")); }
+  function flagError(selector) { const el = container.querySelector(selector); if (el) el.classList.add("field-error"); return el; }
+  function scrollToFirstError(...els) { const first = els.find(Boolean); if (first) first.scrollIntoView({ behavior: "smooth", block: "center" }); return !first; }
 
-  nextBtn.addEventListener("click", () => {
-    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
-
+  function validateStep(step) {
     clearFieldErrors();
     const draft = state.visitDraft;
-    const scarEl = !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null;
-    const irritationEl = !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null;
-    const allergyEl = !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null;
-    const satisfactionEl = !draft.satisfaction ? flagError('[data-radio-key="satisfaction"]') : null;
-    const retentionEl = !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null;
-    const wantsMoreEl = !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null;
-    const intensityEl = !draft.intensity ? flagError('[data-radio-key="intensity"]') : null;
-    const beforeEl = !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null;
-    const changeItemsEl = draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null;
-    const agreeEl = !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null;
-    const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
-    const sigEl = (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null;
-
-    const noErrors = scrollToFirstError(scarEl, irritationEl, allergyEl, satisfactionEl, retentionEl, wantsMoreEl, intensityEl, beforeEl, changeItemsEl, agreeEl, sigEl);
-    if (!noErrors) return;
-
-    if (!pad.isEmpty()) {
-      draft.signatureCustomerDataUrl = pad.toDataURL();
+    if (step === 0) {
+      return scrollToFirstError(!draft.customerInfoConfirmed ? flagError('[data-check-key="customerInfoConfirmed"]') : null);
     }
+    if (step === 1) {
+      return scrollToFirstError(
+        !draft.hasScar ? flagError('[data-radio-key="hasScar"]') : null,
+        draft.hasScar === "มี" && !(draft.scarCause || []).length ? flagError('[data-chip-key="scarCause"]') : null,
+        draft.hasScar === "มี" && selectionIncludesOther(draft.scarCause) && !draft.scarCauseOther?.trim() ? flagError('[data-other-key="scarCauseOther"]') : null,
+        !draft.irritation7d ? flagError('[data-radio-key="irritation7d"]') : null,
+        draft.irritation7d === "มี" && !draft.irritationDetail?.trim() ? flagError('[data-text-key="irritationDetail"]') : null,
+        !draft.allergyInfo ? flagError('[data-radio-key="allergyInfo"]') : null,
+        draft.allergyInfo === "มี" && !draft.allergyDetail?.trim() ? flagError('[data-text-key="allergyDetail"]') : null
+      );
+    }
+    if (step === 2) {
+      return scrollToFirstError(
+        !draft.satisfaction ? flagError('[data-radio-key="satisfaction"]') : null,
+        !draft.colorRetention ? flagError('[data-radio-key="colorRetention"]') : null,
+        !draft.wantsMoreChange ? flagError('[data-radio-key="wantsMoreChange"]') : null,
+        !draft.intensity ? flagError('[data-radio-key="intensity"]') : null,
+        draft.wantsMoreChange === "มี" && !(draft.changeItems || []).length ? flagError('[data-chip-key="changeItems"]') : null,
+        !hasDraftPhoto(draft, "before") ? flagError('[data-photo-key="before"]') : null
+      );
+    }
+    if (step === 3) {
+      return scrollToFirstError(
+        isOtherOption(draft.shapeDesign) && !draft.shapeDesignOther?.trim() ? flagError('[data-other-key="shapeDesignOther"]') : null
+      );
+    }
+    if (step === 4) {
+      const alreadySigned = Boolean(draft.signatureCustomerDataUrl);
+      return scrollToFirstError(
+        !draft.finalAgree ? flagError('[data-radio-key="finalAgree"]') : null,
+        (!pad || (pad.isEmpty() && !alreadySigned)) ? flagError(".sig-wrap") : null
+      );
+    }
+    return true;
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    if ((state.formStepIndex || 0) <= 0) return;
+    state.formStepIndex -= 1;
+    render();
+  });
+  wireCancelButton(document.getElementById("touchupCancelBtn"));
+  wireDraftSaveButton(document.getElementById("touchupDraftBtn"));
+
+  nextBtn?.addEventListener("click", () => {
+    if (!state.currentCustomer || !state.visitContext) { show("home"); return; }
+    const step = state.formStepIndex || 0;
+    if (!validateStep(step)) return;
+    if (step < LAST_CONSULT_STEP) {
+      state.formStepIndex = step + 1;
+      render();
+      return;
+    }
+    const draft = state.visitDraft;
+    if (pad && !pad.isEmpty()) draft.signatureCustomerDataUrl = pad.toDataURL();
     draft.agreedAt = Date.now();
-    // เก็บค่าเดิมจากประวัติไว้ใน draft ให้ techFields.js (ส่วนที่ 5) ใช้ fallback ตอนสร้าง payload
-    // โดยไม่ต้อง fetch ประวัติซ้ำอีกรอบ — เผื่อกรณีช่างไม่ได้เลือกค่าใหม่ในส่วนที่ 3 (ไม่บังคับตอบ)
     if (historyCtx) {
       draft.prevTechnique = historyCtx.last.technique || null;
       draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
       draft.prevColorUsed = historyCtx.last.colorUsed || null;
-      if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
-      if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
-        draft.shapeDesign = historyCtx.last.shapeDesign;
-      }
-      if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
     }
+    state.formStepIndex = 5;
     show("techFields");
   });
 
   onEnter("formTouchup", async () => {
     const c = state.currentCustomer;
     if (!c) { show("home"); return; }
+    if (state.formStepIndex == null || state.formStepIndex > LAST_CONSULT_STEP) {
+      state.formStepIndex = state.formStepIndex === 5 ? LAST_CONSULT_STEP : 0;
+    }
     historyCtx = null;
     const cached = Array.isArray(state.currentCustomerHistory) && state.currentCustomerHistory.some((v) => v.customerId === c.customerId)
       ? historyCtxFromRows(state.currentCustomerHistory)
       : null;
-    if (cached) {
-      historyCtx = cached;
-    } else {
-      container.innerHTML = `<div class="empty-hint">Loading history...</div>`;
-    }
+    if (cached) historyCtx = cached;
+    else container.innerHTML = `<div class="empty-hint">กำลังโหลดประวัติ...</div>`;
     try {
       if (!historyCtx) historyCtx = await loadHistoryCtx(c.customerId);
     } catch (e) {
       historyCtx = null;
-      container.innerHTML = `<div class="empty-hint">โหลดประวัติเดิมไม่สำเร็จ</div>`;
-      return;
     }
-    if (!historyCtx) {
-      container.innerHTML = `<div class="empty-hint">ไม่พบประวัติเดิม</div>`;
-      return;
-    }
-    const draft = state.visitDraft;
-    if (!draft.prevTechnique) draft.prevTechnique = historyCtx.last.technique || null;
-    if (!draft.prevShapeDesign) draft.prevShapeDesign = historyCtx.last.shapeDesign || null;
-    if (!draft.prevColorUsed) draft.prevColorUsed = historyCtx.last.colorUsed || null;
-    if (!draft.technique && historyCtx.last.technique) draft.technique = historyCtx.last.technique;
-    if (!draft.shapeDesign && historyCtx.last.shapeDesign && OPTIONS.touchupShape.includes(historyCtx.last.shapeDesign)) {
-      draft.shapeDesign = historyCtx.last.shapeDesign;
-    }
-    if (!draft.colorChoice && historyCtx.last.colorUsed) draft.colorChoice = historyCtx.last.colorUsed;
+    applyTouchupDefaults(state.visitDraft, historyCtx);
     render();
   });
 }

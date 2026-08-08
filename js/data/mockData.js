@@ -214,12 +214,49 @@ function seedData() {
       technique: "Hairstroke",
       colorUsed: "น้ำตาลหม่นเทา",
       intensity: "อ่อนธรรมชาติ (1-2 รอบ)",
-      note: "",
+      muscle: "ไม่ขยับชัดเจน",
+      shapeDesign: "ตามโครงเดิม + เติมหาง",
+      browGuard: "กันเบา",
+      satisfaction: "พอใจ",
+      colorRetention: "ติดปานกลาง",
+      wantsMoreChange: "มี",
+      changeItems: ["อยากเข้มขึ้น", "เติมหาง"],
+      mixRatio: "น้ำตาลหม่นเทา 2 · น้ำตาลกลาง 1",
+      redness: "แดงเล็กน้อย",
+      adherence: "ติดดี",
+      note: "เติมสีรอบ 2 — เน้นหางคิ้ว",
       beforePhotoUrl: "",
       afterPhotoUrl: "",
       signatureCustomerUrl: "",
-      signatureTechUrl: "",
-      createdAt: dayMs(10)
+      signatureTechUrl: "(ชนิสตา ศุภสุข) — ลายเซ็นคงที่",
+      consentAgreedAt: dayMs(10),
+      createdAt: dayMs(10),
+      updatedAt: dayMs(10),
+      rawAnswers: {
+        customerInfoConfirmed: true,
+        hasScar: "ไม่มี",
+        irritation7d: "ไม่มี",
+        allergyInfo: "ไม่มี",
+        satisfaction: "พอใจ",
+        colorRetention: "ติดปานกลาง",
+        wantsMoreChange: "มี",
+        changeItems: ["อยากเข้มขึ้น", "เติมหาง"],
+        intensity: "อ่อนธรรมชาติ (1-2 รอบ)",
+        technique: "Hairstroke",
+        shapeDesign: "ตามโครงเดิม + เติมหาง",
+        colorChoice: "น้ำตาลหม่นเทา",
+        browGuard: "กันเบา",
+        muscle: "ไม่ขยับชัดเจน",
+        preServiceAgree: true,
+        finalAgree: "agreed",
+        agreedAt: dayMs(10),
+        redness: "แดงเล็กน้อย",
+        adherence: "ติดดี",
+        mixRatioParts: { "น้ำตาลหม่นเทา": 2, "น้ำตาลกลาง": 1 },
+        prevTechnique: "Hairstroke",
+        prevColorUsed: "น้ำตาลหม่นเทา",
+        prevShapeDesign: "Hairstroke ธรรมชาติ"
+      }
     },
     {
       serviceId: "S0008",
@@ -248,9 +285,38 @@ function seedData() {
 function ensureSeeded(db) {
   if (!db || !Array.isArray(db.customers)) return seedData();
   // มีลูกค้าอยู่แล้ว — ไม่ทับข้อมูลที่ผู้ใช้สร้างไว้
-  if (db.customers.length > 0) return db;
+  if (db.customers.length > 0) return enrichThinDemoVisits(db);
   // อาร์เรย์ว่าง (เคยเคลียร์หรือ seed เปล่าเก่า) — ใส่ demo
   return seedData();
+}
+
+/** เติมรายละเอียดให้ visit demo เก่าใน localStorage ที่เคย seed แบบบาง (ไม่มี rawAnswers) */
+function enrichThinDemoVisits(db) {
+  if (!Array.isArray(db.serviceHistory)) return db;
+  if ((db._demoVisitEnrichV || 0) >= 2) return db;
+
+  const seedById = Object.fromEntries(seedData().serviceHistory.map((v) => [v.serviceId, v]));
+  db.serviceHistory = db.serviceHistory.map((visit) => {
+    const seed = seedById[visit.serviceId];
+    if (!seed) return visit;
+    const isCompleted = visit.status === "completed" || visit.status === "เสร็จสิ้น";
+    if (!isCompleted) return visit;
+
+    const merged = { ...seed, ...visit };
+    for (const [key, value] of Object.entries(seed)) {
+      if (key === "serviceId" || key === "customerId") continue;
+      const cur = merged[key];
+      const empty = cur === undefined || cur === null || cur === "" || (Array.isArray(cur) && !cur.length);
+      if (empty && value !== undefined && value !== null && value !== "") {
+        merged[key] = value;
+      }
+    }
+    const hasRaw = merged.rawAnswers && typeof merged.rawAnswers === "object" && Object.keys(merged.rawAnswers).length;
+    if (!hasRaw && seed.rawAnswers) merged.rawAnswers = seed.rawAnswers;
+    return merged;
+  });
+  db._demoVisitEnrichV = 2;
+  return db;
 }
 
 function load() {
@@ -262,8 +328,9 @@ function load() {
   }
   try {
     const parsed = JSON.parse(raw);
+    const beforeV = parsed._demoVisitEnrichV || 0;
     const ensured = ensureSeeded(parsed);
-    if (ensured !== parsed) {
+    if (ensured !== parsed || (ensured._demoVisitEnrichV || 0) !== beforeV) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(ensured));
     }
     return ensured;

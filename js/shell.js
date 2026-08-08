@@ -1,5 +1,5 @@
-import { show } from "./router.js";
-import { showLogin, openReset, logoutUser } from "./screens/login.js";
+import { show } from "./router.js?v=20260808ae";
+import { showLogin, openReset, logoutUser } from "./screens/login.js?v=20260808ae";
 
 export function initShell() {
   const hamburgerBtn = document.getElementById("hamburgerBtn");

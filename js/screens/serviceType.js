@@ -1,8 +1,8 @@
-import { show } from "../router.js";
-import { state } from "../state.js";
-import { createVisit, getHistoryByCustomer } from "../mockApi.js";
-import { appAlert } from "../dialogs.js";
-import { isCompletedBrowVisit } from "../utils.js";
+import { show } from "../router.js?v=20260808ae";
+import { state } from "../state.js?v=20260808ae";
+import { createVisit, getHistoryByCustomer } from "../mockApi.js?v=20260808ae";
+import { appAlert } from "../dialogs.js?v=20260808ae";
+import { isCompletedBrowVisit } from "../utils.js?v=20260808ae";
 
 let modalEl = null;
 let closeTimer = null;
@@ -100,11 +100,12 @@ async function chooseForm({ serviceType, formType, screenId, buttonId }) {
     };
     state.pendingVisitMeta = null;
     state.resetVisitDraft();
+    state.formStepIndex = 0;
     closeServiceTypeModal({ force: true });
     show(screenId);
   } catch (e) {
     console.warn("createVisit after form selection failed:", e);
-    await appAlert("สร้าง Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "สร้าง Visit ไม่สำเร็จ" });
+    await appAlert("สร้างคิวไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "สร้างคิวไม่สำเร็จ" });
   } finally {
     setChoosingDisabled(false);
   }

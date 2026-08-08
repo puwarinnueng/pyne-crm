@@ -105,6 +105,36 @@ function rowToCustomer_(row) {
   };
 }
 
+function visitActivityTime_(visit) {
+  return Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
+}
+
+function isResumableVisitStatus_(status) {
+  var key = normalizeVisitStatus_(status);
+  return key === "draft" || key === "in_progress";
+}
+
+function withCustomerVisitStats_(customer, visits) {
+  var sorted = (visits || []).slice().sort(function (a, b) {
+    return visitActivityTime_(b) - visitActivityTime_(a);
+  });
+  var lastVisit = sorted.length ? sorted[0] : null;
+  var openVisit = null;
+  for (var i = 0; i < sorted.length; i++) {
+    if (isResumableVisitStatus_(sorted[i].status)) {
+      openVisit = sorted[i];
+      break;
+    }
+  }
+  return Object.assign({}, customer, {
+    visitsCount: sorted.length,
+    lastVisitDate: lastVisit ? lastVisit.visitDate : null,
+    lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
+    lastVisitStatus: lastVisit ? normalizeVisitStatus_(lastVisit.status) : null,
+    openVisitStatus: openVisit ? normalizeVisitStatus_(openVisit.status) : null
+  });
+}
+
 function searchCustomers(token, query) {
   requireSession_(token);
   const q = (query || "").trim().toLowerCase();
@@ -113,6 +143,13 @@ function searchCustomers(token, query) {
   const sheet = getCustomersSheet_();
   const rows = sheetToObjects_(sheet);
   const displayValues = sheet.getDataRange().getDisplayValues();
+  const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
+  const visitsByCustomerId = {};
+  history.forEach(function (visit) {
+    if (!visit.customerId) return;
+    if (!visitsByCustomerId[visit.customerId]) visitsByCustomerId[visit.customerId] = [];
+    visitsByCustomerId[visit.customerId].push(visit);
+  });
 
   return rows
     .filter((row, idx) => {
@@ -123,11 +160,10 @@ function searchCustomers(token, query) {
       const displayPhoneHit = qPhone.length >= 3 && displayRow.some((cell) => phoneMatches_(cell, qPhone));
       return nameHit || lineHit || phoneHit || displayPhoneHit;
     })
-    .map(rowToCustomer_);
-}
-
-function visitActivityTime_(visit) {
-  return Number(visit.updatedAt || visit.createdAt || visit.visitDate) || 0;
+    .map(function (row) {
+      var customer = rowToCustomer_(row);
+      return withCustomerVisitStats_(customer, visitsByCustomerId[customer.customerId] || []);
+    });
 }
 
 function listRecentCustomers(token, limit) {
@@ -135,35 +171,23 @@ function listRecentCustomers(token, limit) {
   const max = limit || 10;
   const customers = sheetToObjects_(getCustomersSheet_()).map(rowToCustomer_);
   const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
-  const statsByCustomerId = {};
+  const visitsByCustomerId = {};
 
-  history.forEach((visit) => {
+  history.forEach(function (visit) {
     const customerId = visit.customerId;
     if (!customerId) return;
-    const current = statsByCustomerId[customerId] || {
-      visitsCount: 0,
-      lastVisit: null,
-      lastActivityAt: 0
-    };
-    const activityAt = visitActivityTime_(visit);
-    current.visitsCount += 1;
-    if (!current.lastVisit || activityAt > current.lastActivityAt) {
-      current.lastVisit = visit;
-      current.lastActivityAt = activityAt;
-    }
-    statsByCustomerId[customerId] = current;
+    if (!visitsByCustomerId[customerId]) visitsByCustomerId[customerId] = [];
+    visitsByCustomerId[customerId].push(visit);
   });
 
   return customers
-    .map((c) => {
-      const stats = statsByCustomerId[c.customerId] || null;
-      const lastVisit = stats && stats.lastVisit ? stats.lastVisit : null;
-      return Object.assign({}, c, {
-        visitsCount: stats ? stats.visitsCount : 0,
-        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
-        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-",
-        lastActivityAt: stats ? stats.lastActivityAt : (Number(c.createdAt) || 0)
-      });
+    .map(function (c) {
+      var visits = visitsByCustomerId[c.customerId] || [];
+      var enriched = withCustomerVisitStats_(c, visits);
+      var lastActivityAt = visits.length
+        ? Math.max.apply(null, visits.map(visitActivityTime_))
+        : (Number(c.createdAt) || 0);
+      return Object.assign({}, enriched, { lastActivityAt: lastActivityAt });
     })
     .sort((a, b) => (b.lastActivityAt || 0) - (a.lastActivityAt || 0))
     .slice(0, max)
@@ -195,18 +219,16 @@ function listCustomersWithStats(token) {
   requireSession_(token);
   const customers = sheetToObjects_(getCustomersSheet_()).map(rowToCustomer_);
   const history = sheetToObjects_(getServiceHistorySheet_()).map(rowToVisit_);
+  const visitsByCustomerId = {};
+  history.forEach(function (visit) {
+    if (!visit.customerId) return;
+    if (!visitsByCustomerId[visit.customerId]) visitsByCustomerId[visit.customerId] = [];
+    visitsByCustomerId[visit.customerId].push(visit);
+  });
 
   return customers
-    .map((c) => {
-      const visits = history
-        .filter((v) => v.customerId === c.customerId)
-        .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
-      const lastVisit = visits[0] || null;
-      return Object.assign({}, c, {
-        visitsCount: visits.length,
-        lastVisitDate: lastVisit ? lastVisit.visitDate : null,
-        lastTechnique: lastVisit ? (lastVisit.technique || lastVisit.serviceType || "-") : "-"
-      });
+    .map(function (c) {
+      return withCustomerVisitStats_(c, visitsByCustomerId[c.customerId] || []);
     })
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }

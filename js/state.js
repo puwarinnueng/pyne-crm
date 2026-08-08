@@ -10,6 +10,7 @@ export const state = {
   pendingVisitMeta: null,     // ข้อมูลนัดที่กรอกไว้ รอเลือก form ก่อนค่อยสร้าง Visit จริง
   currentCustomerHistory: null, // cache history ของลูกค้าปัจจุบัน เพื่อลดการ fetch ซ้ำใน Form 3
   visitDraft: {},             // คำตอบฟอร์มที่กำลังกรอก สะสมไปเรื่อย ๆ จนกว่าจะบันทึกจริง
+  formStepIndex: 0,           // 0 ลูกค้า · 1 สุขภาพ · 2 ความต้องการ · 3 ออกแบบ · 4 ยืนยัน · 5 = techFields
   browStepIndex: 0,
   lastSavedServiceId: null,
 
@@ -29,6 +30,7 @@ export const state = {
     this.pendingVisitMeta = null;
     this.currentCustomerHistory = null;
     this.resetVisitDraft();
+    this.formStepIndex = 0;
     this.browStepIndex = 0;
   }
 };

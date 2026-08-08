@@ -1,12 +1,12 @@
 // visitFlow.js — ส่วนที่ใช้ร่วมกันทุกฟอร์ม Consultation (Form 1/2/3 + หน้าบันทึกหลังทำ)
-// ตาม "กติกากลางของทั้ง 3 ฟอร์ม": แสดง Customer ID/Visit ID/Zerva Booking ID/ชื่อ/ชื่อเล่น/วันเวลานัด
-// ที่ดึงจากขั้นตอนก่อนหน้า + ปุ่ม "ไม่ได้รับบริการ" ที่กดได้ทุกจุดของฟอร์ม
 
-import { state } from "./state.js";
-import { show } from "./router.js";
-import { closeVisitNotServed, saveVisit } from "./mockApi.js";
-import { appAlert, appConfirm, appPrompt } from "./dialogs.js";
-import { escapeHtml, formatDate } from "./utils.js";
+import { state } from "./state.js?v=20260808ae";
+import { show } from "./router.js?v=20260808ae";
+import { closeVisitNotServed, saveVisit } from "./mockApi.js?v=20260808ae";
+import { appAlert, appConfirm, appPrompt } from "./dialogs.js?v=20260808ae";
+import { showToast } from "./toast.js?v=20260808ae";
+import { escapeHtml, formatDate, resolveTouchupTechnique, resolveTouchupShape, resolveTouchupColor } from "./utils.js?v=20260808ae";
+import { withIcon } from "./icons.js?v=20260808ae";
 
 export function visitHeaderHtml() {
   const c = state.currentCustomer;
@@ -15,39 +15,41 @@ export function visitHeaderHtml() {
   return `
     <div class="box-quiet visit-header">
       <div><b>${escapeHtml(c.fullName || c.nickname || c.name || "")}</b> (${escapeHtml(c.nickname || "-")}) &nbsp;·&nbsp; ${escapeHtml(c.customerId)}</div>
-      <div class="muted small">Visit ${escapeHtml(v.visitId)} &nbsp;·&nbsp; Zerva ${escapeHtml(v.zervaBookingId || "-")} &nbsp;·&nbsp; ${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}</div>
+      <div class="muted small">คิว ${escapeHtml(v.visitId)} &nbsp;·&nbsp; Zerva ${escapeHtml(v.zervaBookingId || "-")} &nbsp;·&nbsp; ${formatDate(v.visitDate)} ${escapeHtml(v.timeSlot || "")}</div>
     </div>`;
 }
 
 export function setDraftSaveLoading(buttonEl, isLoading) {
   if (!buttonEl) return;
   if (isLoading) {
-    buttonEl.dataset.idleText = buttonEl.textContent;
-    buttonEl.textContent = "กำลังบันทึก...";
+    if (!buttonEl.dataset.idleHtml) buttonEl.dataset.idleHtml = buttonEl.innerHTML;
+    buttonEl.innerHTML = "กำลังบันทึก...";
     buttonEl.setAttribute("aria-busy", "true");
     buttonEl.disabled = true;
     return;
   }
-  buttonEl.textContent = buttonEl.dataset.idleText || "บันทึกแบบร่าง";
+  buttonEl.innerHTML = buttonEl.dataset.idleHtml || withIcon("save", "บันทึกร่าง");
   buttonEl.removeAttribute("aria-busy");
   buttonEl.disabled = false;
 }
 
 export async function promptAfterDraftSaved() {
-  const goHome = await appConfirm("บันทึกแบบร่างแล้ว — ต้องการอยู่หน้านี้ต่อหรือกลับไปหน้าลูกค้าเก่า?", {
-    title: "บันทึกแบบร่างแล้ว",
-    okText: "กลับหน้าหลัก",
+  showToast("บันทึกร่างแล้ว", { tone: "ok" });
+  const goHome = await appConfirm("บันทึกร่างแล้ว กลับหน้าลูกค้าเลยไหม?", {
+    title: "บันทึกแล้ว",
+    okText: "กลับหน้าลูกค้า",
     cancelText: "อยู่หน้านี้ต่อ"
   });
   if (!goHome) return;
   state.reset();
-  show("home", { data: { mode: "oldCustomerSearch" } });
+  show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true } });
 }
 
-// ปุ่ม "บันทึกแบบร่าง" มุมขวาบน — กดได้ตลอดทุกจุดของฟอร์ม โดยไม่ต้องรอข้อมูลบังคับครบ
-// เก็บ rawAnswers ดิบทั้งหมดไว้ก่อน ไม่ normalize เป็นฟิลด์ทีละอันเหมือนตอนปิด Visit จริง
 export function wireDraftSaveButton(buttonEl) {
   if (!buttonEl) return;
+  if (!buttonEl.querySelector("svg")) {
+    buttonEl.innerHTML = withIcon("save", "บันทึกร่าง");
+  }
   buttonEl.addEventListener("click", async () => {
     const c = state.currentCustomer;
     const v = state.visitContext;
@@ -64,45 +66,54 @@ export function wireDraftSaveButton(buttonEl) {
         formType: state.formType,
         status: "draft",
         visitDate: v.visitDate || Date.now(),
-        technique: draft.technique || null,
-        colorUsed: draft.colorChoice || null,
+        technique: resolveTouchupTechnique(draft) || null,
+        colorUsed: resolveTouchupColor(draft) || null,
         intensity: draft.intensity || null,
-        rawAnswers: { ...draft, beforePhotoDataUrl: undefined, afterPhotoDataUrl: undefined, signatureCustomerDataUrl: undefined }
+        muscle: draft.muscle || null,
+        shapeDesign: resolveTouchupShape(draft) || null,
+        browGuard: draft.browGuard || null,
+        rawAnswers: {
+          ...draft,
+          formStepIndex: state.formStepIndex || 0,
+          beforePhotoDataUrl: undefined,
+          afterPhotoDataUrl: undefined,
+          signatureCustomerDataUrl: undefined
+        }
       });
       await promptAfterDraftSaved();
     } catch (e) {
       console.warn("saveVisit (draft) failed:", e);
-      await appAlert("บันทึกแบบร่างไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
+      await appAlert("บันทึกไม่สำเร็จ ลองเช็คเน็ตแล้วกดอีกครั้ง", { title: "บันทึกไม่สำเร็จ" });
     } finally {
       setDraftSaveLoading(buttonEl, false);
     }
   });
 }
 
-// ปุ่ม "ไม่ได้รับบริการ" — บังคับกรอกเหตุผล แล้วปิด Visit ทันทีโดยไม่บังคับ Consent/ลายเซ็น/รายละเอียดการทำ/รูป After
 export function wireNotServedButton(buttonEl) {
   if (!buttonEl) return;
   buttonEl.addEventListener("click", async () => {
     const v = state.visitContext;
     if (!v) return;
-    const reason = await appPrompt("กรุณาระบุเหตุผลที่ไม่ได้รับบริการ เพื่อปิด Visit นี้", {
-      title: "ไม่ได้รับบริการ",
+    const reason = await appPrompt("บอกเหตุผลสั้น ๆ ว่าทำไมไม่ได้รับบริการ", {
+      title: "ปิดคิว — ไม่ได้รับบริการ",
       inputLabel: "เหตุผล",
-      placeholder: "เช่น ลูกค้ายกเลิก / ไม่มาตามนัด / เลื่อนนัด",
+      placeholder: "เช่น ลูกค้าไม่มา / เลื่อนนัด / ยกเลิก",
       required: true,
-      requiredMessage: "กรุณาระบุเหตุผล",
-      okText: "ยืนยันปิด Visit",
+      requiredMessage: "กรอกเหตุผลก่อนนะ",
+      okText: "ปิดคิว",
       cancelText: "ยกเลิก"
     });
-    if (reason === null) return; // กดยกเลิก
+    if (reason === null) return;
     buttonEl.disabled = true;
     try {
       await closeVisitNotServed(v.visitId, reason.trim());
+      showToast("ปิดคิวแล้ว", { tone: "ok" });
       state.reset();
-      show("home");
+      show("home", { data: { mode: "oldCustomerSearch", preserveSearch: true } });
     } catch (e) {
       console.warn("closeVisitNotServed failed:", e);
-      await appAlert("ปิด Visit ไม่สำเร็จ — เช็คสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง", { title: "ทำรายการไม่สำเร็จ" });
+      await appAlert("ปิดคิวไม่สำเร็จ ลองอีกครั้ง", { title: "ทำไม่สำเร็จ" });
       buttonEl.disabled = false;
     }
   });
