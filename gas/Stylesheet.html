@@ -631,40 +631,28 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
   overflow: visible;
 }
 .table-scroll { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; border-radius: inherit; }
+/* Desktop: ตาราง auto ตามเนื้อหา — อย่าใช้ table-layout:fixed (จะบีบคอลัมน์ลูกค้าจนป้ายสถานะตัดบรรทัด) */
 .customers-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
-  min-width: 0;
+  table-layout: auto;
+  min-width: 720px;
 }
 .customers-table thead th {
   text-align: left; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: var(--fw-label);
   letter-spacing: var(--tr-label); text-transform: uppercase;
   color: var(--muted-taupe);
   background: rgba(247, 242, 234, 0.72);
-  padding: 14px var(--sp-16);
+  padding: 14px var(--sp-24);
   border-bottom: 1px solid rgba(61, 48, 36, 0.06);
   white-space: nowrap;
 }
 .customers-table tbody td {
-  padding: 14px var(--sp-16);
+  padding: 18px var(--sp-24);
   border-bottom: 1px solid rgba(61, 48, 36, 0.05);
   font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
   white-space: nowrap; vertical-align: middle;
-  overflow: hidden; text-overflow: ellipsis;
 }
-.customers-table th:nth-child(1),
-.customers-table td:nth-child(1) { width: 30%; white-space: normal; overflow: visible; }
-.customers-table th:nth-child(2),
-.customers-table td:nth-child(2) { width: 18%; }
-.customers-table th:nth-child(3),
-.customers-table td:nth-child(3) { width: 16%; }
-.customers-table th:nth-child(4),
-.customers-table td:nth-child(4) { width: 16%; }
-.customers-table th:nth-child(5),
-.customers-table td:nth-child(5) { width: 12%; }
-.customers-table th:nth-child(6),
-.customers-table td:nth-child(6) { width: 8%; }
 .customers-table tbody tr { transition: background .15s ease; cursor: pointer; }
 .customers-table tbody tr:focus-visible { outline: 2px solid var(--pyne-gold); outline-offset: -2px; }
 .customers-table tbody tr:last-child td { border-bottom: none; }
@@ -673,7 +661,12 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
   background: rgba(232, 214, 186, 0.35);
   box-shadow: inset 3px 0 0 0 var(--pyne-gold);
 }
-.th-actions, .cell-actions { text-align: right; width: 1%; vertical-align: middle; }
+.th-actions, .cell-actions { text-align: right; width: 1%; vertical-align: middle; white-space: nowrap; }
+.customers-table .draft-badge--inline {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  max-width: none;
+}
 .row-menu { position: relative; display: inline-flex; justify-content: flex-end; }
 
 .row-menu-trigger {
@@ -726,6 +719,7 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
 }
 .cust-meta { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
 .cust-name { font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.customers-table .cust-name { flex-wrap: nowrap; gap: 8px; }
 .cust-sub { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
 
 /* Icon-prefixed cells (phone / line / last visit) */
@@ -752,7 +746,6 @@ input.field-error, textarea.field-error { background: var(--error-bg); }
     font-size: 10px;
     padding: 3px 8px;
     margin-left: 0;
-    white-space: normal;
   }
 }
 
