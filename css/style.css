@@ -1589,10 +1589,24 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
 }
 .app-dialog-input { min-height: 96px; resize: vertical; margin: 0; }
 .app-dialog-error { margin: var(--sp-8) 0 0; text-align: left; }
-.app-dialog-actions { display: flex; justify-content: flex-end; gap: var(--sp-8); margin-top: var(--sp-16); }
-.app-dialog-actions .btn { min-width: 112px; }
+.app-dialog-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: stretch;
+  gap: var(--sp-8); margin-top: var(--sp-16);
+}
+.app-dialog-actions .btn {
+  flex: 1 1 auto;
+  min-width: min(100%, 148px);
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
 
-/* Login / Reset — จอมือถือ */
+/* Login / Reset / Dialog — จอแคบ: ปุ่มเต็มความกว้าง ไม่ให้ทับกัน */
+@media (max-width: 520px) {
+  .app-dialog-actions { flex-direction: column-reverse; flex-wrap: nowrap; }
+  .app-dialog-actions .btn { width: 100%; flex: 0 0 auto; min-width: 0; }
+}
 @media (max-width: 480px) {
   .login-screen { padding: var(--sp-16); }
   .login-logo { margin-bottom: var(--sp-24); }
@@ -1606,8 +1620,6 @@ details.consent-block .consent-body { margin-top: var(--sp-12); }
   .reset-card { padding: var(--sp-24) var(--sp-16) var(--sp-16); }
   .app-dialog-overlay { padding: var(--sp-16); }
   .app-dialog { padding: var(--sp-16); }
-  .app-dialog-actions { flex-direction: column-reverse; }
-  .app-dialog-actions .btn { width: 100%; }
 }
 
 /* ---- Toast ---- */

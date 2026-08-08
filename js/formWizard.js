@@ -364,7 +364,7 @@ export function wireCancelButton(buttonEl) {
   buttonEl.addEventListener("click", async () => {
     const markNotServed = await appConfirm(
       "อยากปิดคิวนี้ว่าไม่ได้รับบริการ หรือแค่พักออกไปก่อน?",
-      { title: "ออกจากฟอร์ม", okText: "ปิดคิว — ไม่ได้รับบริการ", cancelText: "พักออกก่อน" }
+      { title: "ออกจากฟอร์ม", okText: "ไม่ได้รับบริการ", cancelText: "พักออกก่อน" }
     );
     if (markNotServed) {
       const v = state.visitContext;

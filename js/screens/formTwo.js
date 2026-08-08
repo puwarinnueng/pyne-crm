@@ -12,7 +12,7 @@ import { wireDraftSaveButton } from "../visitFlow.js?v=20260808ae";
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808ae";
+} from "../formWizard.js?v=20260808af";
 import { updateMuscleEvaluation } from "../mockApi.js?v=20260808ae";
 
 function consentBlocksHtml() {

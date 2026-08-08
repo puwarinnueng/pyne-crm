@@ -1444,7 +1444,7 @@ function wireCancelButton(buttonEl) {
   buttonEl.addEventListener("click", async () => {
     const markNotServed = await appConfirm(
       "อยากปิดคิวนี้ว่าไม่ได้รับบริการ หรือแค่พักออกไปก่อน?",
-      { title: "ออกจากฟอร์ม", okText: "ปิดคิว — ไม่ได้รับบริการ", cancelText: "พักออกก่อน" }
+      { title: "ออกจากฟอร์ม", okText: "ไม่ได้รับบริการ", cancelText: "พักออกก่อน" }
     );
     if (markNotServed) {
       const v = state.visitContext;
@@ -3394,7 +3394,7 @@ function initServiceType() {
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808ae";
+} from "../formWizard.js?v=20260808af";
 
 function consentBlocksHtml() {
   return CONSENT_BLOCKS.map((b) => `
@@ -3723,7 +3723,7 @@ function initFormOne() {
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808ae";
+} from "../formWizard.js?v=20260808af";
 
 function consentBlocksHtml() {
   const blocks = [CONSENT_BLOCKS[0], FORM2_EXTRA_CONSENT_BLOCK, ...CONSENT_BLOCKS.slice(1)];
@@ -4027,7 +4027,7 @@ import {
 import {
   mountFormChrome, setFooterWizardMode, wireCancelButton,
   customerConfirmStepHtml, bindCustomerConfirm, LAST_CONSULT_STEP
-} from "../formWizard.js?v=20260808ae";
+} from "../formWizard.js?v=20260808af";
 
 function monthsSince(ts) {
   if (!ts) return "-";

@@ -14,7 +14,7 @@ import {
 import { TECH_SIGNATURE_DATA_URL } from "../data/techSignature.js?v=20260808ae";
 import { promptAfterDraftSaved, setDraftSaveLoading } from "../visitFlow.js?v=20260808ae";
 import { showToast } from "../toast.js?v=20260808ae";
-import { mountVisitStripOnly, wireCancelButton, LAST_CONSULT_STEP } from "../formWizard.js?v=20260808ae";
+import { mountVisitStripOnly, wireCancelButton, LAST_CONSULT_STEP } from "../formWizard.js?v=20260808af";
 
 export function initTechFields() {
   const body = document.getElementById("techBody");
